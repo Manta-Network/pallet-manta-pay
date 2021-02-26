@@ -150,7 +150,7 @@ decl_module! {
             //
             // NOTE:
             //    this is is generated via
-            //      let zkp_key = priv_coin::manta_zkp_key_gen(&hash_param_seed, &commit_param_seed);
+            //      let zkp_key = priv_coin::manta_XXX_zkp_key_gen(&hash_param_seed, &commit_param_seed);
             //
             // for prototype, we use this function to generate the ZKP verification key
             // for product we should use a MPC protocol to build the ZKP verification key
@@ -358,7 +358,7 @@ decl_module! {
 
             // update ledger storage
             // FIXME: change RawEvent here
-            Self::deposit_event(RawEvent::PrivateTransferred(origin));
+            Self::deposit_event(RawEvent::PrivateForfeited(origin));
             CoinList::put(coin_list);
             SNList::put(sn_list);
             LedgerState::put(new_root);
@@ -380,6 +380,8 @@ decl_event! {
         Minted(AccountId, u64),
         /// Private transfer
         PrivateTransferred(AccountId),
+        /// The assest was forfeited
+        PrivateForfeited(AccountId),
     }
 }
 
