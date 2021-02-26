@@ -1,0 +1,69 @@
+[package]
+name = "pallet-manta-dap"
+version = "2.0.1"
+authors = ["Manta Network <contact@manta.network>"]
+edition = "2018"
+license = "Apache-2.0"
+repository = "https://github.com/manta-network/pallet-basecoin/"
+description = "Manta DAP scheme"
+readme = "README.md"
+
+[package.metadata.docs.rs]
+targets = ["x86_64-unknown-linux-gnu"]
+
+[dependencies]
+serde = { version = "1.0.101", optional = true }
+codec = { package = "parity-scale-codec", version = "1.3.4", default-features = false }
+# Needed for various traits. In our case, `OnFinalize`.
+sp-runtime = { version = "2.0.1", default-features = false }
+# Needed for type-safe access to storage DB.
+frame-support = { version = "2.0.1", default-features = false }
+# `system` module provides us with all sorts of useful stuff and macros depend on it being around.
+frame-system = { version = "2.0.1", default-features = false }
+
+
+rand = { version = "0.7", default-features = false }
+rand_core =  { version = "0.5", default-features = false }
+rand_chacha = { version = "0.2.2", default-features = false }
+ark-ed-on-bls12-381 = { version = "0.1.0", git = "https://github.com/arkworks-rs/curves/", default-features = false, features = [ "r1cs" ] }
+ark-bls12-381 = { version = "0.1.0", git = "https://github.com/arkworks-rs/curves/", default-features = false, features = [ "curve" ] }
+ark-crypto-primitives = { version = "0.1.0", git = "https://github.com/arkworks-rs/crypto-primitives.git", branch = "main", default-features = false, features = [ "r1cs" ] }
+ark-ff = { git = "https://github.com/arkworks-rs/algebra", default-features = false }
+ark-ec = { git = "https://github.com/arkworks-rs/algebra", default-features = false }
+ark-std = { git = "https://github.com/arkworks-rs/utils", default-features = false }
+ark-groth16 = { git = "https://github.com/arkworks-rs/groth16", default-features = false, features = [ "r1cs" ] }
+ark-r1cs-std = { git = "https://github.com/arkworks-rs/r1cs-std", default-features = false }
+ark-relations = { git = "https://github.com/arkworks-rs/snark", default-features = false }
+ark-serialize = { git = "https://github.com/arkworks-rs/algebra", default-features = false, features = [ "derive" ] }
+
+hkdf = { version = "0.10", default-features = false }
+sha2 = { version = "0.9.3", default-features = false }
+aes = { version = "0.6.0", default-features = false }
+x25519-dalek = { version = "1.1.0", default-features = false, features = [ "u64_backend" ]}
+generic-array = { version = "0.14.0", default-features = false }
+# # for front end benchmarking; remove in release version
+# time = { version = "0.2.25", default-features = false }
+
+
+[dev-dependencies]
+sp-core = { version = "2.0.1", default-features = false }
+sp-io = { version = "2.0.1", default-features = false }
+# data encoding is only used for testing
+data-encoding = { version = "2.3.2", default-features = false, features = [ "alloc" ] }
+# benchmarking 
+bencher = "0.1.5"
+criterion = "0.2.11"
+
+[[bench]]
+name = "manta_bench"
+harness = false
+
+[features]
+default = ["std"]
+std = [
+	"serde",
+	"codec/std",
+	"sp-runtime/std",
+	"frame-support/std",
+	"frame-system/std",
+]

@@ -1,0 +1,99 @@
+{
+    "coin_1": {
+        "cm": "XzoWOzhp6rXjQ/HDEN6jSLsLs64hKXWUNuFVtCUq0AA=",
+        "value": 10,
+        "pk": "rgnbfNVPQrSQ7wm2vFQa9ojklZu4xT81mm9W44q0VKM=",
+        "rho": "OuJIq6UGqFa+yy22MYUfN/l9lM4XUzXLnL9WCAyFaFE=",
+        "s": "xsPXqMXA1SKMOehtsgVWV8xw9Mj0rh3O8Yt1ZHJzaQ4=",
+        "r": "DYcuigV3e6U72Of6fOpuzWZt9DtyGGA1By8O/O7JcAo=",
+        "k": "+tMTpSikpdACxuDGZTl5pxwT7tpYcX/DFKJRZ1oLfqc=",
+        "sk": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=",
+        "sn": "jqhzAPanABquT0CpMC2aFt2ze8+UqMUcUG6PZBmqFqE="
+    },
+    "coin_1_raw": {
+        "cm": "0x5f3a163b3869eab5e343f1c310dea348bb0bb3ae2129759436e155b4252ad000",
+        "value": 10,
+        "pk": "0xae09db7cd54f42b490ef09b6bc541af688e4959bb8c53f359a6f56e38ab454a3]",
+        "rho": "0x3ae248aba506a856becb2db631851f37f97d94ce175335cb9cbf56080c856851",
+        "s": "0xc6c3d7a8c5c0d5228c39e86db2055657cc70f4c8f4ae1dcef18b75647273690e",
+        "r": "0x0d872e8a05777ba53bd8e7fa7cea6ecd666df43b72186035072f0efceec9700a",
+        "k": "0xfad313a528a4a5d002c6e0c6653979a71c13eeda58717fc314a251675a0b7ea7",
+        "sk": "0x0000000000000000000000000000000000000000000000000000000000000000",
+        "sn": "0x8ea87300f6a7001aae4f40a9302d9a16ddb37bcf94a8c51c506e8f6419aa16a1"
+    },
+    "coin_2": {
+        "cm": "3Oye4AqhzdysdWdCzMcoImTnYNGd21OmF8ztph4dRqI=",
+        "value": 100,
+        "pk": "1RjrtNh0HEFYoswGFwhCcNbv8oalJ6z3QYKbAmGTDjk=",
+        "rho": "EMlWyi/zMxuByhDxmpn1C7AAWxJjKIIpHSnRMqQWNk0=",
+        "s": "/KTVGbHHU8UVHLS6h54470DtjwF6MHvBkG2bKxpyBQc=",
+        "r": "SEEugW5YAvyxQ+z5fry09M2jGqw8QvuyDuo+3278VQs=",
+        "k": "CutG9BBbkJMpBkbYTVX37HWunGcxHyy8+Eb1xRT9eVM=",
+        "sk": "AQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQE=",
+        "sn": "EdHWc+HAgRWlcJrK8dlVnewSCTwEDPZFa8iYKxoRdOY="
+    },
+    "coin_2_raw": {
+        "cm": "0xdcec9ee00aa1cddcac756742ccc7282264e760d19ddb53a617cceda61e1d46a2",
+        "value": 100,
+        "pk": "0xd518ebb4d8741c4158a2cc0617084270d6eff286a527acf741829b0261930e39",
+        "rho": "0x10c956ca2ff3331b81ca10f19a99f50bb0005b12632882291d29d132a416364d",
+        "s": "0xfca4d519b1c753c5151cb4ba879e38ef40ed8f017a307bc1906d9b2b1a720507",
+        "r": "0x48412e816e5802fcb143ecf97ebcb4f4cda31aac3c42fbb20eea3edf6efc550b",
+        "k": "0x0aeb46f4105b9093290646d84d55f7ec75ae9c67311f2cbcf846f5c514fd7953",
+        "sk": "0x0101010101010101010101010101010101010101010101010101010101010101",
+        "sn": "0x11d1d673e1c08115a5709acaf1d9559dec12093c040cf6456bc8982b1a1174e6"
+    },
+    "coin_3": {
+        "cm": "1zuOv92V7e1qX1bP7+QNsV+gW5E3xUsghte/lZ7h5pg=",
+        "value": 10,
+        "pk": "TkdKMB3vtMwFSe7LxnILv6AMHCbpAtg7ud8pJrU4m0w=",
+        "rho": "tDR8hvutvJiI+IedIwwG7D22exdKWw10Rm2H8K3rsjw=",
+        "s": "LlXIi0kLQhSZ2SD0JaeckxgIiFuCaFbJh1IyI3675gw=",
+        "r": "ZfWQLar9ZHoJPIWLlmUYKLgLs5MUC4ZN3CMjDjnxpgk=",
+        "k": "2HbWGQCLOfxuA4jOiDftBRSbjjAs/a0vjrq/H4p6QBI=",
+        "sk": "AgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgI=",
+        "sn": "bwgOTJ8nNJ8phco73Zm6A8jV0ua6qsw9MtXtwyxV7cQ="
+    },
+    "coin_3_raw": {
+        "cm": "0xd73b8ebfdd95eded6a5f56cfefe40db15fa05b9137c54b2086d7bf959ee1e698",
+        "value": 10,
+        "pk": "0x4e474a301defb4cc0549eecbc6720bbfa00c1c26e902d83bb9df2926b5389b4c",
+        "rho": "0xb4347c86fbadbc9888f8879d230c06ec3db67b174a5b0d74466d87f0adebb23c",
+        "s": "0x2e55c88b490b421499d920f425a79c931808885b826856c9875232237ebbe60c",
+        "r": "0x65f5902daafd647a093c858b96651828b80bb393140b864ddc23230e39f1a609",
+        "k": "0xd876d619008b39fc6e0388ce8837ed05149b8e302cfdad2f8ebabf1f8a7a4012",
+        "sk": "0x0202020202020202020202020202020202020202020202020202020202020202",
+        "sn": "0x6f080e4c9f27349f2985ca3bdd99ba03c8d5d2e6baaacc3d32d5edc32c55edc4"
+    },
+    "transfer": {
+        "_comment": "transfer from coin 1 to coin 3",
+        "merkle_roots": "q5VhDl/WxjeemZ/2ivGmiuOTFMEazcqEFk5ESISngso=",
+        "sn_old": "jqhzAPanABquT0CpMC2aFt2ze8+UqMUcUG6PZBmqFqE=",
+        "k_old": "+tMTpSikpdACxuDGZTl5pxwT7tpYcX/DFKJRZ1oLfqc=",
+        "k_new": "2HbWGQCLOfxuA4jOiDftBRSbjjAs/a0vjrq/H4p6QBI=",
+        "cm_new": "1zuOv92V7e1qX1bP7+QNsV+gW5E3xUsghte/lZ7h5pg=",
+        "value": 10,
+        "proof": "zU+xNmmLjmJAFy/sbxGR5fwik4nSddSjrn0YdygYlLSTvXHk8jVsjS4Sp4/0cuCHl+h9i9Scj5ok8q8R55QL2xuBZS7L0++N8BVL1HqzO0yFhrKiuScIg0cKWZYg76oBSK0xAbsMvmEoh+DQCsWG5Hfcey8BSXiaEck1LJFzpvRSqqsKChLC8cDN3fLH8fMJHh5tnAXDmMoOrKH2r7v7c0IJh0JjlWgazCEt9xb/89467vUfNAJ8jzIRl9zqsuqH",
+        "sender_pk": "YNwLbvb27Rb0aKptzSNEvBToYvW9IlbjVvROHfD2NAQ=",
+        "receiver_pk": "Xojt5RMhuwp+4y0UXQeroXGPb5A6v8PfWTWUpJWezho=",
+        "receiver_sk": "uPo5YiD6wGRiHbIXH6WmHuwjYS+mNSkCspDngkHHJ2c=",
+        "ciphertext": "UkNssYxe5HUjSzlz5JE1pQ=="
+    },
+    "transfer_raw": {
+        "merkle_roots": "0xab95610e5fd6c6379e999ff68af1a68ae39314c11acdca84164e444884a782ca",
+        "sn_old": "0x8ea87300f6a7001aae4f40a9302d9a16ddb37bcf94a8c51c506e8f6419aa16a1",
+        "k_old": "0xfad313a528a4a5d002c6e0c6653979a71c13eeda58717fc314a251675a0b7ea7",
+        "k_new": "0xd876d619008b39fc6e0388ce8837ed05149b8e302cfdad2f8ebabf1f8a7a4012",
+        "cm_new": "0xd73b8ebfdd95eded6a5f56cfefe40db15fa05b9137c54b2086d7bf959ee1e698",
+        "value": 10,
+        "proof encoded": "0xcd4fb136698b8e6240172fec6f1191e5fc229389d275d4a3ae7d1877281894b493bd71e4f2356c8d2e12a78ff472e08797e87d8bd49c8f9a24f2af11e7940bdb1b81652ecbd3ef8df0154bd47ab33b4c8586b2a2b9270883470a599620efaa0148ad3101bb0cbe612887e0d00ac586e477dc7b2f0149789a11c9352c9173a6f452aaab0a0a12c2f1c0cdddf2c7f1f3091e1e6d9c05c398ca0eaca1f6afbbfb73420987426395681acc212df716fff3de3aeef51f34027c8f321197dceab2ea87"
+    },
+    "forfeit": {
+        "_comment": "forfeit coin 2",
+        "merkle_roots": "QDWIJvSmMmIS1incXpqZA+oZKOuvP42PNVyLKWC0gGQ=",
+        "sn_old": "EdHWc+HAgRWlcJrK8dlVnewSCTwEDPZFa8iYKxoRdOY=",
+        "k_old": "CutG9BBbkJMpBkbYTVX37HWunGcxHyy8+Eb1xRT9eVM=",
+        "value": 100,
+        "proof encoded": "yT4284c8SiAC1i85GIgmOJa20KjLGWGTrdsvLOo6bbPgtPO8qDpK8y6OtiOa1qqSxm+tp1CAjxdyrTQ6QkZqUQfJs51cvrp9vYYscY2LqqRcuYL1T7LRq/IcofgJZf8YyRH3HWnz5Vj/bXmFAVlLgs/fbWYgzoFHbOlZpva+RMgCMuJ/2ltRAfpKDI7meMgBwEMSz93OPGv+txf0yhVqydpSVrFdB/zwd09mWW/7OuCYRzXcvmBuL3HGzbsGiLkG"
+    }
+}
