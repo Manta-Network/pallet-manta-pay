@@ -1016,10 +1016,7 @@ fn manta_dh() {
 }
 
 #[allow(dead_code)]
-fn manta_transfer_zkp_key_gen(
-    hash_param_seed: &[u8; 32],
-    commit_param_seed: &[u8; 32],
-) -> Vec<u8> {
+fn manta_transfer_zkp_key_gen(hash_param_seed: &[u8; 32], commit_param_seed: &[u8; 32]) -> Vec<u8> {
     // rebuild the parameters from the inputs
     let mut rng = ChaCha20Rng::from_seed(*commit_param_seed);
     let commit_param = MantaCoinCommitmentScheme::setup(&mut rng).unwrap();
@@ -1085,13 +1082,8 @@ fn manta_transfer_zkp_key_gen(
     transfer_pk_bytes
 }
 
-
-
 #[allow(dead_code)]
-fn manta_forfeit_zkp_key_gen(
-    hash_param_seed: &[u8; 32],
-    commit_param_seed: &[u8; 32],
-) -> Vec<u8> {
+fn manta_forfeit_zkp_key_gen(hash_param_seed: &[u8; 32], commit_param_seed: &[u8; 32]) -> Vec<u8> {
     // rebuild the parameters from the inputs
     let mut rng = ChaCha20Rng::from_seed(*commit_param_seed);
     let commit_param = MantaCoinCommitmentScheme::setup(&mut rng).unwrap();
