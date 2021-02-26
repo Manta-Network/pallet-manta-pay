@@ -342,7 +342,7 @@ fn test_transfer_hardcode_should_work() {
     });
 }
 
-// #[ignore]
+#[ignore]
 #[test]
 fn test_transfer_should_work() {
     new_test_ext().execute_with(|| {
@@ -688,7 +688,8 @@ fn test_forfeit_zkp_local() {
 
     assert!(verify_proof(&pvk, &proof, &inputs[..]).unwrap());
 }
-// #[ignore]
+
+#[ignore]
 #[test]
 fn test_forfeit_should_work() {
     new_test_ext().execute_with(|| {
