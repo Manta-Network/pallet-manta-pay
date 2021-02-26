@@ -1,10 +1,10 @@
 [package]
 name = "pallet-manta-dap"
-version = "2.0.1"
+version = "0.1.0"
 authors = ["Manta Network <contact@manta.network>"]
 edition = "2018"
 license = "Apache-2.0"
-repository = "https://github.com/manta-network/pallet-basecoin/"
+repository = "https://github.com/Manta-Network/pallet-manta-dap"
 description = "Manta DAP scheme"
 readme = "README.md"
 
