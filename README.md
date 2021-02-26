@@ -26,5 +26,7 @@
   open target/debug/coverage/index.html
   ```
 
+* The report is also available within `coverage` folder. Our coverage is way above the status shown here.
+The `grcov` tool mis-labled many lines of the code as not tested.
 
 ![Result](https://github.com/Manta-Network/pallet-manta-dap/blob/master/coverage/coverage.png)
