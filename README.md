@@ -27,4 +27,4 @@
   ```
 
 
-![Result](corverage/coverage.png)
+![Result](https://github.com/Manta-Network/pallet-manta-dap/blob/master/coverage/coverage.png)
