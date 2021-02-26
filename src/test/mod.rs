@@ -405,7 +405,7 @@ fn test_transfer_should_work() {
         }
 
         // build ZKP circuit
-        let (transfer_pk_bytes, _) = manta_zkp_key_gen(&HASHPARAMSEED, &COMMITPARAMSEED);
+        let transfer_pk_bytes = manta_transfer_zkp_key_gen(&HASHPARAMSEED, &COMMITPARAMSEED);
         let pk = Groth16PK::deserialize(transfer_pk_bytes.as_ref()).unwrap();
 
         // generate and verify transactions
@@ -617,8 +617,6 @@ fn test_forfeit_hardcode_should_work() {
         assert_eq!(sn_list.len(), 1);
         assert_eq!(sn_list[0], old_sn_bytes);
 
-
-        // todo: check the ledger state is correctly updated
     });
 }
 
@@ -742,7 +740,7 @@ fn test_forfeit_should_work() {
         }
 
         // build ZKP circuit
-        let (_, forfeit_pk_bytes) = manta_zkp_key_gen(&HASHPARAMSEED, &COMMITPARAMSEED);
+        let forfeit_pk_bytes = manta_forfeit_zkp_key_gen(&HASHPARAMSEED, &COMMITPARAMSEED);
         let pk = Groth16PK::deserialize(forfeit_pk_bytes.as_ref()).unwrap();
 
         // generate and verify transactions
@@ -1018,10 +1016,10 @@ fn manta_dh() {
 }
 
 #[allow(dead_code)]
-fn manta_zkp_key_gen(
+fn manta_transfer_zkp_key_gen(
     hash_param_seed: &[u8; 32],
     commit_param_seed: &[u8; 32],
-) -> (Vec<u8>, Vec<u8>) {
+) -> Vec<u8> {
     // rebuild the parameters from the inputs
     let mut rng = ChaCha20Rng::from_seed(*commit_param_seed);
     let commit_param = MantaCoinCommitmentScheme::setup(&mut rng).unwrap();
@@ -1084,6 +1082,46 @@ fn manta_zkp_key_gen(
     let mut transfer_pk_bytes: Vec<u8> = Vec::new();
 
     pk.serialize(&mut transfer_pk_bytes).unwrap();
+    transfer_pk_bytes
+}
+
+
+
+#[allow(dead_code)]
+fn manta_forfeit_zkp_key_gen(
+    hash_param_seed: &[u8; 32],
+    commit_param_seed: &[u8; 32],
+) -> Vec<u8> {
+    // rebuild the parameters from the inputs
+    let mut rng = ChaCha20Rng::from_seed(*commit_param_seed);
+    let commit_param = MantaCoinCommitmentScheme::setup(&mut rng).unwrap();
+
+    let mut rng = ChaCha20Rng::from_seed(*hash_param_seed);
+    let hash_param = Hash::setup(&mut rng).unwrap();
+
+    // we build a mock ledger of 128 users with a default seed [3; 32]
+    let mut rng = ChaCha20Rng::from_seed([3; 32]);
+    let mut coins = Vec::new();
+    let mut pub_infos = Vec::new();
+    let mut priv_infos = Vec::new();
+    let mut ledger = Vec::new();
+
+    for e in 0..128 {
+        let mut sk = [0u8; 32];
+        rng.fill_bytes(&mut sk);
+
+        let (coin, pub_info, priv_info) = make_coin(&commit_param_seed, sk, e + 100, &mut rng);
+
+        ledger.push(coin.cm_bytes);
+        coins.push(coin);
+        pub_infos.push(pub_info);
+        priv_infos.push(priv_info);
+    }
+
+    // sender
+    let sender = coins[0].clone();
+    let sender_pub_info = pub_infos[0].clone();
+    let sender_priv_info = priv_infos[0].clone();
 
     // forfeit circuit
     let forfeit_circuit = ForfeitCircuit {
@@ -1108,5 +1146,5 @@ fn manta_zkp_key_gen(
     let pk = generate_random_parameters::<Bls12_381, _, _>(forfeit_circuit, &mut rng).unwrap();
     let mut forfeit_pk_bytes: Vec<u8> = Vec::new();
     pk.serialize(&mut forfeit_pk_bytes).unwrap();
-    (transfer_pk_bytes, forfeit_pk_bytes)
+    forfeit_pk_bytes
 }
