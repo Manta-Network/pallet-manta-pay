@@ -94,8 +94,7 @@ extern crate generic_array;
 extern crate rand_chacha;
 extern crate x25519_dalek;
 
-// pub mod dap_setup;
-mod dh;
+pub mod dh;
 pub mod forfeit;
 pub mod manta_token;
 pub mod param;

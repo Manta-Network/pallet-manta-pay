@@ -22,6 +22,8 @@ use sp_runtime::{
     traits::{BlakeTwo256, IdentityLookup},
     Perbill,
 };
+use std::fs::File;
+use std::io::prelude::*;
 use x25519_dalek::{PublicKey, StaticSecret};
 
 impl_outer_origin! {
@@ -342,7 +344,7 @@ fn test_transfer_hardcode_should_work() {
     });
 }
 
-#[ignore]
+// #[ignore]
 #[test]
 fn test_transfer_should_work() {
     new_test_ext().execute_with(|| {
@@ -405,8 +407,10 @@ fn test_transfer_should_work() {
         }
 
         // build ZKP circuit
-        let transfer_pk_bytes = manta_transfer_zkp_key_gen(&HASHPARAMSEED, &COMMITPARAMSEED);
-        let pk = Groth16PK::deserialize(transfer_pk_bytes.as_ref()).unwrap();
+        let mut file = File::open("transfer_pk.bin").unwrap();
+        let mut transfer_key_bytes: Vec<u8> = vec![];
+        file.read_to_end(&mut transfer_key_bytes).unwrap();
+        let pk = Groth16PK::deserialize_uncompressed(transfer_key_bytes.as_ref()).unwrap();
 
         // generate and verify transactions
         for i in 0usize..size {
@@ -689,7 +693,7 @@ fn test_forfeit_zkp_local() {
     assert!(verify_proof(&pvk, &proof, &inputs[..]).unwrap());
 }
 
-#[ignore]
+// #[ignore]
 #[test]
 fn test_forfeit_should_work() {
     new_test_ext().execute_with(|| {
@@ -741,8 +745,10 @@ fn test_forfeit_should_work() {
         }
 
         // build ZKP circuit
-        let forfeit_pk_bytes = manta_forfeit_zkp_key_gen(&HASHPARAMSEED, &COMMITPARAMSEED);
-        let pk = Groth16PK::deserialize(forfeit_pk_bytes.as_ref()).unwrap();
+        let mut file = File::open("forfeit_pk.bin").unwrap();
+        let mut forfeit_pk_bytes: Vec<u8> = vec![];
+        file.read_to_end(&mut forfeit_pk_bytes).unwrap();
+        let pk = Groth16PK::deserialize_uncompressed(forfeit_pk_bytes.as_ref()).unwrap();
 
         // generate and verify transactions
         let coin_list = CoinList::get();
@@ -1014,130 +1020,4 @@ fn manta_dh() {
     println!("enc success");
     let rec_value = manta_dh_dec(&cipher, &sender_pk_bytes, &receiver_sk_bytes);
     assert_eq!(value, rec_value);
-}
-
-#[allow(dead_code)]
-fn manta_transfer_zkp_key_gen(hash_param_seed: &[u8; 32], commit_param_seed: &[u8; 32]) -> Vec<u8> {
-    // rebuild the parameters from the inputs
-    let mut rng = ChaCha20Rng::from_seed(*commit_param_seed);
-    let commit_param = MantaCoinCommitmentScheme::setup(&mut rng).unwrap();
-
-    let mut rng = ChaCha20Rng::from_seed(*hash_param_seed);
-    let hash_param = Hash::setup(&mut rng).unwrap();
-
-    // we build a mock ledger of 128 users with a default seed [3; 32]
-    let mut rng = ChaCha20Rng::from_seed([3; 32]);
-    let mut coins = Vec::new();
-    let mut pub_infos = Vec::new();
-    let mut priv_infos = Vec::new();
-    let mut ledger = Vec::new();
-
-    for e in 0..128 {
-        let mut sk = [0u8; 32];
-        rng.fill_bytes(&mut sk);
-
-        let (coin, pub_info, priv_info) = make_coin(&commit_param_seed, sk, e + 100, &mut rng);
-
-        ledger.push(coin.cm_bytes);
-        coins.push(coin);
-        pub_infos.push(pub_info);
-        priv_infos.push(priv_info);
-    }
-
-    // sender
-    let sender = coins[0].clone();
-    let sender_pub_info = pub_infos[0].clone();
-    let sender_priv_info = priv_infos[0].clone();
-
-    // receiver
-    let mut sk = [0u8; 32];
-    rng.fill_bytes(&mut sk);
-    let (receiver, receiver_pub_info, _receiver_priv_info) =
-        make_coin(&commit_param_seed, sk, 100, &mut rng);
-
-    // transfer circuit
-    let transfer_circuit = TransferCircuit {
-        commit_param: commit_param.clone(),
-        hash_param: hash_param.clone(),
-        sender_coin: sender.clone(),
-        sender_pub_info: sender_pub_info.clone(),
-        sender_priv_info: sender_priv_info.clone(),
-        receiver_coin: receiver,
-        receiver_pub_info,
-        list: ledger.clone(),
-    };
-
-    let sanity_cs = ConstraintSystem::<Fq>::new_ref();
-    transfer_circuit
-        .clone()
-        .generate_constraints(sanity_cs.clone())
-        .unwrap();
-    assert!(sanity_cs.is_satisfied().unwrap());
-
-    // transfer pk_bytes
-    let mut rng = ChaCha20Rng::from_seed(ZKPPARAMSEED);
-    let pk = generate_random_parameters::<Bls12_381, _, _>(transfer_circuit, &mut rng).unwrap();
-    let mut transfer_pk_bytes: Vec<u8> = Vec::new();
-
-    pk.serialize(&mut transfer_pk_bytes).unwrap();
-    transfer_pk_bytes
-}
-
-#[allow(dead_code)]
-fn manta_forfeit_zkp_key_gen(hash_param_seed: &[u8; 32], commit_param_seed: &[u8; 32]) -> Vec<u8> {
-    // rebuild the parameters from the inputs
-    let mut rng = ChaCha20Rng::from_seed(*commit_param_seed);
-    let commit_param = MantaCoinCommitmentScheme::setup(&mut rng).unwrap();
-
-    let mut rng = ChaCha20Rng::from_seed(*hash_param_seed);
-    let hash_param = Hash::setup(&mut rng).unwrap();
-
-    // we build a mock ledger of 128 users with a default seed [3; 32]
-    let mut rng = ChaCha20Rng::from_seed([3; 32]);
-    let mut coins = Vec::new();
-    let mut pub_infos = Vec::new();
-    let mut priv_infos = Vec::new();
-    let mut ledger = Vec::new();
-
-    for e in 0..128 {
-        let mut sk = [0u8; 32];
-        rng.fill_bytes(&mut sk);
-
-        let (coin, pub_info, priv_info) = make_coin(&commit_param_seed, sk, e + 100, &mut rng);
-
-        ledger.push(coin.cm_bytes);
-        coins.push(coin);
-        pub_infos.push(pub_info);
-        priv_infos.push(priv_info);
-    }
-
-    // sender
-    let sender = coins[0].clone();
-    let sender_pub_info = pub_infos[0].clone();
-    let sender_priv_info = priv_infos[0].clone();
-
-    // forfeit circuit
-    let forfeit_circuit = ForfeitCircuit {
-        commit_param,
-        hash_param,
-        sender_coin: sender,
-        sender_pub_info,
-        sender_priv_info: sender_priv_info.clone(),
-        value: sender_priv_info.value,
-        list: ledger,
-    };
-
-    let sanity_cs = ConstraintSystem::<Fq>::new_ref();
-    forfeit_circuit
-        .clone()
-        .generate_constraints(sanity_cs.clone())
-        .unwrap();
-    assert!(sanity_cs.is_satisfied().unwrap());
-
-    // transfer pk_bytes
-    let mut rng = ChaCha20Rng::from_seed(ZKPPARAMSEED);
-    let pk = generate_random_parameters::<Bls12_381, _, _>(forfeit_circuit, &mut rng).unwrap();
-    let mut forfeit_pk_bytes: Vec<u8> = Vec::new();
-    pk.serialize(&mut forfeit_pk_bytes).unwrap();
-    forfeit_pk_bytes
 }
