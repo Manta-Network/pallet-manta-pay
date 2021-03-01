@@ -6,8 +6,13 @@
 * update test coverage
 * end-to-end benchmarks
 
+## Pre-computed tokens
 
-## Howto check test coverage
+``` sh
+cargo run --bin pre_comp --release
+```
+
+## Test coverage
 * install [grcov](https://github.com/mozilla/grcov):
   ```
   cargo install grcov
@@ -30,3 +35,13 @@
 The `grcov` tool mis-labled many lines of the code as not tested.
 
 ![Result](https://github.com/Manta-Network/pallet-manta-dap/blob/master/coverage/coverage.png)
+
+## Benchmark
+
+``` sh
+cargo bench
+```
+
+* benchmark enviroment
+
+MBP 13inch 2021,  CPU:  2.3 GHz Quad-Core Intel Core i7, Memory 32 GB 3733 MHz LPDDR4X.

@@ -1,1 +1,3 @@
 coverage/* linguist-documentation
+coin.json linguist-documentation
+*.bin linguist-documentation
