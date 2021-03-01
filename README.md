@@ -1,10 +1,9 @@
 # pallet-manta-dap
 
-## todos:
-
-* write an instruction 
-* update test coverage
-* end-to-end benchmarks
+This is a pallet that enables decentialized anynonymous payment (DAP) protocol.
+This code is a proof-of-concept; is not properly reviewed or audited and it likely to have 
+severe bugs or security pitfalls.
+Use at your own risk!
 
 ## Pre-computed tokens
 
@@ -32,7 +31,7 @@ cargo run --bin pre_comp --release
   ```
 
 * The report is also available within `coverage` folder. Our coverage is way above the status shown here.
-The `grcov` tool mis-labled many lines of the code as not tested.
+The `grcov` tool mis-labled many lines of the code as not-covered.
 
 ![Result](https://github.com/Manta-Network/pallet-manta-dap/blob/master/coverage/coverage.png)
 
