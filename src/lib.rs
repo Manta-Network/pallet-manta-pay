@@ -100,6 +100,7 @@ pub mod manta_token;
 pub mod param;
 pub mod priv_coin;
 pub mod transfer;
+mod benchmark;
 
 #[cfg(test)]
 pub mod test;
