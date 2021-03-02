@@ -1,35 +1,11 @@
 use crate::manta_token::MantaCoin;
 use crate::param::*;
-use crate::serdes::*;
 use ark_crypto_primitives::{commitment::pedersen::Randomness, CommitmentScheme};
 use ark_ed_on_bls12_381::{Fq, Fr};
 use ark_ff::ToConstraintField;
 use ark_groth16::verify_proof;
 use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
 use ark_std::vec::Vec;
-use blake2::{Blake2s, Digest};
-
-pub fn hash_param_checksum(hash_param: &HashParam) -> [u8; 32] {
-    let mut buf: Vec<u8> = Vec::new();
-    hash_param_serialize(&hash_param, &mut buf);
-    let mut hasher = Blake2s::new();
-    hasher.update(buf);
-    let digest = hasher.finalize();
-    let mut res = [0u8; 32];
-    res.copy_from_slice(digest.as_slice());
-    res
-}
-
-pub fn commit_param_checksum(commit_param: &MantaCoinCommitmentParam) -> [u8; 32] {
-    let mut buf: Vec<u8> = Vec::new();
-    commit_param_serialize(&commit_param, &mut buf);
-    let mut hasher = Blake2s::new();
-    hasher.update(buf);
-    let digest = hasher.finalize();
-    let mut res = [0u8; 32];
-    res.copy_from_slice(digest.as_slice());
-    res
-}
 
 #[allow(dead_code)]
 pub fn comm_open(

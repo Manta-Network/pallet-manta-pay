@@ -114,8 +114,9 @@ use frame_support::{decl_error, decl_event, decl_module, decl_storage, ensure};
 use frame_system::ensure_signed;
 use manta_token::MantaCoin;
 use param::{COMPARAMBYTES, FORFEITVKBYTES, HASHPARAMBYTES, TRANSFERVKBYTES};
-use priv_coin::{commit_param_checksum, hash_param_checksum};
-use serdes::{commit_param_deserialize, hash_param_deserialize};
+use serdes::{
+    commit_param_checksum, commit_param_deserialize, hash_param_checksum, hash_param_deserialize,
+};
 use sp_runtime::traits::{StaticLookup, Zero};
 
 /// The module configuration trait.
