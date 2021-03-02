@@ -47,9 +47,23 @@ MBP 13inch 2021,  CPU:  2.3 GHz Quad-Core Intel Core i7, Memory 32 GB 3733 MHz L
 
   * with `criterion` (take some time)
 ``` sh
-merkle_tree/with 1 leaf time:   [13.885 ms 13.938 ms 13.998 ms]
-manta_bench/ZKP verification                        
-                        time:   [15.308 ms 15.386 ms 15.465 ms]
+deserialization/hash param                                                                            
+                        time:   [158.20 us 159.12 us 160.04 us]
+
+deserialization/commit param                                                                            
+                        time:   [190.14 us 191.75 us 193.34 us]
+
+perdersen/hash param gen                                                                             
+                        time:   [12.136 ms 12.203 ms 12.265 ms]
+
+perdersen/commit open   time:   [123.44 us 124.26 us 125.22 us]                                  
+
+merkle_tree/with 1 leaf time:   [2.0814 ms 2.0970 ms 2.1136 ms]                                     
+                        
+merkle_tree/with 2 leaf time:   [2.3252 ms 2.3369 ms 2.3489 ms]                                     
+
+merkle_tree/with 3 leaf time:   [2.7905 ms 2.8060 ms 2.8233 ms]                                     
+                        
 ```
   * with `frame-benchmarking`: within `manta-node` repo, run 
 ```

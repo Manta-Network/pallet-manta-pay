@@ -21,7 +21,7 @@ use std::io::prelude::*;
 use x25519_dalek::{PublicKey, StaticSecret};
 
 fn main() {
-    println!("Hello, world!");
+    println!("Hello, Manta!");
 
     let hash_param_seed = [1u8; 32];
     let commit_param_seed = [2u8; 32];
