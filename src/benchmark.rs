@@ -8,6 +8,7 @@ use frame_benchmarking::{account, benchmarks, whitelisted_caller};
 use frame_system::RawOrigin;
 use sp_std::boxed::Box;
 use sp_std::vec;
+const SEED: u32 = 0;
 
 benchmarks! {
     _ { }

@@ -21,7 +21,7 @@ pub fn comm_open(
 
 #[allow(dead_code)]
 pub fn merkle_root(hash_param: HashParam, payload: &[MantaCoin]) -> [u8; 32] {
-    let leaf: Vec<[u8; 32]> = payload.iter().map(|x| (x.cm_bytes.clone())).collect();
+    let leaf: Vec<[u8; 32]> = payload.iter().map(|x| (x.cm_bytes)).collect();
     let tree = LedgerMerkleTree::new(hash_param, &leaf).unwrap();
     let root = tree.root();
 

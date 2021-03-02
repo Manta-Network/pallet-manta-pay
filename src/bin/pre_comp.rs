@@ -154,7 +154,7 @@ fn main() {
     println!("\"k_old\": \"{}\",", BASE64.encode(&pub_info1.k));
     println!("\"k_new\": \"{}\",", BASE64.encode(&pub_info3.k));
     println!("\"cm_new\": \"{}\",", BASE64.encode(&coin3.cm_bytes));
-    println!("\"value\": {},", 10);
+    println!("\"value\": 10,");
     println!("\"proof encoded\": \"{}\",", BASE64.encode(&proof_bytes));
 
     println!("===========");
@@ -164,7 +164,7 @@ fn main() {
     println!("\"k_new\": \"{:02x?}\",", pub_info3.k);
     println!("\"cm_new\": \"{:02x?}\",", coin3.cm_bytes);
     println!("\"enc_amount\": \"{:02x?}\",", cipher);
-    println!("\"value\": {},", 10);
+    println!("\"value\": 10,");
     println!("\"proof encoded\": \"{:02x?}\",", proof_bytes);
     println!("===========");
 
@@ -206,7 +206,7 @@ fn main() {
     );
 
     let tree =
-        LedgerMerkleTree::new(hash_param.clone(), &[coin1.cm_bytes, coin2.cm_bytes]).unwrap();
+        LedgerMerkleTree::new(hash_param, &[coin1.cm_bytes, coin2.cm_bytes]).unwrap();
     let merkle_root = tree.root();
     let mut merkle_root_bytes = [0u8; 32];
     merkle_root.serialize(merkle_root_bytes.as_mut()).unwrap();
@@ -226,14 +226,14 @@ fn main() {
     );
     println!("\"sn_old\": \"{}\",", BASE64.encode(&priv_info2.sn));
     println!("\"k_old\": \"{}\",", BASE64.encode(&pub_info2.k));
-    println!("\"value\": {},", 100);
+    println!("\"value\": 100,");
     println!("\"proof encoded\": \"{}\",", BASE64.encode(&proof_bytes));
 
     println!("===========");
     println!("\"merkle_roots\": \"{:02x?}\",", merkle_root_bytes);
     println!("\"sn_old\": \"{:02x?}\",", priv_info2.sn);
     println!("\"k_old\": \"{:02x?}\",", pub_info2.k);
-    println!("\"value\": {},", 100);
+    println!("\"value\": 100,");
     println!("\"proof encoded\": \"{:02x?}\",", proof_bytes);
     println!("===========");
 }
@@ -307,14 +307,14 @@ fn manta_transfer_zkp_key_gen(hash_param_seed: &[u8; 32], commit_param_seed: &[u
 
     // transfer circuit
     let transfer_circuit = TransferCircuit {
-        commit_param: commit_param.clone(),
-        hash_param: hash_param.clone(),
-        sender_coin: sender.clone(),
-        sender_pub_info: sender_pub_info.clone(),
-        sender_priv_info: sender_priv_info.clone(),
+        commit_param,
+        hash_param,
+        sender_coin: sender,
+        sender_pub_info,
+        sender_priv_info,
         receiver_coin: receiver,
         receiver_pub_info,
-        list: ledger.clone(),
+        list: ledger,
     };
 
     let sanity_cs = ConstraintSystem::<Fq>::new_ref();
