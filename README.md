@@ -62,8 +62,10 @@ merkle_tree/with 1 leaf time:   [2.0814 ms 2.0970 ms 2.1136 ms]
                         
 merkle_tree/with 2 leaf time:   [2.3252 ms 2.3369 ms 2.3489 ms]                                     
 
-merkle_tree/with 3 leaf time:   [2.7905 ms 2.8060 ms 2.8233 ms]                                     
-                        
+merkle_tree/with 3 leaf time:   [2.7905 ms 2.8060 ms 2.8233 ms]   
+
+transfer/ZKP verification                                                                             
+                        time:   [14.915 ms 14.999 ms 15.088 ms]                       
 ```
   * with `frame-benchmarking`: within `manta-node` repo, run 
 ```
