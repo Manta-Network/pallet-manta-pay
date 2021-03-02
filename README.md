@@ -63,4 +63,4 @@ target/release/manta-node benchmark --pallet pallet_manta_dap --extrinsic forfei
 
 | Function      | init |  trasfer | mint | manta_transfer | forfeit |
 | ----------- |:-----------:|:-----------:|:-----------:|:-----------:|:-----------:|
-| Time       |    26 \mu s    |  29 \mu s | 25.3 ms | 29.2 ms | 26.8 ms |
+| Time       |    1.2 ms    |  30 \mu s | 3.5 ms | 18.1 ms | 16.1 ms |
