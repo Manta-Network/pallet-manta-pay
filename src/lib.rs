@@ -92,6 +92,7 @@ extern crate ark_r1cs_std;
 extern crate ark_relations;
 extern crate ark_serialize;
 extern crate ark_std;
+extern crate blake2;
 extern crate generic_array;
 extern crate rand_chacha;
 extern crate x25519_dalek;
@@ -102,6 +103,7 @@ pub mod forfeit;
 pub mod manta_token;
 pub mod param;
 pub mod priv_coin;
+pub mod serdes;
 pub mod transfer;
 
 #[cfg(test)]
@@ -111,7 +113,9 @@ use ark_std::vec::Vec;
 use frame_support::{decl_error, decl_event, decl_module, decl_storage, ensure};
 use frame_system::ensure_signed;
 use manta_token::MantaCoin;
-use param::{COMMITPARAMSEED, FORFEITVKBYTES, HASHPARAMSEED, TRANSFERVKBYTES};
+use param::{COMPARAMBYTES, FORFEITVKBYTES, HASHPARAMBYTES, TRANSFERVKBYTES};
+use priv_coin::{commit_param_checksum, hash_param_checksum};
+use serdes::{commit_param_deserialize, hash_param_deserialize};
 use sp_runtime::traits::{StaticLookup, Zero};
 
 /// The module configuration trait.
@@ -141,12 +145,14 @@ decl_module! {
             ensure!(!Self::is_init(), <Error<T>>::AlreadyInitialized);
             let origin = ensure_signed(origin)?;
 
-            // for now we hard code the seeds as:
+            // for now we hard code the parameters generated from the following seed:
             //  * hash parameter seed: [1u8; 32]
             //  * commitment parameter seed: [2u8; 32]
             // We may want to pass those two in for `init`
-            let hash_param_seed = HASHPARAMSEED;
-            let commit_param_seed = COMMITPARAMSEED;
+            let hash_param = hash_param_deserialize(HASHPARAMBYTES.as_ref());
+            let commit_param = commit_param_deserialize(COMPARAMBYTES.as_ref());
+            let hash_param_checksum = hash_param_checksum(&hash_param);
+            let commit_param_checksum = commit_param_checksum(&commit_param);
 
             // push the ZKP verification key to the ledger storage
             //
@@ -170,8 +176,8 @@ decl_module! {
             <TotalSupply>::put(total);
             Self::deposit_event(RawEvent::Issued(origin, total));
             Init::put(true);
-            HashParamSeed::put(hash_param_seed);
-            CommitParamSeed::put(commit_param_seed);
+            HashParamChecksum::put(hash_param_checksum);
+            CommitParamChecksum::put(commit_param_checksum);
         }
 
         /// Move some assets from one holder to another.
@@ -218,14 +224,30 @@ decl_module! {
             let origin_balance = <Balances<T>>::get(&origin_account);
             ensure!(origin_balance >= amount, Error::<T>::BalanceLow);
 
-            // get the parameter seeds from the ledger
-            let hash_param_seed = HashParamSeed::get();
-            let commit_param_seed = CommitParamSeed::get();
+            let hash_param = hash_param_deserialize(HASHPARAMBYTES.as_ref());
+            let commit_param = commit_param_deserialize(COMPARAMBYTES.as_ref());
+            let hash_param_checksum_local = hash_param_checksum(&hash_param);
+            let commit_param_checksum_local = commit_param_checksum(&commit_param);
+
+            // get the parameter checksum from the ledger
+            let hash_param_checksum = HashParamChecksum::get();
+            let commit_param_checksum = CommitParamChecksum::get();
+            ensure!(
+                hash_param_checksum_local == hash_param_checksum,
+                <Error<T>>::MintFail
+            );
+            ensure!(
+                commit_param_checksum_local == commit_param_checksum,
+                <Error<T>>::MintFail
+            );
+            // todo: checksum ZKP verification eky
+
+
 
             // check the validity of the commitment
             let payload = [amount.to_le_bytes().as_ref(), k.as_ref()].concat();
             ensure!(
-                priv_coin::comm_open(&commit_param_seed, &s, &payload, &cm),
+                priv_coin::comm_open(&commit_param, &s, &payload, &cm),
                 <Error<T>>::MintFail
             );
 
@@ -246,7 +268,7 @@ decl_module! {
 
             // update the merkle root
             // let t: Vec<MantaCoin> = Vec::new();
-            let new_state = priv_coin::merkle_root(&hash_param_seed, &coin_list);
+            let new_state = priv_coin::merkle_root(hash_param, &coin_list);
 
             // write back to ledger storage
             Self::deposit_event(RawEvent::Minted(origin, amount));
@@ -274,6 +296,18 @@ decl_module! {
             ensure!(Self::is_init(), <Error<T>>::BasecoinNotInit);
             let origin = ensure_signed(origin)?;
 
+            let hash_param = hash_param_deserialize(HASHPARAMBYTES.as_ref());
+            let hash_param_checksum_local = hash_param_checksum(&hash_param);
+
+            // get the parameter checksum from the ledger
+            let hash_param_checksum = HashParamChecksum::get();
+            ensure!(
+                hash_param_checksum_local == hash_param_checksum,
+                <Error<T>>::MintFail
+            );
+            // todo: checksum ZKP verification eky
+
+
             // check if sn_old already spent
             let mut sn_list = SNList::get();
             ensure!(!sn_list.contains(&sn_old), <Error<T>>::MantaCoinSpent);
@@ -293,7 +327,7 @@ decl_module! {
             // and check the validity of the state
             let state = LedgerState::get();
             ensure!(state == merkle_root, <Error<T>>::InvalidLedgerState);
-            let new_root = priv_coin::merkle_root(&HASHPARAMSEED, &coin_list);
+            let new_root = priv_coin::merkle_root(hash_param, &coin_list);
 
             // check validity of zkp
             ensure!(
@@ -328,6 +362,17 @@ decl_module! {
             ensure!(Self::is_init(), <Error<T>>::BasecoinNotInit);
             let origin = ensure_signed(origin)?;
 
+            let hash_param = hash_param_deserialize(HASHPARAMBYTES.as_ref());
+            let hash_param_checksum_local = hash_param_checksum(&hash_param);
+
+            // get the parameter checksum from the ledger
+            let hash_param_checksum = HashParamChecksum::get();
+            ensure!(
+                hash_param_checksum_local == hash_param_checksum,
+                <Error<T>>::MintFail
+            );
+            // todo: checksum ZKP verification eky
+
             // check the balance is greater than amount
             let mut pool = PoolBalance::get();
             ensure!(pool>=amount, <Error<T>>::PoolOverdrawn);
@@ -348,7 +393,7 @@ decl_module! {
             // and check the validity of the state
             let state = LedgerState::get();
             ensure!(state == merkle_root, <Error<T>>::InvalidLedgerState);
-            let new_root = priv_coin::merkle_root(&HASHPARAMSEED, &coin_list);
+            let new_root = priv_coin::merkle_root(hash_param, &coin_list);
 
             // check validity of zkp
             ensure!(
@@ -441,10 +486,10 @@ decl_storage! {
         pub PoolBalance get(fn pool_balance): u64;
 
         /// the seed of hash parameter
-        pub HashParamSeed get(fn hash_param_seed): [u8; 32];
+        pub HashParamChecksum get(fn hash_param_checksum): [u8; 32];
 
         /// the seed of commit parameter
-        pub CommitParamSeed get(fn commit_param_seed): [u8; 32];
+        pub CommitParamChecksum get(fn commit_param_checksum): [u8; 32];
 
         /// verification key for zero-knowledge proof
         /// at the moment we are storing the whole serialized key

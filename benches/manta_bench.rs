@@ -2,9 +2,11 @@
 extern crate criterion;
 extern crate pallet_manta_dap;
 
+use ark_crypto_primitives::commitment::pedersen::Randomness;
 use ark_crypto_primitives::CommitmentScheme;
 use ark_crypto_primitives::FixedLengthCRH;
 use ark_ed_on_bls12_381::Fq;
+use ark_ed_on_bls12_381::Fr;
 use ark_groth16::create_random_proof;
 use ark_relations::r1cs::ConstraintSynthesizer;
 use ark_relations::r1cs::ConstraintSystem;
@@ -22,7 +24,13 @@ use rand_core::RngCore;
 use std::fs::File;
 use std::io::prelude::*;
 
-criterion_group!(manta_bench, bench_merkle_tree, bench_trasnfer_verify);
+criterion_group!(
+    manta_bench,
+    bench_pedersen_hash,
+    bench_pedersen_com,
+    bench_merkle_tree,
+    bench_trasnfer_verify,
+);
 criterion_main!(manta_bench);
 
 fn bench_trasnfer_verify(c: &mut Criterion) {
@@ -46,14 +54,13 @@ fn bench_trasnfer_verify(c: &mut Criterion) {
     // sender
     let mut sk = [0u8; 32];
     rng.fill_bytes(&mut sk);
-    let (sender, sender_pub_info, sender_priv_info) =
-        make_coin(&commit_param_seed, sk, 100, &mut rng);
+    let (sender, sender_pub_info, sender_priv_info) = make_coin(&commit_param, sk, 100, &mut rng);
 
     // receiver
     let mut sk = [0u8; 32];
     rng.fill_bytes(&mut sk);
     let (receiver, receiver_pub_info, _receiver_priv_info) =
-        make_coin(&commit_param_seed, sk, 100, &mut rng);
+        make_coin(&commit_param, sk, 100, &mut rng);
 
     let circuit = TransferCircuit {
         commit_param,
@@ -105,6 +112,8 @@ fn bench_trasnfer_verify(c: &mut Criterion) {
 
 fn bench_merkle_tree(c: &mut Criterion) {
     let hash_param_seed = pallet_manta_dap::param::HASHPARAMSEED;
+    let mut rng = ChaCha20Rng::from_seed(hash_param_seed);
+    let hash_param = Hash::setup(&mut rng).unwrap();
 
     let mut cm_bytes = [0u8; 32];
     let cm_vec = BASE64
@@ -114,10 +123,11 @@ fn bench_merkle_tree(c: &mut Criterion) {
 
     let coin1 = MantaCoin { cm_bytes: cm_bytes };
     let coin1_clone = coin1.clone();
+    let hash_param_clone = hash_param.clone();
     let bench_str = format!("with 1 leaf");
     let bench = Benchmark::new(bench_str, move |b| {
         b.iter(|| {
-            merkle_root(&hash_param_seed, &[coin1_clone.clone()]);
+            merkle_root(hash_param_clone.clone(), &[coin1_clone.clone()]);
         })
     });
 
@@ -131,11 +141,12 @@ fn bench_merkle_tree(c: &mut Criterion) {
 
     let coin1_clone = coin1.clone();
     let coin2_clone = coin2.clone();
+    let hash_param_clone = hash_param.clone();
     let bench_str = format!("with 2 leaf");
     let bench = bench.with_function(bench_str, move |b| {
         b.iter(|| {
             merkle_root(
-                &hash_param_seed,
+                hash_param_clone.clone(),
                 &[coin1_clone.clone(), coin2_clone.clone()],
             );
         })
@@ -153,11 +164,39 @@ fn bench_merkle_tree(c: &mut Criterion) {
     let bench = bench.with_function(bench_str, move |b| {
         b.iter(|| {
             merkle_root(
-                &hash_param_seed,
+                hash_param.clone(),
                 &[coin1.clone(), coin2.clone(), coin3.clone()],
             );
         })
     });
 
     c.bench("merkle_tree", bench);
+}
+
+fn bench_pedersen_com(c: &mut Criterion) {
+    let commit_param_seed = pallet_manta_dap::param::COMMITPARAMSEED;
+    let mut rng = ChaCha20Rng::from_seed(commit_param_seed);
+    let param = MantaCoinCommitmentScheme::setup(&mut rng).unwrap();
+    let bench_str = format!("commit open");
+    let bench = Benchmark::new(bench_str, move |b| {
+        b.iter(|| {
+            let open = Randomness(Fr::deserialize([0u8; 32].as_ref()).unwrap());
+            MantaCoinCommitmentScheme::commit(&param, [0u8; 32].as_ref(), &open).unwrap()
+        })
+    });
+
+    c.bench("perdersen", bench);
+}
+
+fn bench_pedersen_hash(c: &mut Criterion) {
+    let hash_param_seed = pallet_manta_dap::param::COMMITPARAMSEED;
+    let bench_str = format!("hash param gen");
+    let bench = Benchmark::new(bench_str, move |b| {
+        b.iter(|| {
+            let mut rng = ChaCha20Rng::from_seed(hash_param_seed);
+            Hash::setup(&mut rng).unwrap();
+        })
+    });
+
+    c.bench("perdersen", bench);
 }

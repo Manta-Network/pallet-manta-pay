@@ -3,6 +3,7 @@ use crate::dh::*;
 use crate::forfeit::*;
 use crate::manta_token::*;
 use crate::param::*;
+use crate::serdes::*;
 use crate::transfer::*;
 use ark_bls12_381::Bls12_381;
 use ark_crypto_primitives::{CommitmentScheme, FixedLengthCRH};
@@ -82,10 +83,14 @@ fn test_constants_should_work() {
     new_test_ext().execute_with(|| {
         assert_ok!(Assets::init(Origin::signed(1), 100));
         assert_eq!(Assets::balance(1), 100);
-        let com_param_seed = CommitParamSeed::get();
-        let hash_param_seed = HashParamSeed::get();
-        assert_eq!(com_param_seed, COMMITPARAMSEED);
-        assert_eq!(hash_param_seed, HASHPARAMSEED);
+        let hash_param = hash_param_deserialize(HASHPARAMBYTES.as_ref());
+        let commit_param = commit_param_deserialize(COMPARAMBYTES.as_ref());
+        let hash_param_checksum_local = hash_param_checksum(&hash_param);
+        let commit_param_checksum_local = commit_param_checksum(&commit_param);
+        let hash_param_checksum = HashParamChecksum::get();
+        let commit_param_checksum = CommitParamChecksum::get();
+        assert_eq!(hash_param_checksum, hash_param_checksum_local);
+        assert_eq!(commit_param_checksum, commit_param_checksum_local);
     });
 }
 
@@ -181,11 +186,11 @@ fn test_mint_should_work() {
         assert_ok!(Assets::init(Origin::signed(1), 1000));
         assert_eq!(Assets::balance(1), 1000);
         assert_eq!(PoolBalance::get(), 0);
-        let com_param_seed = CommitParamSeed::get();
+        let commit_param = commit_param_deserialize(COMPARAMBYTES.as_ref());
         let mut rng = ChaCha20Rng::from_seed([3u8; 32]);
         let mut sk = [0u8; 32];
         rng.fill_bytes(&mut sk);
-        let (coin, pub_info, _priv_info) = make_coin(&com_param_seed, sk, 10, &mut rng);
+        let (coin, pub_info, _priv_info) = make_coin(&commit_param, sk, 10, &mut rng);
         assert_ok!(Assets::mint(
             Origin::signed(1),
             10,
@@ -352,13 +357,9 @@ fn test_transfer_should_work() {
         assert_ok!(Assets::init(Origin::signed(1), 100000));
         assert_eq!(Assets::balance(1), 100000);
         assert_eq!(PoolBalance::get(), 0);
-        let com_param_seed = CommitParamSeed::get();
-        let mut rng = ChaCha20Rng::from_seed(com_param_seed);
-        let com_param = MantaCoinCommitmentScheme::setup(&mut rng).unwrap();
 
-        let hash_param_seed = HashParamSeed::get();
-        let mut rng = ChaCha20Rng::from_seed(hash_param_seed);
-        let hash_param = Hash::setup(&mut rng).unwrap();
+        let hash_param = hash_param_deserialize(HASHPARAMBYTES.as_ref());
+        let commit_param = commit_param_deserialize(COMPARAMBYTES.as_ref());
 
         let mut rng = ChaCha20Rng::from_seed([3u8; 32]);
         let mut pool = 0;
@@ -372,7 +373,7 @@ fn test_transfer_should_work() {
             let token_value = 10 + i as u64;
             rng.fill_bytes(&mut sk);
             let (sender, sender_pub_info, sender_priv_info) =
-                make_coin(&com_param_seed, sk, token_value, &mut rng);
+                make_coin(&commit_param, sk, token_value, &mut rng);
             senders.push((sender, sender_pub_info, sender_priv_info));
 
             // mint a sender token
@@ -402,7 +403,7 @@ fn test_transfer_should_work() {
             let mut sk = [0u8; 32];
             rng.fill_bytes(&mut sk);
             let (receiver, receiver_pub_info, receiver_priv_info) =
-                make_coin(&com_param_seed, sk, 10 + i as u64, &mut rng);
+                make_coin(&commit_param, sk, 10 + i as u64, &mut rng);
             receivers.push((receiver, receiver_pub_info, receiver_priv_info));
         }
 
@@ -419,7 +420,7 @@ fn test_transfer_should_work() {
             let list = coin_list.iter().map(|x| x.cm_bytes).collect();
             // generate ZKP
             let circuit = TransferCircuit {
-                commit_param: com_param.clone(),
+                commit_param: commit_param.clone(),
                 hash_param: hash_param.clone(),
                 sender_coin: senders[i].0.clone(),
                 sender_pub_info: senders[i].1.clone(),
@@ -627,21 +628,16 @@ fn test_forfeit_hardcode_should_work() {
 /// this is a local test on zero knowledge proof generation and verifications
 #[test]
 fn test_forfeit_zkp_local() {
-    let hash_param_seed = [1u8; 32];
-    let commit_param_seed = [2u8; 32];
+    let hash_param = hash_param_deserialize(HASHPARAMBYTES.as_ref());
+    let commit_param = commit_param_deserialize(COMPARAMBYTES.as_ref());
 
-    let mut rng = ChaCha20Rng::from_seed(commit_param_seed);
-    let commit_param = MantaCoinCommitmentScheme::setup(&mut rng).unwrap();
-
-    let mut rng = ChaCha20Rng::from_seed(hash_param_seed);
-    let hash_param = Hash::setup(&mut rng).unwrap();
+    let mut rng = ChaCha20Rng::from_seed([3u8; 32]);
 
     // sender
     let value = 100;
     let mut sk = [0u8; 32];
     rng.fill_bytes(&mut sk);
-    let (sender, sender_pub_info, sender_priv_info) =
-        make_coin(&COMMITPARAMSEED, sk, value, &mut rng);
+    let (sender, sender_pub_info, sender_priv_info) = make_coin(&commit_param, sk, value, &mut rng);
 
     // list of commitment
     let mut list = vec![sender.cm_bytes.clone()];
@@ -701,13 +697,9 @@ fn test_forfeit_should_work() {
         assert_ok!(Assets::init(Origin::signed(1), 100000));
         assert_eq!(Assets::balance(1), 100000);
         assert_eq!(PoolBalance::get(), 0);
-        let com_param_seed = CommitParamSeed::get();
-        let mut rng = ChaCha20Rng::from_seed(com_param_seed);
-        let com_param = MantaCoinCommitmentScheme::setup(&mut rng).unwrap();
 
-        let hash_param_seed = HashParamSeed::get();
-        let mut rng = ChaCha20Rng::from_seed(hash_param_seed);
-        let hash_param = Hash::setup(&mut rng).unwrap();
+        let hash_param = hash_param_deserialize(HASHPARAMBYTES.as_ref());
+        let commit_param = commit_param_deserialize(COMPARAMBYTES.as_ref());
 
         let mut rng = ChaCha20Rng::from_seed([3u8; 32]);
         let mut pool = 0;
@@ -721,7 +713,7 @@ fn test_forfeit_should_work() {
             let token_value = 10 + i as u64;
             rng.fill_bytes(&mut sk);
             let (sender, sender_pub_info, sender_priv_info) =
-                make_coin(&com_param_seed, sk, token_value, &mut rng);
+                make_coin(&commit_param, sk, token_value, &mut rng);
             senders.push((sender, sender_pub_info, sender_priv_info));
 
             // mint a sender token
@@ -759,7 +751,7 @@ fn test_forfeit_should_work() {
             let token_value = 10 + i as u64;
             // generate ZKP
             let circuit = ForfeitCircuit {
-                commit_param: com_param.clone(),
+                commit_param: commit_param.clone(),
                 hash_param: hash_param.clone(),
                 sender_coin: senders[i].0.clone(),
                 sender_pub_info: senders[i].1.clone(),
@@ -905,26 +897,21 @@ fn cannot_init_twice() {
 /// this is a local test on zero knowledge proof generation and verifications
 #[test]
 fn test_transfer_zkp_local() {
-    let hash_param_seed = [1u8; 32];
-    let commit_param_seed = [2u8; 32];
+    let hash_param = hash_param_deserialize(HASHPARAMBYTES.as_ref());
+    let commit_param = commit_param_deserialize(COMPARAMBYTES.as_ref());
 
-    let mut rng = ChaCha20Rng::from_seed(commit_param_seed);
-    let commit_param = MantaCoinCommitmentScheme::setup(&mut rng).unwrap();
-
-    let mut rng = ChaCha20Rng::from_seed(hash_param_seed);
-    let hash_param = Hash::setup(&mut rng).unwrap();
+    let mut rng = ChaCha20Rng::from_seed([3u8; 32]);
 
     // sender
     let mut sk = [0u8; 32];
     rng.fill_bytes(&mut sk);
-    let (sender, sender_pub_info, sender_priv_info) =
-        make_coin(&COMMITPARAMSEED, sk, 100, &mut rng);
+    let (sender, sender_pub_info, sender_priv_info) = make_coin(&commit_param, sk, 100, &mut rng);
 
     // receiver
     let mut sk = [0u8; 32];
     rng.fill_bytes(&mut sk);
     let (receiver, receiver_pub_info, _receiver_priv_info) =
-        make_coin(&COMMITPARAMSEED, sk, 100, &mut rng);
+        make_coin(&commit_param, sk, 100, &mut rng);
 
     // list of commitment
     let mut list = vec![sender.cm_bytes.clone()];
@@ -975,7 +962,7 @@ fn test_transfer_zkp_local() {
     let mut sk = [0u8; 32];
     rng.fill_bytes(&mut sk);
     let (sender2, sender_pub_info2, sender_priv_info2) =
-        make_coin(&COMMITPARAMSEED, sk, 100, &mut rng);
+        make_coin(&commit_param, sk, 100, &mut rng);
     list.push(sender2.cm_bytes);
     let tree = LedgerMerkleTree::new(hash_param.clone(), &list).unwrap();
     let merkle_root = tree.root();
@@ -1020,4 +1007,29 @@ fn manta_dh() {
     println!("enc success");
     let rec_value = manta_dh_dec(&cipher, &sender_pk_bytes, &receiver_sk_bytes);
     assert_eq!(value, rec_value);
+}
+
+#[test]
+fn test_param_serdes() {
+    let hash_param_seed = [1u8; 32];
+    let mut rng = ChaCha20Rng::from_seed(hash_param_seed);
+    let hash_param = Hash::setup(&mut rng).unwrap();
+    let mut buf: Vec<u8> = vec![];
+
+    hash_param_serialize(&hash_param, &mut buf);
+    let hash_param2: HashParam = hash_param_deserialize(buf.as_ref());
+    assert_eq!(hash_param.generators, hash_param2.generators);
+
+    let commit_param_seed = [2u8; 32];
+    let mut rng = ChaCha20Rng::from_seed(commit_param_seed);
+    let commit_param = MantaCoinCommitmentScheme::setup(&mut rng).unwrap();
+    let mut buf: Vec<u8> = vec![];
+
+    commit_param_serialize(&commit_param, &mut buf);
+    let commit_param2 = commit_param_deserialize(buf.as_ref());
+    assert_eq!(commit_param.generators, commit_param2.generators);
+    assert_eq!(
+        commit_param.randomness_generator,
+        commit_param2.randomness_generator
+    );
 }

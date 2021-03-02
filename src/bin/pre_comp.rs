@@ -11,6 +11,7 @@ use pallet_manta_dap::forfeit::*;
 use pallet_manta_dap::manta_token::*;
 use pallet_manta_dap::param::*;
 use pallet_manta_dap::priv_coin::*;
+use pallet_manta_dap::serdes::*;
 use pallet_manta_dap::transfer::*;
 use rand::RngCore;
 use rand::SeedableRng;
@@ -21,24 +22,35 @@ use x25519_dalek::{PublicKey, StaticSecret};
 
 fn main() {
     println!("Hello, world!");
+
     let hash_param_seed = [1u8; 32];
     let commit_param_seed = [2u8; 32];
 
     let mut rng = ChaCha20Rng::from_seed(hash_param_seed);
     let hash_param = Hash::setup(&mut rng).unwrap();
 
+    let mut hash_param_bytes = vec![];
+    hash_param_serialize(&hash_param, &mut hash_param_bytes);
+    println!("hash param len: {}", hash_param_bytes.len());
+    println!("hash_param_bytes: {:?}", hash_param_bytes);
+
     let mut rng = ChaCha20Rng::from_seed(commit_param_seed);
     let commit_param = MantaCoinCommitmentScheme::setup(&mut rng).unwrap();
 
-    let (coin1, pub_info1, priv_info1) = make_coin(&commit_param_seed, [0u8; 32], 10, &mut rng);
+    let mut commit_param_bytes = vec![];
+    commit_param_serialize(&commit_param, &mut commit_param_bytes);
+    println!("commit param len: {}", commit_param_bytes.len());
+    println!("commit_param_bytes: {:?}", commit_param_bytes);
+
+    let (coin1, pub_info1, priv_info1) = make_coin(&commit_param, [0u8; 32], 10, &mut rng);
 
     coin_print_json(&coin1, &pub_info1, &priv_info1);
 
-    let (coin2, pub_info2, priv_info2) = make_coin(&commit_param_seed, [1u8; 32], 100, &mut rng);
+    let (coin2, pub_info2, priv_info2) = make_coin(&commit_param, [1u8; 32], 100, &mut rng);
 
     coin_print_json(&coin2, &pub_info2, &priv_info2);
 
-    let (coin3, pub_info3, priv_info3) = make_coin(&commit_param_seed, [2u8; 32], 10, &mut rng);
+    let (coin3, pub_info3, priv_info3) = make_coin(&commit_param, [2u8; 32], 10, &mut rng);
 
     coin_print_json(&coin3, &pub_info3, &priv_info3);
 
@@ -274,7 +286,7 @@ fn manta_transfer_zkp_key_gen(hash_param_seed: &[u8; 32], commit_param_seed: &[u
         let mut sk = [0u8; 32];
         rng.fill_bytes(&mut sk);
 
-        let (coin, pub_info, priv_info) = make_coin(&commit_param_seed, sk, e + 100, &mut rng);
+        let (coin, pub_info, priv_info) = make_coin(&commit_param, sk, e + 100, &mut rng);
 
         ledger.push(coin.cm_bytes);
         coins.push(coin);
@@ -291,7 +303,7 @@ fn manta_transfer_zkp_key_gen(hash_param_seed: &[u8; 32], commit_param_seed: &[u
     let mut sk = [0u8; 32];
     rng.fill_bytes(&mut sk);
     let (receiver, receiver_pub_info, _receiver_priv_info) =
-        make_coin(&commit_param_seed, sk, 100, &mut rng);
+        make_coin(&commit_param, sk, 100, &mut rng);
 
     // transfer circuit
     let transfer_circuit = TransferCircuit {
@@ -340,7 +352,7 @@ fn manta_forfeit_zkp_key_gen(hash_param_seed: &[u8; 32], commit_param_seed: &[u8
         let mut sk = [0u8; 32];
         rng.fill_bytes(&mut sk);
 
-        let (coin, pub_info, priv_info) = make_coin(&commit_param_seed, sk, e + 100, &mut rng);
+        let (coin, pub_info, priv_info) = make_coin(&commit_param, sk, e + 100, &mut rng);
 
         ledger.push(coin.cm_bytes);
         coins.push(coin);

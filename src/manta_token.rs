@@ -9,8 +9,6 @@ use ark_ff::UniformRand;
 use ark_serialize::CanonicalSerialize;
 use ark_std::vec::Vec;
 use frame_support::codec::{Decode, Encode};
-use rand::SeedableRng;
-use rand_chacha::ChaCha20Rng;
 use rand_core::{CryptoRng, RngCore};
 
 /// a MantaCoin is a pair of commitment cm, where
@@ -39,14 +37,14 @@ pub struct MantaCoinPrivInfo {
 /// make a coin from inputs
 #[allow(dead_code)]
 pub fn make_coin<R: RngCore + CryptoRng>(
-    commit_param_seed: &[u8; 32],
+    commit_param: &MantaCoinCommitmentParam,
     sk: [u8; 32],
     value: u64,
     rng: &mut R,
 ) -> (MantaCoin, MantaCoinPubInfo, MantaCoinPrivInfo) {
     // rebuild the parameters from the inputs
-    let mut com_rng = ChaCha20Rng::from_seed(*commit_param_seed);
-    let commit_param = MantaCoinCommitmentScheme::setup(&mut com_rng).unwrap();
+    // let mut com_rng = ChaCha20Rng::from_seed(*commit_param_seed);
+    // let commit_param = MantaCoinCommitmentScheme::setup(&mut com_rng).unwrap();
 
     //  sample a random rho
     let mut rho = [0u8; 32];

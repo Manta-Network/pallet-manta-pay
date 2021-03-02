@@ -1,31 +1,52 @@
 use crate::manta_token::MantaCoin;
 use crate::param::*;
-use ark_crypto_primitives::{commitment::pedersen::Randomness, CommitmentScheme, FixedLengthCRH};
+use crate::serdes::*;
+use ark_crypto_primitives::{commitment::pedersen::Randomness, CommitmentScheme};
 use ark_ed_on_bls12_381::{Fq, Fr};
 use ark_ff::ToConstraintField;
 use ark_groth16::verify_proof;
 use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
 use ark_std::vec::Vec;
-use rand::SeedableRng;
-use rand_chacha::ChaCha20Rng;
+use blake2::{Blake2s, Digest};
 
-#[allow(dead_code)]
-pub fn comm_open(param_seed: &[u8; 32], r: &[u8; 32], payload: &[u8], cm: &[u8; 32]) -> bool {
-    let mut rng = ChaCha20Rng::from_seed(*param_seed);
-    let param = MantaCoinCommitmentScheme::setup(&mut rng).unwrap();
+pub fn hash_param_checksum(hash_param: &HashParam) -> [u8; 32] {
+    let mut buf: Vec<u8> = Vec::new();
+    hash_param_serialize(&hash_param, &mut buf);
+    let mut hasher = Blake2s::new();
+    hasher.update(buf);
+    let digest = hasher.finalize();
+    let mut res = [0u8; 32];
+    res.copy_from_slice(digest.as_slice());
+    res
+}
 
-    let open = Randomness(Fr::deserialize(r.as_ref()).unwrap());
-    let cm = MantaCoinCommitmentOutput::deserialize(cm.as_ref()).unwrap();
-    MantaCoinCommitmentScheme::commit(&param, payload, &open).unwrap() == cm
+pub fn commit_param_checksum(commit_param: &MantaCoinCommitmentParam) -> [u8; 32] {
+    let mut buf: Vec<u8> = Vec::new();
+    commit_param_serialize(&commit_param, &mut buf);
+    let mut hasher = Blake2s::new();
+    hasher.update(buf);
+    let digest = hasher.finalize();
+    let mut res = [0u8; 32];
+    res.copy_from_slice(digest.as_slice());
+    res
 }
 
 #[allow(dead_code)]
-pub fn merkle_root(param_seed: &[u8; 32], payload: &[MantaCoin]) -> [u8; 32] {
-    let mut rng = ChaCha20Rng::from_seed(*param_seed);
-    let param = Hash::setup(&mut rng).unwrap();
+pub fn comm_open(
+    com_param: &MantaCoinCommitmentParam,
+    r: &[u8; 32],
+    payload: &[u8],
+    cm: &[u8; 32],
+) -> bool {
+    let open = Randomness(Fr::deserialize(r.as_ref()).unwrap());
+    let cm = MantaCoinCommitmentOutput::deserialize(cm.as_ref()).unwrap();
+    MantaCoinCommitmentScheme::commit(com_param, payload, &open).unwrap() == cm
+}
 
+#[allow(dead_code)]
+pub fn merkle_root(hash_param: HashParam, payload: &[MantaCoin]) -> [u8; 32] {
     let leaf: Vec<[u8; 32]> = payload.iter().map(|x| (x.cm_bytes.clone())).collect();
-    let tree = LedgerMerkleTree::new(param, &leaf).unwrap();
+    let tree = LedgerMerkleTree::new(hash_param, &leaf).unwrap();
     let root = tree.root();
 
     let mut bytes = [0u8; 32];
