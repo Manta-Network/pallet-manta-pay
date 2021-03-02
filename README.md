@@ -44,3 +44,22 @@ cargo bench
 * benchmark enviroment
 
 MBP 13inch 2021,  CPU:  2.3 GHz Quad-Core Intel Core i7, Memory 32 GB 3733 MHz LPDDR4X.
+
+  * with `criterion` (take some time)
+``` sh
+manta_bench/ZKP verification                        
+                        time:   [15.308 ms 15.386 ms 15.465 ms]
+```
+  * with `frame-benchmarking`: within `manta-node` repo, run 
+```
+cargo +nightly build --release -p manta-node -Z package-features --package manta-runtime --features runtime-benchmarks
+target/release/manta-node benchmark --pallet pallet_manta_dap --extrinsic init --repeat 100 --wasm-execution 
+target/release/manta-node benchmark --pallet pallet_manta_dap --extrinsic transfer --repeat 100 --wasm-execution 
+target/release/manta-node benchmark --pallet pallet_manta_dap --extrinsic mint --repeat 100 --wasm-execution 
+target/release/manta-node benchmark --pallet pallet_manta_dap --extrinsic manta_transfer --repeat 100 --wasm-execution 
+target/release/manta-node benchmark --pallet pallet_manta_dap --extrinsic forfeit --repeat 100 --wasm-execution 
+```
+
+| Function      | init |  trasfer | mint | manta_transfer | forfeit |
+| ----------- |:-----------:|:-----------:|:-----------:|:-----------:|:-----------:|
+| Time       |    26 \mu s    |  29 \mu s | 25.3 ms | 29.2 ms | 26.8 ms |
