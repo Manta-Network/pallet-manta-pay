@@ -70,13 +70,14 @@ transfer/ZKP verification
   * with `frame-benchmarking`: within `manta-node` repo, run 
 ```
 cargo +nightly build --release -p manta-node -Z package-features --package manta-runtime --features runtime-benchmarks
-target/release/manta-node benchmark --pallet pallet_manta_dap --extrinsic init --repeat 100 --wasm-execution 
-target/release/manta-node benchmark --pallet pallet_manta_dap --extrinsic transfer --repeat 100 --wasm-execution 
-target/release/manta-node benchmark --pallet pallet_manta_dap --extrinsic mint --repeat 100 --wasm-execution 
-target/release/manta-node benchmark --pallet pallet_manta_dap --extrinsic manta_transfer --repeat 100 --wasm-execution 
-target/release/manta-node benchmark --pallet pallet_manta_dap --extrinsic forfeit --repeat 100 --wasm-execution 
+target/release/manta-node benchmark --pallet pallet_manta_dap --extrinsic init --repeat 100 --execution=wasm
+target/release/manta-node benchmark --pallet pallet_manta_dap --extrinsic transfer --repeat 100 --execution=wasm
+target/release/manta-node benchmark --pallet pallet_manta_dap --extrinsic mint --repeat 100 --execution=wasm
+target/release/manta-node benchmark --pallet pallet_manta_dap --extrinsic manta_transfer --repeat 100 --execution=wasm
+target/release/manta-node benchmark --pallet pallet_manta_dap --extrinsic forfeit --repeat 100 --execution=wasm
 ```
 
 | Function      | init |  trasfer | mint | manta_transfer | forfeit |
 | ----------- |:-----------:|:-----------:|:-----------:|:-----------:|:-----------:|
-| Time       |    1.2 ms    |  30 \mu s | 3.5 ms | 18.1 ms | 16.1 ms |
+| Rust       |    1.2 ms    |  30 \mu s | 3.5 ms | 18.1 ms | 16.1 ms |
+| Wasm |    244 ms    |  178 \mu s | 1018 ms | 6079 ms | 5387 ms |
