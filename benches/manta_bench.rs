@@ -17,6 +17,8 @@ use data_encoding::BASE64;
 use pallet_manta_dap::manta_token::*;
 use pallet_manta_dap::param::*;
 use pallet_manta_dap::priv_coin::*;
+use pallet_manta_dap::serdes::commit_param_deserialize;
+use pallet_manta_dap::serdes::hash_param_deserialize;
 use pallet_manta_dap::transfer::*;
 use rand::SeedableRng;
 use rand_chacha::ChaCha20Rng;
@@ -26,12 +28,32 @@ use std::io::prelude::*;
 
 criterion_group!(
     manta_bench,
+    bench_param_io,
     bench_pedersen_hash,
     bench_pedersen_com,
     bench_merkle_tree,
     bench_trasnfer_verify,
 );
 criterion_main!(manta_bench);
+
+fn bench_param_io(c: &mut Criterion) {
+    let bench_str = format!("hash param");
+    let bench = Benchmark::new(bench_str, move |b| {
+        b.iter(|| {
+            hash_param_deserialize(HASHPARAMBYTES.as_ref());
+        })
+    });
+
+    let bench_str = format!("commit param");
+    let bench = bench.with_function(bench_str, move |b| {
+        b.iter(|| {
+            commit_param_deserialize(COMPARAMBYTES.as_ref());
+        })
+    });
+
+    // let bench = bench.sample_size(10);
+    c.bench("deserialization", bench);
+}
 
 fn bench_trasnfer_verify(c: &mut Criterion) {
     let hash_param_seed = pallet_manta_dap::param::HASHPARAMSEED;

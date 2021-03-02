@@ -20,7 +20,7 @@ pub fn hash_param_deserialize<R: Read>(mut reader: R) -> HashParam {
     for _ in 0..len {
         let mut gen = Vec::new();
         for _ in 0..window {
-            gen.push(EdwardsProjective::deserialize_uncompressed(&mut reader).unwrap())
+            gen.push(EdwardsProjective::deserialize_unchecked(&mut reader).unwrap())
         }
         generators.push(gen);
     }
@@ -47,13 +47,13 @@ pub fn commit_param_deserialize<R: Read>(mut reader: R) -> MantaCoinCommitmentPa
     for _ in 0..len {
         let mut gen = Vec::new();
         for _ in 0..window {
-            gen.push(EdwardsProjective::deserialize_uncompressed(&mut reader).unwrap())
+            gen.push(EdwardsProjective::deserialize_unchecked(&mut reader).unwrap())
         }
         generators.push(gen);
     }
     let mut randomness_generator = Vec::new();
     for _ in 0..252 {
-        randomness_generator.push(EdwardsProjective::deserialize_uncompressed(&mut reader).unwrap())
+        randomness_generator.push(EdwardsProjective::deserialize_unchecked(&mut reader).unwrap())
     }
 
     MantaCoinCommitmentParam {
