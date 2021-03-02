@@ -16,7 +16,7 @@ cargo run --bin pre_comp --release
 ```
 cargo install grcov
 ```
-* build and run test
+* build and run test (extremely slow)
 ``` sh
 export CARGO_INCREMENTAL=0
 export RUSTFLAGS="-Zprofile -Ccodegen-units=1 -Copt-level=0 -Clink-dead-code -Coverflow-checks=off -Zpanic_abort_tests -Cpanic=abort"
@@ -47,6 +47,7 @@ MBP 13inch 2021,  CPU:  2.3 GHz Quad-Core Intel Core i7, Memory 32 GB 3733 MHz L
 
   * with `criterion` (take some time)
 ``` sh
+merkle_tree/with 1 leaf time:   [13.885 ms 13.938 ms 13.998 ms]
 manta_bench/ZKP verification                        
                         time:   [15.308 ms 15.386 ms 15.465 ms]
 ```

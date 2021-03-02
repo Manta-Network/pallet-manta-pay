@@ -3,11 +3,11 @@
 #![cfg(feature = "runtime-benchmarks")]
 
 use super::*;
+use data_encoding::BASE64;
 use frame_benchmarking::{account, benchmarks, whitelisted_caller};
 use frame_system::RawOrigin;
 use sp_std::boxed::Box;
 use sp_std::vec;
-use data_encoding::BASE64;
 
 benchmarks! {
     _ { }
@@ -68,7 +68,7 @@ benchmarks! {
         };
 
     }: mint(
-        RawOrigin::Signed(caller), 
+        RawOrigin::Signed(caller),
         10,
         k_bytes,
         s_bytes,
@@ -187,13 +187,13 @@ benchmarks! {
         root_bytes.copy_from_slice(root_vec[0..32].as_ref());
 
     }: manta_transfer(
-        RawOrigin::Signed(caller), 
-        root_bytes, 
-        old_sn_bytes, 
-        old_k_bytes, 
-        new_k_bytes, 
-        new_cm_bytes, 
-        cipher_bytes, 
+        RawOrigin::Signed(caller),
+        root_bytes,
+        old_sn_bytes,
+        old_k_bytes,
+        new_k_bytes,
+        new_cm_bytes,
+        cipher_bytes,
         proof_bytes)
     verify {
         assert_eq!(TotalSupply::get(), 1000);
@@ -332,11 +332,11 @@ benchmarks! {
             .unwrap();
         root_bytes.copy_from_slice(root_vec[0..32].as_ref());
     }: forfeit(
-        RawOrigin::Signed(caller), 
-        100, 
-        root_bytes, 
-        old_sn_bytes, 
-        old_k_bytes, 
+        RawOrigin::Signed(caller),
+        100,
+        root_bytes,
+        old_sn_bytes,
+        old_k_bytes,
         proof_bytes)
     verify {
         // check the resulting status of the ledger storage

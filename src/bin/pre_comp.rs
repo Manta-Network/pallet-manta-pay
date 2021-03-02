@@ -56,7 +56,6 @@ fn main() {
     file.write_all(forfeit_pk_bytes.as_mut()).unwrap();
     println!("{}", forfeit_pk_bytes.len());
 
-
     // ===========================
     // testing DH encryption
     // ===========================
@@ -82,8 +81,6 @@ fn main() {
         BASE64.encode(&receiver_sk_bytes)
     );
     println!("\"ciphertext\": \"{}\",", BASE64.encode(&cipher));
-
-
 
     // ===========================
     // testing transfer circuit
@@ -148,7 +145,6 @@ fn main() {
     println!("\"value\": {},", 10);
     println!("\"proof encoded\": \"{}\",", BASE64.encode(&proof_bytes));
 
-
     println!("===========");
     println!("\"merkle_roots\": \"{:02x?}\",", merkle_root_bytes);
     println!("\"sn_old\": \"{:02x?}\",", priv_info1.sn);
@@ -159,8 +155,6 @@ fn main() {
     println!("\"value\": {},", 10);
     println!("\"proof encoded\": \"{:02x?}\",", proof_bytes);
     println!("===========");
-
-
 
     // ===========================
     // testing forfeit circuit
@@ -230,7 +224,6 @@ fn main() {
     println!("\"value\": {},", 100);
     println!("\"proof encoded\": \"{:02x?}\",", proof_bytes);
     println!("===========");
-
 }
 
 fn coin_print_json(coin: &MantaCoin, pub_info: &MantaCoinPubInfo, priv_info: &MantaCoinPrivInfo) {

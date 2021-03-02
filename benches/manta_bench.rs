@@ -11,6 +11,7 @@ use ark_relations::r1cs::ConstraintSystem;
 use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
 use criterion::Benchmark;
 use criterion::Criterion;
+use data_encoding::BASE64;
 use pallet_manta_dap::manta_token::*;
 use pallet_manta_dap::param::*;
 use pallet_manta_dap::priv_coin::*;
@@ -21,10 +22,10 @@ use rand_core::RngCore;
 use std::fs::File;
 use std::io::prelude::*;
 
-criterion_group!(manta_bench, bench_zkp_verify);
+criterion_group!(manta_bench, bench_merkle_tree, bench_trasnfer_verify);
 criterion_main!(manta_bench);
 
-fn bench_zkp_verify(c: &mut Criterion) {
+fn bench_trasnfer_verify(c: &mut Criterion) {
     let hash_param_seed = pallet_manta_dap::param::HASHPARAMSEED;
     let commit_param_seed = pallet_manta_dap::param::COMMITPARAMSEED;
 
@@ -99,5 +100,64 @@ fn bench_zkp_verify(c: &mut Criterion) {
     });
 
     // let bench = bench.sample_size(10);
-    c.bench("manta_bench", bench);
+    c.bench("transfer", bench);
+}
+
+fn bench_merkle_tree(c: &mut Criterion) {
+    let hash_param_seed = pallet_manta_dap::param::HASHPARAMSEED;
+
+    let mut cm_bytes = [0u8; 32];
+    let cm_vec = BASE64
+        .decode(b"XzoWOzhp6rXjQ/HDEN6jSLsLs64hKXWUNuFVtCUq0AA=")
+        .unwrap();
+    cm_bytes.copy_from_slice(cm_vec[0..32].as_ref());
+
+    let coin1 = MantaCoin { cm_bytes: cm_bytes };
+    let coin1_clone = coin1.clone();
+    let bench_str = format!("with 1 leaf");
+    let bench = Benchmark::new(bench_str, move |b| {
+        b.iter(|| {
+            merkle_root(&hash_param_seed, &[coin1_clone.clone()]);
+        })
+    });
+
+    let mut cm_bytes = [0u8; 32];
+    let cm_vec = BASE64
+        .decode(b"3Oye4AqhzdysdWdCzMcoImTnYNGd21OmF8ztph4dRqI=")
+        .unwrap();
+    cm_bytes.copy_from_slice(cm_vec[0..32].as_ref());
+
+    let coin2 = MantaCoin { cm_bytes: cm_bytes };
+
+    let coin1_clone = coin1.clone();
+    let coin2_clone = coin2.clone();
+    let bench_str = format!("with 2 leaf");
+    let bench = bench.with_function(bench_str, move |b| {
+        b.iter(|| {
+            merkle_root(
+                &hash_param_seed,
+                &[coin1_clone.clone(), coin2_clone.clone()],
+            );
+        })
+    });
+
+    let mut cm_bytes = [0u8; 32];
+    let cm_vec = BASE64
+        .decode(b"1zuOv92V7e1qX1bP7+QNsV+gW5E3xUsghte/lZ7h5pg=")
+        .unwrap();
+    cm_bytes.copy_from_slice(cm_vec[0..32].as_ref());
+
+    let coin3 = MantaCoin { cm_bytes: cm_bytes };
+
+    let bench_str = format!("with 3 leaf");
+    let bench = bench.with_function(bench_str, move |b| {
+        b.iter(|| {
+            merkle_root(
+                &hash_param_seed,
+                &[coin1.clone(), coin2.clone(), coin3.clone()],
+            );
+        })
+    });
+
+    c.bench("merkle_tree", bench);
 }
