@@ -82,6 +82,8 @@
 
 // Ensure we're `no_std` when compiling for Wasm.
 #![cfg_attr(not(feature = "std"), no_std)]
+// #![macro_use]
+// extern crate frame_benchmarking;
 
 extern crate ark_crypto_primitives;
 extern crate ark_ed_on_bls12_381;
@@ -94,13 +96,13 @@ extern crate generic_array;
 extern crate rand_chacha;
 extern crate x25519_dalek;
 
+mod benchmark;
 pub mod dh;
 pub mod forfeit;
 pub mod manta_token;
 pub mod param;
 pub mod priv_coin;
 pub mod transfer;
-mod benchmark;
 
 #[cfg(test)]
 pub mod test;

@@ -56,6 +56,35 @@ fn main() {
     file.write_all(forfeit_pk_bytes.as_mut()).unwrap();
     println!("{}", forfeit_pk_bytes.len());
 
+
+    // ===========================
+    // testing DH encryption
+    // ===========================
+
+    let mut rng = ChaCha20Rng::from_seed([6u8; 32]);
+    let receiver_sk = StaticSecret::new(&mut rng);
+    let receiver_pk = PublicKey::from(&receiver_sk);
+    let receiver_pk_bytes = receiver_pk.to_bytes();
+    let receiver_sk_bytes = receiver_sk.to_bytes();
+    let value = 10;
+    let (sender_pk_bytes, cipher) = manta_dh_enc(&receiver_pk_bytes, value, &mut rng);
+    println!("enc success");
+    let rec_value = manta_dh_dec(&cipher, &sender_pk_bytes, &receiver_sk_bytes);
+    assert_eq!(value, rec_value);
+
+    println!("\"sender_pk\": \"{}\",", BASE64.encode(&sender_pk_bytes));
+    println!(
+        "\"receiver_pk\": \"{}\",",
+        BASE64.encode(&receiver_pk_bytes)
+    );
+    println!(
+        "\"receiver_sk\": \"{}\",",
+        BASE64.encode(&receiver_sk_bytes)
+    );
+    println!("\"ciphertext\": \"{}\",", BASE64.encode(&cipher));
+
+
+
     // ===========================
     // testing transfer circuit
     // ===========================
@@ -119,15 +148,19 @@ fn main() {
     println!("\"value\": {},", 10);
     println!("\"proof encoded\": \"{}\",", BASE64.encode(&proof_bytes));
 
+
     println!("===========");
     println!("\"merkle_roots\": \"{:02x?}\",", merkle_root_bytes);
     println!("\"sn_old\": \"{:02x?}\",", priv_info1.sn);
     println!("\"k_old\": \"{:02x?}\",", pub_info1.k);
     println!("\"k_new\": \"{:02x?}\",", pub_info3.k);
     println!("\"cm_new\": \"{:02x?}\",", coin3.cm_bytes);
+    println!("\"enc_amount\": \"{:02x?}\",", cipher);
     println!("\"value\": {},", 10);
     println!("\"proof encoded\": \"{:02x?}\",", proof_bytes);
     println!("===========");
+
+
 
     // ===========================
     // testing forfeit circuit
@@ -190,31 +223,14 @@ fn main() {
     println!("\"value\": {},", 100);
     println!("\"proof encoded\": \"{}\",", BASE64.encode(&proof_bytes));
 
-    // ===========================
-    // testing DH encryption
-    // ===========================
+    println!("===========");
+    println!("\"merkle_roots\": \"{:02x?}\",", merkle_root_bytes);
+    println!("\"sn_old\": \"{:02x?}\",", priv_info2.sn);
+    println!("\"k_old\": \"{:02x?}\",", pub_info2.k);
+    println!("\"value\": {},", 100);
+    println!("\"proof encoded\": \"{:02x?}\",", proof_bytes);
+    println!("===========");
 
-    let mut rng = ChaCha20Rng::from_seed([6u8; 32]);
-    let receiver_sk = StaticSecret::new(&mut rng);
-    let receiver_pk = PublicKey::from(&receiver_sk);
-    let receiver_pk_bytes = receiver_pk.to_bytes();
-    let receiver_sk_bytes = receiver_sk.to_bytes();
-    let value = 10;
-    let (sender_pk_bytes, cipher) = manta_dh_enc(&receiver_pk_bytes, value, &mut rng);
-    println!("enc success");
-    let rec_value = manta_dh_dec(&cipher, &sender_pk_bytes, &receiver_sk_bytes);
-    assert_eq!(value, rec_value);
-
-    println!("\"sender_pk\": \"{}\",", BASE64.encode(&sender_pk_bytes));
-    println!(
-        "\"receiver_pk\": \"{}\",",
-        BASE64.encode(&receiver_pk_bytes)
-    );
-    println!(
-        "\"receiver_sk\": \"{}\",",
-        BASE64.encode(&receiver_sk_bytes)
-    );
-    println!("\"ciphertext\": \"{}\",", BASE64.encode(&cipher));
 }
 
 fn coin_print_json(coin: &MantaCoin, pub_info: &MantaCoinPubInfo, priv_info: &MantaCoinPrivInfo) {
