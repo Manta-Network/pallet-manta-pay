@@ -59,12 +59,12 @@ fn main() {
     coin_print_plain(&coin3, &pub_info3, &priv_info3);
 
     let mut transfer_pk_bytes = manta_transfer_zkp_key_gen(&hash_param_seed, &commit_param_seed);
-    let mut file = File::create("transfer_pk.bin").unwrap();
+    let mut file = File::create("rococo-parachains/pallets/manta-crypto/transfer_pk.bin").unwrap();
     file.write_all(transfer_pk_bytes.as_mut()).unwrap();
     println!("{}", transfer_pk_bytes.len());
 
     let mut forfeit_pk_bytes = manta_forfeit_zkp_key_gen(&hash_param_seed, &commit_param_seed);
-    let mut file = File::create("forfeit_pk.bin").unwrap();
+    let mut file = File::create("rococo-parachains/pallets/manta-crypto/forfeit_pk.bin").unwrap();
     file.write_all(forfeit_pk_bytes.as_mut()).unwrap();
     println!("{}", forfeit_pk_bytes.len());
 
