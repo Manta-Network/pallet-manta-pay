@@ -120,13 +120,13 @@ use serdes::{
 use sp_runtime::traits::{StaticLookup, Zero};
 
 /// The module configuration trait.
-pub trait Trait: frame_system::Trait {
+pub trait Config: frame_system::Config {
 	/// The overarching event type.
-	type Event: From<Event<Self>> + Into<<Self as frame_system::Trait>::Event>;
+	type Event: From<Event<Self>> + Into<<Self as frame_system::Config>::Event>;
 }
 
 decl_module! {
-	pub struct Module<T: Trait> for enum Call where origin: T::Origin {
+	pub struct Module<T: Config> for enum Call where origin: T::Origin {
 		type Error = Error<T>;
 
 		fn deposit_event() = default;
@@ -418,7 +418,7 @@ decl_module! {
 
 decl_event! {
 	pub enum Event<T> where
-		<T as frame_system::Trait>::AccountId,
+		<T as frame_system::Config>::AccountId,
 	{
 		/// The asset was issued. \[owner, total_supply\]
 		Issued(AccountId, u64),
@@ -434,7 +434,7 @@ decl_event! {
 }
 
 decl_error! {
-	pub enum Error for Module<T: Trait> {
+	pub enum Error for Module<T: Config> {
 		/// This token has already been initiated
 		AlreadyInitialized,
 		/// Transfer when not nitialized
@@ -461,7 +461,7 @@ decl_error! {
 }
 
 decl_storage! {
-	trait Store for Module<T: Trait> as Assets {
+	trait Store for Module<T: Config> as Assets {
 		/// The number of units of assets held by any given account.
 		pub Balances: map hasher(blake2_128_concat) T::AccountId => u64;
 
@@ -505,7 +505,7 @@ decl_storage! {
 }
 
 // The main implementation block for the module.
-impl<T: Trait> Module<T> {
+impl<T: Config> Module<T> {
 	// Public immutables
 
 	/// Get the asset `id` balance of `who`.
