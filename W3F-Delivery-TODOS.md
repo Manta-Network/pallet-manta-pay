@@ -3,7 +3,7 @@ Tasks for W3F Delivery
 
 - [x] add Apache 2.0 licence.
 - [x] proper document and readme.
-- [ ] end-to-end TPS/Latency benchmark
+- [x] end-to-end benchmark
 - [x] add hardware configurations of the benchmark that we are runing
 - [x] instructions generate values for mint/transfer 
 - [x] split/merge coins

@@ -13,7 +13,7 @@
     "coin_1_raw": {
         "cm": "0x5f3a163b3869eab5e343f1c310dea348bb0bb3ae2129759436e155b4252ad000",
         "value": 10,
-        "pk": "0xae09db7cd54f42b490ef09b6bc541af688e4959bb8c53f359a6f56e38ab454a3]",
+        "pk": "0xae09db7cd54f42b490ef09b6bc541af688e4959bb8c53f359a6f56e38ab454a3",
         "rho": "0x3ae248aba506a856becb2db631851f37f97d94ce175335cb9cbf56080c856851",
         "s": "0xc6c3d7a8c5c0d5228c39e86db2055657cc70f4c8f4ae1dcef18b75647273690e",
         "r": "0x0d872e8a05777ba53bd8e7fa7cea6ecd666df43b72186035072f0efceec9700a",
@@ -73,7 +73,7 @@
         "k_new": "2HbWGQCLOfxuA4jOiDftBRSbjjAs/a0vjrq/H4p6QBI=",
         "cm_new": "1zuOv92V7e1qX1bP7+QNsV+gW5E3xUsghte/lZ7h5pg=",
         "value": 10,
-        "proof": "zU+xNmmLjmJAFy/sbxGR5fwik4nSddSjrn0YdygYlLSTvXHk8jVsjS4Sp4/0cuCHl+h9i9Scj5ok8q8R55QL2xuBZS7L0++N8BVL1HqzO0yFhrKiuScIg0cKWZYg76oBSK0xAbsMvmEoh+DQCsWG5Hfcey8BSXiaEck1LJFzpvRSqqsKChLC8cDN3fLH8fMJHh5tnAXDmMoOrKH2r7v7c0IJh0JjlWgazCEt9xb/89467vUfNAJ8jzIRl9zqsuqH",
+        "proof encoded": "Dhs0fgdEpE1SfBGIn5HpD22YvzPZKsLKMBPwT9QRe/BcuqnQuyr0oUHb7lNS/WoIPD/H348KI+e6eMcNa2nYLN5AqH/ZmXz7p2nrwUsHJVOYnFDuH2zEAcZi0hTPTN0HEiiXtYEBmUSt52xDehRSw/yCXY6AFvlQzXvMWdXq2SF2zRh93Rs9pQyO/3e7QLyMffIMeeAbx580PsJJELPrSB9x+a99l/4z8NW0YlBUwzt90uFL1bnEcp+B1gxXjpAD",
         "sender_pk": "YNwLbvb27Rb0aKptzSNEvBToYvW9IlbjVvROHfD2NAQ=",
         "receiver_pk": "Xojt5RMhuwp+4y0UXQeroXGPb5A6v8PfWTWUpJWezho=",
         "receiver_sk": "uPo5YiD6wGRiHbIXH6WmHuwjYS+mNSkCspDngkHHJ2c=",
@@ -86,7 +86,7 @@
         "k_new": "0xd876d619008b39fc6e0388ce8837ed05149b8e302cfdad2f8ebabf1f8a7a4012",
         "cm_new": "0xd73b8ebfdd95eded6a5f56cfefe40db15fa05b9137c54b2086d7bf959ee1e698",
         "value": 10,
-        "proof encoded": "0xcd4fb136698b8e6240172fec6f1191e5fc229389d275d4a3ae7d1877281894b493bd71e4f2356c8d2e12a78ff472e08797e87d8bd49c8f9a24f2af11e7940bdb1b81652ecbd3ef8df0154bd47ab33b4c8586b2a2b9270883470a599620efaa0148ad3101bb0cbe612887e0d00ac586e477dc7b2f0149789a11c9352c9173a6f452aaab0a0a12c2f1c0cdddf2c7f1f3091e1e6d9c05c398ca0eaca1f6afbbfb73420987426395681acc212df716fff3de3aeef51f34027c8f321197dceab2ea87"
+        "proof encoded": "0x0e1b347e0744a44d527c11889f91e90f6d98bf33d92ac2ca3013f04fd4117bf05cbaa9d0bb2af4a141dbee5352fd6a083c3fc7df8f0a23e7ba78c70d6b69d82cde40a87fd9997cfba769ebc14b072553989c50ee1f6cc401c662d214cf4cdd07122897b581019944ade76c437a1452c3fc825d8e8016f950cd7bcc59d5ead92176cd187ddd1b3da50c8eff77bb40bc8c7df20c79e01bc79f343ec24910b3eb481f71f9af7d97fe33f0d5b4625054c33b7dd2e14bd5b9c4729f81d60c578e9003"
     },
     "forfeit": {
         "_comment": "forfeit coin 2",
@@ -94,6 +94,13 @@
         "sn_old": "EdHWc+HAgRWlcJrK8dlVnewSCTwEDPZFa8iYKxoRdOY=",
         "k_old": "CutG9BBbkJMpBkbYTVX37HWunGcxHyy8+Eb1xRT9eVM=",
         "value": 100,
-        "proof encoded": "yT4284c8SiAC1i85GIgmOJa20KjLGWGTrdsvLOo6bbPgtPO8qDpK8y6OtiOa1qqSxm+tp1CAjxdyrTQ6QkZqUQfJs51cvrp9vYYscY2LqqRcuYL1T7LRq/IcofgJZf8YyRH3HWnz5Vj/bXmFAVlLgs/fbWYgzoFHbOlZpva+RMgCMuJ/2ltRAfpKDI7meMgBwEMSz93OPGv+txf0yhVqydpSVrFdB/zwd09mWW/7OuCYRzXcvmBuL3HGzbsGiLkG"
+        "proof encoded": "nqY+V9/nzzF3A72jXj4Cm1Vn2mfWMbcBWqxppSO/gZ80XkIZRE9ljE4nTP0SBBYP+Ofkq14ZCiu/cLgJpuR33cMcxnNxB65A6CDFw3ZrTkTm2kjfTuH7Co2dsuQHXNYP2+f2H7yf613LjQbpQvJLMGFa781KYNyvvU1ApT4Gzwh3guO3KPij0l8jFGCDq4wTUavvaJlLGOMoTdKXCkR24Iik9+DpBDvvLHJUSrgROPSBCg61PJhQTkYqSIAtT4YG"    
+    },
+    "forfeit_raw": {
+        "merkle_roots": "0x40358826f4a6326212d629dc5e9a9903ea1928ebaf3f8d8f355c8b2960b48064",
+        "sn_old": "0x11d1d673e1c08115a5709acaf1d9559dec12093c040cf6456bc8982b1a1174e6",
+        "k_old": "0x0aeb46f4105b9093290646d84d55f7ec75ae9c67311f2cbcf846f5c514fd7953",
+        "value": 100,
+        "proof encoded": "0x9ea63e57dfe7cf317703bda35e3e029b5567da67d631b7015aac69a523bf819f345e4219444f658c4e274cfd1204160ff8e7e4ab5e190a2bbf70b809a6e477ddc31cc6737107ae40e820c5c3766b4e44e6da48df4ee1fb0a8d9db2e4075cd60fdbe7f61fbc9feb5dcb8d06e942f24b30615aefcd4a60dcafbd4d40a53e06cf087782e3b728f8a3d25f23146083ab8c1351abef68994b18e3284dd2970a4476e088a4f7e0e9043bef2c72544ab81138f4810a0eb53c98504e462a48802d4f8606"
     }
 }

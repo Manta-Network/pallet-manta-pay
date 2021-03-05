@@ -16,13 +16,13 @@ cargo run --bin pre_comp --release
 ```
 cargo install grcov
 ```
-* build and run test
+* build and run test (extremely slow)
 ``` sh
 export CARGO_INCREMENTAL=0
 export RUSTFLAGS="-Zprofile -Ccodegen-units=1 -Copt-level=0 -Clink-dead-code -Coverflow-checks=off -Zpanic_abort_tests -Cpanic=abort"
 export RUSTDOCFLAGS="-Cpanic=abort"
-cargo +nightly build
-cargo +nightly test 
+cargo +nightly-2021-01-29 test
+cargo +nightly-2021-01-29 test
 ```
 * generate the report 
 ``` sh
@@ -44,3 +44,40 @@ cargo bench
 * benchmark enviroment
 
 MBP 13inch 2021,  CPU:  2.3 GHz Quad-Core Intel Core i7, Memory 32 GB 3733 MHz LPDDR4X.
+
+  * with `criterion` (take some time)
+``` sh
+deserialization/hash param                                                                            
+                        time:   [158.20 us 159.12 us 160.04 us]
+
+deserialization/commit param                                                                            
+                        time:   [190.14 us 191.75 us 193.34 us]
+
+perdersen/hash param gen                                                                             
+                        time:   [12.136 ms 12.203 ms 12.265 ms]
+
+perdersen/commit open   time:   [123.44 us 124.26 us 125.22 us]                                  
+
+merkle_tree/with 1 leaf time:   [2.0814 ms 2.0970 ms 2.1136 ms]                                     
+                        
+merkle_tree/with 2 leaf time:   [2.3252 ms 2.3369 ms 2.3489 ms]                                     
+
+merkle_tree/with 3 leaf time:   [2.7905 ms 2.8060 ms 2.8233 ms]   
+
+transfer/ZKP verification                                                                             
+                        time:   [14.915 ms 14.999 ms 15.088 ms]                       
+```
+  * with `frame-benchmarking`: within `manta-node` repo, run 
+```
+cargo +nightly build --release -p manta-node -Z package-features --package manta-runtime --features runtime-benchmarks
+target/release/manta-node benchmark --pallet pallet_manta_dap --extrinsic init --repeat 100 --execution=wasm
+target/release/manta-node benchmark --pallet pallet_manta_dap --extrinsic transfer --repeat 100 --execution=wasm
+target/release/manta-node benchmark --pallet pallet_manta_dap --extrinsic mint --repeat 100 --execution=wasm
+target/release/manta-node benchmark --pallet pallet_manta_dap --extrinsic manta_transfer --repeat 100 --execution=wasm
+target/release/manta-node benchmark --pallet pallet_manta_dap --extrinsic forfeit --repeat 100 --execution=wasm
+```
+
+| Function      | init |  trasfer | mint | manta_transfer | forfeit |
+| ----------- |:-----------:|:-----------:|:-----------:|:-----------:|:-----------:|
+| Rust       |    1.2 ms    |  30 \mu s | 3.5 ms | 18.1 ms | 16.1 ms |
+| Wasm |    244 ms    |  178 \mu s | 1018 ms | 6079 ms | 5387 ms |
