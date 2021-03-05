@@ -10,7 +10,6 @@ use sp_std::{boxed::Box, vec};
 const SEED: u32 = 0;
 
 benchmarks! {
-	_ { }
 
 	init {
 		let caller: T::AccountId = whitelisted_caller();
