@@ -1,3 +1,4 @@
+use crate as pallet_manta_dap;
 use super::*;
 use crate::{dh::*, forfeit::*, manta_token::*, param::*, serdes::*, transfer::*};
 use ark_bls12_381::Bls12_381;
@@ -8,35 +9,43 @@ use ark_groth16::{create_random_proof, generate_random_parameters, verify_proof}
 use ark_relations::r1cs::{ConstraintSynthesizer, ConstraintSystem};
 use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
 use data_encoding::BASE64;
-use frame_support::{assert_noop, assert_ok, impl_outer_origin, parameter_types, weights::Weight};
+use frame_support::{assert_noop, assert_ok, parameter_types};
 use rand::{RngCore, SeedableRng};
 use rand_chacha::ChaCha20Rng;
 use sp_core::H256;
 use sp_runtime::{
 	testing::Header,
 	traits::{BlakeTwo256, IdentityLookup},
-	Perbill,
 };
 use std::{fs::File, io::prelude::*};
 use x25519_dalek::{PublicKey, StaticSecret};
 
-impl_outer_origin! {
-	pub enum Origin for Test where system = frame_system {}
+type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Test>;
+type Block = frame_system::mocking::MockBlock<Test>;
+
+// Configure a mock runtime to test the pallet.
+frame_support::construct_runtime!(
+	pub enum Test where
+		Block = Block,
+		NodeBlock = Block,
+		UncheckedExtrinsic = UncheckedExtrinsic,
+	{
+		System: frame_system::{Module, Call, Config, Storage, Event<T>},
+		MantaModule: pallet_manta_dap::{Module, Call, Storage, Event<T>},
+	}
+);
+type BlockNumber = u64;
+
+parameter_types! {
+	pub const BlockHashCount: BlockNumber = 250;
+	pub const SS58Prefix: u8 = 42;
 }
 
-#[derive(Clone, Eq, PartialEq)]
-pub struct Test;
-parameter_types! {
-	pub const BlockHashCount: u64 = 250;
-	pub const MaximumBlockWeight: Weight = 1024;
-	pub const MaximumBlockLength: u32 = 2 * 1024;
-	pub const AvailableBlockRatio: Perbill = Perbill::one();
-}
-impl frame_system::Trait for Test {
+impl frame_system::Config for Test {
 	type BaseCallFilter = ();
 	type Origin = Origin;
 	type Index = u64;
-	type Call = ();
+	type Call = Call;
 	type BlockNumber = u64;
 	type Hash = H256;
 	type Hashing = BlakeTwo256;
@@ -45,21 +54,19 @@ impl frame_system::Trait for Test {
 	type Header = Header;
 	type Event = ();
 	type BlockHashCount = BlockHashCount;
-	type MaximumBlockWeight = MaximumBlockWeight;
 	type DbWeight = ();
-	type BlockExecutionWeight = ();
-	type ExtrinsicBaseWeight = ();
-	type MaximumExtrinsicWeight = MaximumBlockWeight;
-	type AvailableBlockRatio = AvailableBlockRatio;
-	type MaximumBlockLength = MaximumBlockLength;
 	type Version = ();
-	type PalletInfo = ();
 	type AccountData = ();
 	type OnNewAccount = ();
 	type OnKilledAccount = ();
 	type SystemWeightInfo = ();
+	type PalletInfo = PalletInfo;
+	type BlockWeights = ();
+	type BlockLength = ();
+	type SS58Prefix = SS58Prefix;
 }
-impl Trait for Test {
+
+impl Config for Test {
 	type Event = ();
 }
 type Assets = Module<Test>;
