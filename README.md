@@ -1,9 +1,13 @@
 # pallet-manta-dap
 
 This is a pallet that enables decentialized anynonymous payment (DAP) protocol.
-This code is a proof-of-concept; is not properly reviewed or audited and it likely to have 
+The best way to use this repo is to invoke it with a `manta-runtime`,
+available from either [manta-node](https://github.com/Manta-Network/manta-node) or [cumulus](https://github.com/Manta-Network/cumulus).
+
+__Disclaimer__: This code is a proof-of-concept; is not properly reviewed or audited and is likely to have 
 severe bugs or security pitfalls.
 Use at your own risk!
+
 
 ## Pre-computed tokens
 
@@ -22,7 +26,6 @@ export CARGO_INCREMENTAL=0
 export RUSTFLAGS="-Zprofile -Ccodegen-units=1 -Copt-level=0 -Clink-dead-code -Coverflow-checks=off -Zpanic_abort_tests -Cpanic=abort"
 export RUSTDOCFLAGS="-Cpanic=abort"
 cargo +nightly-2021-01-29 test
-cargo +nightly-2021-01-29 test
 ```
 * generate the report 
 ``` sh
@@ -30,8 +33,7 @@ grcov . -s . --binary-path ./target/debug/ -t html --branch --ignore-not-existin
 open target/debug/coverage/index.html
 ```
 
-* The report is also available within `coverage` folder. Our coverage is way above the status shown here.
-The `grcov` tool mis-labled many lines of the code as not-covered.
+* The report is also available within `coverage` folder. 
 
 ![Result](https://github.com/Manta-Network/pallet-manta-dap/blob/master/coverage/coverage.png)
 
