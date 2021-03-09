@@ -154,7 +154,7 @@ benchmarks! {
 		// hardcoded proof
 		let mut proof_bytes = [0u8; 192];
 		let proof_vec = BASE64
-			.decode(b"zU+xNmmLjmJAFy/sbxGR5fwik4nSddSjrn0YdygYlLSTvXHk8jVsjS4Sp4/0cuCHl+h9i9Scj5ok8q8R55QL2xuBZS7L0++N8BVL1HqzO0yFhrKiuScIg0cKWZYg76oBSK0xAbsMvmEoh+DQCsWG5Hfcey8BSXiaEck1LJFzpvRSqqsKChLC8cDN3fLH8fMJHh5tnAXDmMoOrKH2r7v7c0IJh0JjlWgazCEt9xb/89467vUfNAJ8jzIRl9zqsuqH")
+			.decode(b"Dhs0fgdEpE1SfBGIn5HpD22YvzPZKsLKMBPwT9QRe/BcuqnQuyr0oUHb7lNS/WoIPD/H348KI+e6eMcNa2nYLN5AqH/ZmXz7p2nrwUsHJVOYnFDuH2zEAcZi0hTPTN0HEiiXtYEBmUSt52xDehRSw/yCXY6AFvlQzXvMWdXq2SF2zRh93Rs9pQyO/3e7QLyMffIMeeAbx580PsJJELPrSB9x+a99l/4z8NW0YlBUwzt90uFL1bnEcp+B1gxXjpAD")
 			.unwrap();
 		proof_bytes.copy_from_slice(proof_vec[0..192].as_ref());
 
@@ -320,7 +320,7 @@ benchmarks! {
 		// hardcoded proof
 		let mut proof_bytes = [0u8; 192];
 		let proof_vec = BASE64
-			.decode(b"yT4284c8SiAC1i85GIgmOJa20KjLGWGTrdsvLOo6bbPgtPO8qDpK8y6OtiOa1qqSxm+tp1CAjxdyrTQ6QkZqUQfJs51cvrp9vYYscY2LqqRcuYL1T7LRq/IcofgJZf8YyRH3HWnz5Vj/bXmFAVlLgs/fbWYgzoFHbOlZpva+RMgCMuJ/2ltRAfpKDI7meMgBwEMSz93OPGv+txf0yhVqydpSVrFdB/zwd09mWW/7OuCYRzXcvmBuL3HGzbsGiLkG")
+			.decode(b"nqY+V9/nzzF3A72jXj4Cm1Vn2mfWMbcBWqxppSO/gZ80XkIZRE9ljE4nTP0SBBYP+Ofkq14ZCiu/cLgJpuR33cMcxnNxB65A6CDFw3ZrTkTm2kjfTuH7Co2dsuQHXNYP2+f2H7yf613LjQbpQvJLMGFa781KYNyvvU1ApT4Gzwh3guO3KPij0l8jFGCDq4wTUavvaJlLGOMoTdKXCkR24Iik9+DpBDvvLHJUSrgROPSBCg61PJhQTkYqSIAtT4YG")
 			.unwrap();
 		proof_bytes.copy_from_slice(proof_vec[0..192].as_ref());
 
