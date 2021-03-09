@@ -22,28 +22,6 @@
         "sn": "0x8ea87300f6a7001aae4f40a9302d9a16ddb37bcf94a8c51c506e8f6419aa16a1"
     },
     "coin_2": {
-        "cm": "3Oye4AqhzdysdWdCzMcoImTnYNGd21OmF8ztph4dRqI=",
-        "value": 100,
-        "pk": "1RjrtNh0HEFYoswGFwhCcNbv8oalJ6z3QYKbAmGTDjk=",
-        "rho": "EMlWyi/zMxuByhDxmpn1C7AAWxJjKIIpHSnRMqQWNk0=",
-        "s": "/KTVGbHHU8UVHLS6h54470DtjwF6MHvBkG2bKxpyBQc=",
-        "r": "SEEugW5YAvyxQ+z5fry09M2jGqw8QvuyDuo+3278VQs=",
-        "k": "CutG9BBbkJMpBkbYTVX37HWunGcxHyy8+Eb1xRT9eVM=",
-        "sk": "AQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQE=",
-        "sn": "EdHWc+HAgRWlcJrK8dlVnewSCTwEDPZFa8iYKxoRdOY="
-    },
-    "coin_2_raw": {
-        "cm": "0xdcec9ee00aa1cddcac756742ccc7282264e760d19ddb53a617cceda61e1d46a2",
-        "value": 100,
-        "pk": "0xd518ebb4d8741c4158a2cc0617084270d6eff286a527acf741829b0261930e39",
-        "rho": "0x10c956ca2ff3331b81ca10f19a99f50bb0005b12632882291d29d132a416364d",
-        "s": "0xfca4d519b1c753c5151cb4ba879e38ef40ed8f017a307bc1906d9b2b1a720507",
-        "r": "0x48412e816e5802fcb143ecf97ebcb4f4cda31aac3c42fbb20eea3edf6efc550b",
-        "k": "0x0aeb46f4105b9093290646d84d55f7ec75ae9c67311f2cbcf846f5c514fd7953",
-        "sk": "0x0101010101010101010101010101010101010101010101010101010101010101",
-        "sn": "0x11d1d673e1c08115a5709acaf1d9559dec12093c040cf6456bc8982b1a1174e6"
-    },
-    "coin_3": {
         "cm": "1zuOv92V7e1qX1bP7+QNsV+gW5E3xUsghte/lZ7h5pg=",
         "value": 10,
         "pk": "TkdKMB3vtMwFSe7LxnILv6AMHCbpAtg7ud8pJrU4m0w=",
@@ -54,7 +32,7 @@
         "sk": "AgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgI=",
         "sn": "bwgOTJ8nNJ8phco73Zm6A8jV0ua6qsw9MtXtwyxV7cQ="
     },
-    "coin_3_raw": {
+    "coin_2_raw": {
         "cm": "0xd73b8ebfdd95eded6a5f56cfefe40db15fa05b9137c54b2086d7bf959ee1e698",
         "value": 10,
         "pk": "0x4e474a301defb4cc0549eecbc6720bbfa00c1c26e902d83bb9df2926b5389b4c",
@@ -66,7 +44,7 @@
         "sn": "0x6f080e4c9f27349f2985ca3bdd99ba03c8d5d2e6baaacc3d32d5edc32c55edc4"
     },
     "transfer": {
-        "_comment": "transfer from coin 1 to coin 3",
+        "_comment": "transfer from coin 1 to coin 2",
         "merkle_roots": "q5VhDl/WxjeemZ/2ivGmiuOTFMEazcqEFk5ESISngso=",
         "sn_old": "jqhzAPanABquT0CpMC2aFt2ze8+UqMUcUG6PZBmqFqE=",
         "k_old": "+tMTpSikpdACxuDGZTl5pxwT7tpYcX/DFKJRZ1oLfqc=",
@@ -103,5 +81,27 @@
         "k_old": "d876d619008b39fc6e0388ce8837ed05149b8e302cfdad2f8ebabf1f8a7a4012",
         "value": 100,
         "proof encoded": "efe3d8dd9e6f2f7de14d8ef0dc71cbb2f0828880b0b6f43a87a276bedff2e59b5ec894a3d0b59b9301da2a503eebf49490a531132568c7a6f05ec6a41513eb7ee4df466c36140a1564253348a32a90aa05723f56c2c9009f262f9eed437bb011b9c348f0516f18e85c7a368fc9652eed5007fb2da2273e22aca53ebe7c17a9ce502a83e603c9baecaca8af88bedcf48bfed993b956e52edf1b9878c56d786f89cc5d01b9ca5f7dd6dfa51c83b9d83a7b38c82d61f882cee25970529e2d391e98"
+    },
+    "coin_3": {
+        "cm": "3Oye4AqhzdysdWdCzMcoImTnYNGd21OmF8ztph4dRqI=",
+        "value": 100,
+        "pk": "1RjrtNh0HEFYoswGFwhCcNbv8oalJ6z3QYKbAmGTDjk=",
+        "rho": "EMlWyi/zMxuByhDxmpn1C7AAWxJjKIIpHSnRMqQWNk0=",
+        "s": "/KTVGbHHU8UVHLS6h54470DtjwF6MHvBkG2bKxpyBQc=",
+        "r": "SEEugW5YAvyxQ+z5fry09M2jGqw8QvuyDuo+3278VQs=",
+        "k": "CutG9BBbkJMpBkbYTVX37HWunGcxHyy8+Eb1xRT9eVM=",
+        "sk": "AQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQE=",
+        "sn": "EdHWc+HAgRWlcJrK8dlVnewSCTwEDPZFa8iYKxoRdOY="
+    },
+    "coin_3_raw": {
+        "cm": "0xdcec9ee00aa1cddcac756742ccc7282264e760d19ddb53a617cceda61e1d46a2",
+        "value": 100,
+        "pk": "0xd518ebb4d8741c4158a2cc0617084270d6eff286a527acf741829b0261930e39",
+        "rho": "0x10c956ca2ff3331b81ca10f19a99f50bb0005b12632882291d29d132a416364d",
+        "s": "0xfca4d519b1c753c5151cb4ba879e38ef40ed8f017a307bc1906d9b2b1a720507",
+        "r": "0x48412e816e5802fcb143ecf97ebcb4f4cda31aac3c42fbb20eea3edf6efc550b",
+        "k": "0x0aeb46f4105b9093290646d84d55f7ec75ae9c67311f2cbcf846f5c514fd7953",
+        "sk": "0x0101010101010101010101010101010101010101010101010101010101010101",
+        "sn": "0x11d1d673e1c08115a5709acaf1d9559dec12093c040cf6456bc8982b1a1174e6"
     }
 }
