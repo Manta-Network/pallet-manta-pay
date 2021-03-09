@@ -86,21 +86,22 @@
         "k_new": "0xd876d619008b39fc6e0388ce8837ed05149b8e302cfdad2f8ebabf1f8a7a4012",
         "cm_new": "0xd73b8ebfdd95eded6a5f56cfefe40db15fa05b9137c54b2086d7bf959ee1e698",
         "value": 10,
+        "cipher": "0x02020202020202020202020202020202",
         "proof encoded": "0x0e1b347e0744a44d527c11889f91e90f6d98bf33d92ac2ca3013f04fd4117bf05cbaa9d0bb2af4a141dbee5352fd6a083c3fc7df8f0a23e7ba78c70d6b69d82cde40a87fd9997cfba769ebc14b072553989c50ee1f6cc401c662d214cf4cdd07122897b581019944ade76c437a1452c3fc825d8e8016f950cd7bcc59d5ead92176cd187ddd1b3da50c8eff77bb40bc8c7df20c79e01bc79f343ec24910b3eb481f71f9af7d97fe33f0d5b4625054c33b7dd2e14bd5b9c4729f81d60c578e9003"
     },
     "forfeit": {
-        "_comment": "forfeit coin 2",
-        "merkle_roots": "QDWIJvSmMmIS1incXpqZA+oZKOuvP42PNVyLKWC0gGQ=",
-        "sn_old": "EdHWc+HAgRWlcJrK8dlVnewSCTwEDPZFa8iYKxoRdOY=",
-        "k_old": "CutG9BBbkJMpBkbYTVX37HWunGcxHyy8+Eb1xRT9eVM=",
-        "value": 100,
-        "proof encoded": "nqY+V9/nzzF3A72jXj4Cm1Vn2mfWMbcBWqxppSO/gZ80XkIZRE9ljE4nTP0SBBYP+Ofkq14ZCiu/cLgJpuR33cMcxnNxB65A6CDFw3ZrTkTm2kjfTuH7Co2dsuQHXNYP2+f2H7yf613LjQbpQvJLMGFa781KYNyvvU1ApT4Gzwh3guO3KPij0l8jFGCDq4wTUavvaJlLGOMoTdKXCkR24Iik9+DpBDvvLHJUSrgROPSBCg61PJhQTkYqSIAtT4YG"    
+        "_comment": "chain state [coin1, coin3], forfeit coin3",
+        "merkle_roots": "HMaIZu0QCE4s5fYiOpU3ouQE0m7PT4rBNsmMskIi50c=",
+        "sn_old": "bwgOTJ8nNJ8phco73Zm6A8jV0ua6qsw9MtXtwyxV7cQ=",
+        "k_old": "2HbWGQCLOfxuA4jOiDftBRSbjjAs/a0vjrq/H4p6QBI=",
+        "value": 10,
+        "proof encoded": "7+PY3Z5vL33hTY7w3HHLsvCCiICwtvQ6h6J2vt/y5ZteyJSj0LWbkwHaKlA+6/SUkKUxEyVox6bwXsakFRPrfuTfRmw2FAoVZCUzSKMqkKoFcj9WwskAnyYvnu1De7ARucNI8FFvGOhcejaPyWUu7VAH+y2iJz4irKU+vnwXqc5QKoPmA8m67Kyor4i+3PSL/tmTuVblLt8bmHjFbXhvicxdAbnKX33W36Ucg7nYOns4yC1h+ILO4llwUp4tOR6Y"    
     },
     "forfeit_raw": {
-        "merkle_roots": "0x40358826f4a6326212d629dc5e9a9903ea1928ebaf3f8d8f355c8b2960b48064",
-        "sn_old": "0x11d1d673e1c08115a5709acaf1d9559dec12093c040cf6456bc8982b1a1174e6",
-        "k_old": "0x0aeb46f4105b9093290646d84d55f7ec75ae9c67311f2cbcf846f5c514fd7953",
+        "merkle_roots": "1cc68866ed10084e2ce5f6223a9537a2e404d26ecf4f8ac136c98cb24222e747",
+        "sn_old": "6f080e4c9f27349f2985ca3bdd99ba03c8d5d2e6baaacc3d32d5edc32c55edc4",
+        "k_old": "d876d619008b39fc6e0388ce8837ed05149b8e302cfdad2f8ebabf1f8a7a4012",
         "value": 100,
-        "proof encoded": "0x9ea63e57dfe7cf317703bda35e3e029b5567da67d631b7015aac69a523bf819f345e4219444f658c4e274cfd1204160ff8e7e4ab5e190a2bbf70b809a6e477ddc31cc6737107ae40e820c5c3766b4e44e6da48df4ee1fb0a8d9db2e4075cd60fdbe7f61fbc9feb5dcb8d06e942f24b30615aefcd4a60dcafbd4d40a53e06cf087782e3b728f8a3d25f23146083ab8c1351abef68994b18e3284dd2970a4476e088a4f7e0e9043bef2c72544ab81138f4810a0eb53c98504e462a48802d4f8606"
+        "proof encoded": "efe3d8dd9e6f2f7de14d8ef0dc71cbb2f0828880b0b6f43a87a276bedff2e59b5ec894a3d0b59b9301da2a503eebf49490a531132568c7a6f05ec6a41513eb7ee4df466c36140a1564253348a32a90aa05723f56c2c9009f262f9eed437bb011b9c348f0516f18e85c7a368fc9652eed5007fb2da2273e22aca53ebe7c17a9ce502a83e603c9baecaca8af88bedcf48bfed993b956e52edf1b9878c56d786f89cc5d01b9ca5f7dd6dfa51c83b9d83a7b38c82d61f882cee25970529e2d391e98"
     }
 }

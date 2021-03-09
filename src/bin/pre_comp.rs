@@ -148,6 +148,7 @@ fn main() {
 	println!("\"k_old\": \"{}\",", BASE64.encode(&pub_info1.k));
 	println!("\"k_new\": \"{}\",", BASE64.encode(&pub_info3.k));
 	println!("\"cm_new\": \"{}\",", BASE64.encode(&coin3.cm_bytes));
+	println!("\"enc_amount\": \"{}\",", BASE64.encode(&cipher));
 	println!("\"value\": 10,");
 	println!("\"proof encoded\": \"{}\",", BASE64.encode(&proof_bytes));
 
@@ -176,11 +177,11 @@ fn main() {
 	let circuit2 = ForfeitCircuit {
 		commit_param,
 		hash_param: hash_param.clone(),
-		sender_coin: coin2.clone(),
-		sender_pub_info: pub_info2.clone(),
-		sender_priv_info: priv_info2.clone(),
-		value: 100,
-		list: vec![coin1.cm_bytes, coin2.cm_bytes],
+		sender_coin: coin3.clone(),
+		sender_pub_info: pub_info3.clone(),
+		sender_priv_info: priv_info3.clone(),
+		value: 10,
+		list: vec![coin1.cm_bytes, coin3.cm_bytes],
 	};
 
 	let sanity_cs = ConstraintSystem::<Fq>::new_ref();
@@ -199,17 +200,17 @@ fn main() {
 		proof_bytes
 	);
 
-	let tree = LedgerMerkleTree::new(hash_param, &[coin1.cm_bytes, coin2.cm_bytes]).unwrap();
+	let tree = LedgerMerkleTree::new(hash_param, &[coin1.cm_bytes, coin3.cm_bytes]).unwrap();
 	let merkle_root = tree.root();
 	let mut merkle_root_bytes = [0u8; 32];
 	merkle_root.serialize(merkle_root_bytes.as_mut()).unwrap();
 
 	assert!(manta_verify_forfeit_zkp(
 		vk_buf,
-		100,
+		10,
 		proof_bytes,
-		priv_info2.sn,
-		pub_info2.k,
+		priv_info3.sn,
+		pub_info3.k,
 		merkle_root_bytes
 	));
 
@@ -217,16 +218,16 @@ fn main() {
 		"\"merkle_roots\": \"{}\",",
 		BASE64.encode(&merkle_root_bytes)
 	);
-	println!("\"sn_old\": \"{}\",", BASE64.encode(&priv_info2.sn));
-	println!("\"k_old\": \"{}\",", BASE64.encode(&pub_info2.k));
-	println!("\"value\": 100,");
+	println!("\"sn_old\": \"{}\",", BASE64.encode(&priv_info3.sn));
+	println!("\"k_old\": \"{}\",", BASE64.encode(&pub_info3.k));
+	println!("\"value\": 10,");
 	println!("\"proof encoded\": \"{}\",", BASE64.encode(&proof_bytes));
 
 	println!("===========");
 	println!("\"merkle_roots\": \"{:02x?}\",", merkle_root_bytes);
-	println!("\"sn_old\": \"{:02x?}\",", priv_info2.sn);
-	println!("\"k_old\": \"{:02x?}\",", pub_info2.k);
-	println!("\"value\": 100,");
+	println!("\"sn_old\": \"{:02x?}\",", priv_info3.sn);
+	println!("\"k_old\": \"{:02x?}\",", pub_info3.k);
+	println!("\"value\": 10,");
 	println!("\"proof encoded\": \"{:02x?}\",", proof_bytes);
 	println!("===========");
 }
