@@ -1,5 +1,5 @@
-use crate as pallet_manta_dap;
 use super::*;
+use crate as pallet_manta_dap;
 use crate::{dh::*, forfeit::*, manta_token::*, param::*, serdes::*, transfer::*};
 use ark_bls12_381::Bls12_381;
 use ark_crypto_primitives::{CommitmentScheme, FixedLengthCRH};

@@ -6,7 +6,6 @@ use super::*;
 use data_encoding::BASE64;
 use frame_benchmarking::{account, benchmarks, whitelisted_caller};
 use frame_system::RawOrigin;
-use sp_std::{boxed::Box, vec};
 const SEED: u32 = 0;
 
 benchmarks! {

@@ -57,7 +57,8 @@ blake2 = { version = "0.9.1", default-features = false }
 
 data-encoding = { version = "2.3.2", default-features = false, features = [ "alloc" ] }
 
-
+[build-dependencies]
+substrate-wasm-builder = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "rococo-v1" }
 
 [dev-dependencies]
 
@@ -73,7 +74,10 @@ harness = false
 
 [features]
 default = ["std"]
-runtime-benchmarks = ["frame-benchmarking"]
+runtime-benchmarks = [
+	"frame-benchmarking",
+	"frame-system/runtime-benchmarks"
+	]
 std = [
 	"serde",
 	"codec/std",
