@@ -38,36 +38,29 @@ open target/debug/coverage/index.html
 ![Result](https://github.com/Manta-Network/pallet-manta-dap/blob/master/coverage/coverage.png)
 
 ## Benchmark
+* benchmark enviroment
+
+AMD Ryzen 9 5900X 12-Core Processor; Ubuntu 20.04; rustc 1.50.0 (cb75ad5db 2021-02-10)
+
+  * with `criterion` (take some time)
 
 ``` sh
 cargo bench
 ```
-
-* benchmark enviroment
-
-MBP 13inch 2021,  CPU:  2.3 GHz Quad-Core Intel Core i7, Memory 32 GB 3733 MHz LPDDR4X.
-
-  * with `criterion` (take some time)
+sample output
 ``` sh
-deserialization/hash param                                                                            
-                        time:   [158.20 us 159.12 us 160.04 us]
-
-deserialization/commit param                                                                            
-                        time:   [190.14 us 191.75 us 193.34 us]
-
-perdersen/hash param gen                                                                             
-                        time:   [12.136 ms 12.203 ms 12.265 ms]
-
-perdersen/commit open   time:   [123.44 us 124.26 us 125.22 us]                                  
-
-merkle_tree/with 1 leaf time:   [2.0814 ms 2.0970 ms 2.1136 ms]                                     
-                        
-merkle_tree/with 2 leaf time:   [2.3252 ms 2.3369 ms 2.3489 ms]                                     
-
-merkle_tree/with 3 leaf time:   [2.7905 ms 2.8060 ms 2.8233 ms]   
-
-transfer/ZKP verification                                                                             
-                        time:   [14.915 ms 14.999 ms 15.088 ms]                       
+deserialization/hash param                        
+                        time:   [113.15 us 113.18 us 113.23 us]
+deserialization/commit param                        
+                        time:   [132.49 us 132.51 us 132.53 us]
+perdersen/hash param gen                        
+                        time:   [7.0316 ms 7.0321 ms 7.0326 ms]
+perdersen/commit open   time:   [59.471 us 59.490 us 59.511 us]
+merkle_tree/with 1 leaf time:   [1.1660 ms 1.1664 ms 1.1669 ms]
+merkle_tree/with 2 leaf time:   [1.3025 ms 1.3030 ms 1.3035 ms]
+merkle_tree/with 3 leaf time:   [1.5725 ms 1.5730 ms 1.5735 ms]
+transfer/ZKP verification                        
+                        time:   [8.8006 ms 8.8016 ms 8.8028 ms]                   
 ```
   * with `frame-benchmarking`: within `manta-node` repo, run 
 ```
