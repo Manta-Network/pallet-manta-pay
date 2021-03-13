@@ -71,7 +71,7 @@ target/release/manta-node benchmark --pallet pallet_manta_dap --extrinsic mint -
 target/release/manta-node benchmark --pallet pallet_manta_dap --extrinsic manta_transfer --repeat 100 --execution=wasm --wasm-execution compiled
 target/release/manta-node benchmark --pallet pallet_manta_dap --extrinsic forfeit --repeat 100 --execution=wasm --wasm-execution compiled
 ```
-
+sample output
 | Function      | init |  trasfer | mint | manta_transfer | forfeit |
 | ----------- |:-----------:|:-----------:|:-----------:|:-----------:|:-----------:|
 | Rust       |    640 us   |  13 us | 1.9 ms | 10.1 ms | 8.8 ms |
