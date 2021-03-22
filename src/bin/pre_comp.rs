@@ -91,7 +91,8 @@ fn main() {
 	// ===========================
 	// testing transfer circuit
 	// ===========================
-	let transfer_pk = Groth16PK::deserialize_uncompressed(transfer_pk_bytes.as_ref()).unwrap();
+	let tmp: &[u8] = transfer_pk_bytes.as_ref();
+	let transfer_pk = Groth16PK::deserialize_uncompressed(tmp).unwrap();
 	let transfer_vk = transfer_pk.vk.clone();
 	let mut vk_buf: Vec<u8> = vec![];
 	transfer_vk.serialize(&mut vk_buf).unwrap();
@@ -166,8 +167,8 @@ fn main() {
 	// ===========================
 	// testing forfeit circuit
 	// ===========================
-
-	let forfeit_pk = Groth16PK::deserialize_uncompressed(forfeit_pk_bytes.as_ref()).unwrap();
+	let tmp: &[u8] = forfeit_pk_bytes.as_ref();
+	let forfeit_pk = Groth16PK::deserialize_uncompressed(tmp).unwrap();
 	let forfeit_vk = forfeit_pk.vk.clone();
 	let mut vk_buf: Vec<u8> = vec![];
 	forfeit_vk.serialize(&mut vk_buf).unwrap();
