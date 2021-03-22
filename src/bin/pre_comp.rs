@@ -7,7 +7,7 @@ use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
 use data_encoding::BASE64;
 use frame_support::traits::Vec;
 use pallet_manta_dap::{
-	dh::*, reclaim::*, manta_token::*, param::*, priv_coin::*, serdes::*, transfer::*,
+	dh::*, manta_token::*, param::*, priv_coin::*, reclaim::*, serdes::*, transfer::*,
 };
 use rand::{RngCore, SeedableRng};
 use rand_chacha::ChaCha20Rng;
@@ -57,7 +57,7 @@ fn main() {
 	file.write_all(transfer_pk_bytes.as_mut()).unwrap();
 	println!("{}", transfer_pk_bytes.len());
 
-	let mut reclaim_pk_bytes = manta_forfeit_zkp_key_gen(&hash_param_seed, &commit_param_seed);
+	let mut reclaim_pk_bytes = manta_reclaim_zkp_key_gen(&hash_param_seed, &commit_param_seed);
 	let mut file = File::create("reclaim_pk.bin").unwrap();
 	file.write_all(reclaim_pk_bytes.as_mut()).unwrap();
 	println!("{}", reclaim_pk_bytes.len());
@@ -164,7 +164,7 @@ fn main() {
 	println!("===========");
 
 	// ===========================
-	// testing forfeit circuit
+	// testing reclaim circuit
 	// ===========================
 
 	let reclaim_pk = Groth16PK::deserialize_uncompressed(reclaim_pk_bytes.as_ref()).unwrap();
@@ -327,7 +327,7 @@ fn manta_transfer_zkp_key_gen(hash_param_seed: &[u8; 32], commit_param_seed: &[u
 	transfer_pk_bytes
 }
 
-fn manta_forfeit_zkp_key_gen(hash_param_seed: &[u8; 32], commit_param_seed: &[u8; 32]) -> Vec<u8> {
+fn manta_reclaim_zkp_key_gen(hash_param_seed: &[u8; 32], commit_param_seed: &[u8; 32]) -> Vec<u8> {
 	// rebuild the parameters from the inputs
 	let mut rng = ChaCha20Rng::from_seed(*commit_param_seed);
 	let commit_param = MantaCoinCommitmentScheme::setup(&mut rng).unwrap();
@@ -359,8 +359,8 @@ fn manta_forfeit_zkp_key_gen(hash_param_seed: &[u8; 32], commit_param_seed: &[u8
 	let sender_pub_info = pub_infos[0].clone();
 	let sender_priv_info = priv_infos[0].clone();
 
-	// forfeit circuit
-	let forfeit_circuit = ReclaimCircuit {
+	// reclaim circuit
+	let reclaim_circuit = ReclaimCircuit {
 		commit_param,
 		hash_param,
 		sender_coin: sender,
@@ -371,7 +371,7 @@ fn manta_forfeit_zkp_key_gen(hash_param_seed: &[u8; 32], commit_param_seed: &[u8
 	};
 
 	let sanity_cs = ConstraintSystem::<Fq>::new_ref();
-	forfeit_circuit
+	reclaim_circuit
 		.clone()
 		.generate_constraints(sanity_cs.clone())
 		.unwrap();
@@ -379,7 +379,7 @@ fn manta_forfeit_zkp_key_gen(hash_param_seed: &[u8; 32], commit_param_seed: &[u8
 
 	// transfer pk_bytes
 	let mut rng = ChaCha20Rng::from_seed(zkp_seed);
-	let pk = generate_random_parameters::<Bls12_381, _, _>(forfeit_circuit, &mut rng).unwrap();
+	let pk = generate_random_parameters::<Bls12_381, _, _>(reclaim_circuit, &mut rng).unwrap();
 	let mut reclaim_pk_bytes: Vec<u8> = Vec::new();
 	pk.serialize_uncompressed(&mut reclaim_pk_bytes).unwrap();
 	reclaim_pk_bytes
