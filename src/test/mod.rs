@@ -411,7 +411,8 @@ fn test_transfer_should_work() {
 		let mut file = File::open("transfer_pk.bin").unwrap();
 		let mut transfer_key_bytes: Vec<u8> = vec![];
 		file.read_to_end(&mut transfer_key_bytes).unwrap();
-		let pk = Groth16PK::deserialize_uncompressed(transfer_key_bytes.as_ref()).unwrap();
+		let tmp: &[u8] = transfer_key_bytes.as_ref();
+		let pk = Groth16PK::deserialize_uncompressed(tmp).unwrap();
 
 		// generate and verify transactions
 		for i in 0usize..size {
@@ -439,7 +440,8 @@ fn test_transfer_should_work() {
 
 			let proof = create_random_proof(circuit, &pk, &mut rng).unwrap();
 			let vk_bytes = TransferZKPKey::get();
-			let vk = Groth16VK::deserialize(vk_bytes.as_ref()).unwrap();
+			let tmp: &[u8] = vk_bytes.as_ref();
+			let vk = Groth16VK::deserialize(tmp).unwrap();
 			assert_eq!(pk.vk, vk);
 
 			let mut proof_bytes = [0u8; 192];
@@ -740,7 +742,8 @@ fn test_forfeit_should_work() {
 		let mut file = File::open("forfeit_pk.bin").unwrap();
 		let mut forfeit_pk_bytes: Vec<u8> = vec![];
 		file.read_to_end(&mut forfeit_pk_bytes).unwrap();
-		let pk = Groth16PK::deserialize_uncompressed(forfeit_pk_bytes.as_ref()).unwrap();
+		let tmp: &[u8] = forfeit_pk_bytes.as_ref();
+		let pk = Groth16PK::deserialize_uncompressed(tmp).unwrap();
 
 		// generate and verify transactions
 		let coin_list = CoinList::get();
@@ -769,7 +772,8 @@ fn test_forfeit_should_work() {
 
 			let proof = create_random_proof(circuit, &pk, &mut rng).unwrap();
 			let vk_bytes = ForfeitZKPKey::get();
-			let vk = Groth16VK::deserialize(vk_bytes.as_ref()).unwrap();
+			let tmp: &[u8] = vk_bytes.as_ref();
+			let vk = Groth16VK::deserialize(tmp).unwrap();
 			assert_eq!(pk.vk, vk);
 
 			let mut proof_bytes = [0u8; 192];
@@ -1017,7 +1021,8 @@ fn test_param_serdes() {
 	let mut buf: Vec<u8> = vec![];
 
 	hash_param_serialize(&hash_param, &mut buf);
-	let hash_param2: HashParam = hash_param_deserialize(buf.as_ref());
+	let tmp: &[u8] = buf.as_ref();
+	let hash_param2: HashParam = hash_param_deserialize(tmp);
 	assert_eq!(hash_param.generators, hash_param2.generators);
 
 	let commit_param_seed = [2u8; 32];
@@ -1026,7 +1031,8 @@ fn test_param_serdes() {
 	let mut buf: Vec<u8> = vec![];
 
 	commit_param_serialize(&commit_param, &mut buf);
-	let commit_param2 = commit_param_deserialize(buf.as_ref());
+	let tmp: &[u8] = buf.as_ref();
+	let commit_param2 = commit_param_deserialize(tmp);
 	assert_eq!(commit_param.generators, commit_param2.generators);
 	assert_eq!(
 		commit_param.randomness_generator,

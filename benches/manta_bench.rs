@@ -63,8 +63,8 @@ fn bench_trasnfer_verify(c: &mut Criterion) {
 	let mut file = File::open("transfer_pk.bin").unwrap();
 	let mut transfer_key_bytes: Vec<u8> = vec![];
 	file.read_to_end(&mut transfer_key_bytes).unwrap();
-
-	let pk = Groth16PK::deserialize_uncompressed(transfer_key_bytes.as_ref()).unwrap();
+	let tmp: &[u8] = transfer_key_bytes.as_ref();
+	let pk = Groth16PK::deserialize_uncompressed(tmp).unwrap();
 
 	println!("proving key loaded from disk");
 
