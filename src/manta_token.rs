@@ -88,6 +88,6 @@ pub fn make_coin<R: RngCore + CryptoRng>(
 		r: r_bytes,
 		k: k_bytes,
 	};
-	let priv_info = MantaCoinPrivInfo { sk, sn, value };
+	let priv_info = MantaCoinPrivInfo { value, sk, sn };
 	(coin, pub_info, priv_info)
 }

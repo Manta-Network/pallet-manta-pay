@@ -79,8 +79,8 @@ pub fn commit_param_deserialize<R: Read>(mut reader: R) -> MantaCoinCommitmentPa
 	}
 
 	MantaCoinCommitmentParam {
-		generators,
 		randomness_generator,
+		generators,
 	}
 }
 
