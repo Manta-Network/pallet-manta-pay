@@ -160,6 +160,7 @@ dependencies = [
  "ark-std",
  "derivative",
  "num-traits",
+ "rayon",
  "rustc_version 0.3.3",
  "zeroize",
 ]
@@ -293,6 +294,7 @@ source = "git+https://github.com/arkworks-rs/utils#eea15d112cc8e64a38f3b8615bbf7
 dependencies = [
  "rand 0.7.3",
  "rand_xorshift",
+ "rayon",
 ]
 
 [[package]]
