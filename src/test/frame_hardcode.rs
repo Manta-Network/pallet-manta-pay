@@ -207,7 +207,7 @@ fn test_transfer_hardcode_should_work() {
         assert_eq!(sn_list.len(), 0);
 
         // hardcoded receiver
-        // those are parameters for coin_3 in coin.json
+        // those are parameters for coin_2 in coin.json
         let  mut new_k_bytes = [0u8;32];
         let new_k_vec = BASE64
             .decode(b"2HbWGQCLOfxuA4jOiDftBRSbjjAs/a0vjrq/H4p6QBI=")
@@ -226,7 +226,7 @@ fn test_transfer_hardcode_should_work() {
         // hardcoded proof
         let mut proof_bytes = [0u8; 192];
         let proof_vec = BASE64
-            .decode(b"Dhs0fgdEpE1SfBGIn5HpD22YvzPZKsLKMBPwT9QRe/BcuqnQuyr0oUHb7lNS/WoIPD/H348KI+e6eMcNa2nYLN5AqH/ZmXz7p2nrwUsHJVOYnFDuH2zEAcZi0hTPTN0HEiiXtYEBmUSt52xDehRSw/yCXY6AFvlQzXvMWdXq2SF2zRh93Rs9pQyO/3e7QLyMffIMeeAbx580PsJJELPrSB9x+a99l/4z8NW0YlBUwzt90uFL1bnEcp+B1gxXjpAD")
+            .decode(b"Z1m5tbfiMSrViXn5OAd3Ec5K+LpKQt9X/1G+dkiGugj25bFD0d63gJgAFs1Y9ZMMxX9N8a4OrrZCKzZ29iCGrwzoD7FCaIR5ggCd9ea3QkAgs7D1So+iVRPOFcUOEloW1vNSKNXE3pmjHlX3aj1YXJx255e2y3/639ANAuIbEGCrDPMQyj6gbYW9yqItZ3IDEHwU5mA2YSbFH0MweIRPp6aiOMY4GDjk3OEXNoA1YOxFXOTmIQRijyJin4+bxBEL")
             .unwrap();
         proof_bytes.copy_from_slice(proof_vec[0..192].as_ref());
 
@@ -253,7 +253,7 @@ fn test_transfer_hardcode_should_work() {
         // hardcoded merkle root
         let mut root_bytes = [0u8; 32];
         let root_vec = BASE64
-            .decode(b"q5VhDl/WxjeemZ/2ivGmiuOTFMEazcqEFk5ESISngso=")
+            .decode(b"7Can4hg4U8lJaMiuuDMoeB9vEo91bCtj+pvG17JXBRI=")
             .unwrap();
         root_bytes.copy_from_slice(root_vec[0..32].as_ref());
 
@@ -352,25 +352,25 @@ fn test_reclaim_hardcode_should_work() {
         // those are parameters for coin_2 in coin.json
         let  mut old_k_bytes = [0u8;32];
         let old_k_vec = BASE64
-            .decode(b"CutG9BBbkJMpBkbYTVX37HWunGcxHyy8+Eb1xRT9eVM=")
+            .decode(b"2HbWGQCLOfxuA4jOiDftBRSbjjAs/a0vjrq/H4p6QBI=")
             .unwrap();
         old_k_bytes.copy_from_slice(&old_k_vec[0..32].as_ref());
 
         let mut old_s_bytes = [0u8; 32];
         let old_s_vec = BASE64
-            .decode(b"/KTVGbHHU8UVHLS6h54470DtjwF6MHvBkG2bKxpyBQc=")
+            .decode(b"LlXIi0kLQhSZ2SD0JaeckxgIiFuCaFbJh1IyI3675gw=")
             .unwrap();
         old_s_bytes.copy_from_slice(old_s_vec[0..32].as_ref());
 
         let mut old_cm_bytes = [0u8; 32];
         let old_cm_vec = BASE64
-            .decode(b"3Oye4AqhzdysdWdCzMcoImTnYNGd21OmF8ztph4dRqI=")
+            .decode(b"1zuOv92V7e1qX1bP7+QNsV+gW5E3xUsghte/lZ7h5pg=")
             .unwrap();
         old_cm_bytes.copy_from_slice(&old_cm_vec[0..32].as_ref());
 
         let mut old_sn_bytes = [0u8; 32];
         let old_sn_vec = BASE64
-            .decode(b"EdHWc+HAgRWlcJrK8dlVnewSCTwEDPZFa8iYKxoRdOY=")
+            .decode(b"bwgOTJ8nNJ8phco73Zm6A8jV0ua6qsw9MtXtwyxV7cQ=")
             .unwrap();
         old_sn_bytes.copy_from_slice(&old_sn_vec[0..32].as_ref());
 
@@ -381,14 +381,14 @@ fn test_reclaim_hardcode_should_work() {
         // mint the sender coin
         assert_ok!(Assets::mint(
             Origin::signed(1),
-            100,
+            10,
             old_k_bytes,
             old_s_bytes,
             old_cm_bytes
         ));
 
         // check that minting is successful
-        assert_eq!(PoolBalance::get(), 110);
+        assert_eq!(PoolBalance::get(), 20);
         let coin_list = CoinList::get();
         assert_eq!(coin_list.len(), 2);
         assert_eq!(coin_list[1], sender);
@@ -399,21 +399,21 @@ fn test_reclaim_hardcode_should_work() {
         // hardcoded proof
         let mut proof_bytes = [0u8; 192];
         let proof_vec = BASE64
-            .decode(b"nqY+V9/nzzF3A72jXj4Cm1Vn2mfWMbcBWqxppSO/gZ80XkIZRE9ljE4nTP0SBBYP+Ofkq14ZCiu/cLgJpuR33cMcxnNxB65A6CDFw3ZrTkTm2kjfTuH7Co2dsuQHXNYP2+f2H7yf613LjQbpQvJLMGFa781KYNyvvU1ApT4Gzwh3guO3KPij0l8jFGCDq4wTUavvaJlLGOMoTdKXCkR24Iik9+DpBDvvLHJUSrgROPSBCg61PJhQTkYqSIAtT4YG")
+            .decode(b"eZDMb5PzxupkaUtujU7oNKraGC5zN+OTYgPIvfSmIBjJWauLdJEhJoaM5FedPEyVvg2M9PTtJJR3OtBr1Wsc0iwpZwWzjD35exhT6sWisZshuZqtvjDItYNf12qiliQO6y+rf5rSSfkIA5awspGsAaqDelWNAAPblKdswzY7PXi0V/7FMmbi54M6QbW7PO0ZxW16HO4qN7cf2FGP9XNbcgsys8VS7pJXg5DQhHrYFW/xf0RlnIuSBeyiM3wIuMCO")
             .unwrap();
         proof_bytes.copy_from_slice(proof_vec[0..192].as_ref());
 
         // hardcoded merkle root
         let mut root_bytes = [0u8; 32];
         let root_vec = BASE64
-            .decode(b"QDWIJvSmMmIS1incXpqZA+oZKOuvP42PNVyLKWC0gGQ=")
+            .decode(b"vRnz8gidII/pMapvEMSHUIIUsq3KP6Z4kqLf/Vshdz8=")
             .unwrap();
         root_bytes.copy_from_slice(root_vec[0..32].as_ref());
 
         // make the transfer
         assert_ok!(Assets::reclaim(
             Origin::signed(1),
-            100,
+            10,
             root_bytes,
             old_sn_bytes,
             old_k_bytes,

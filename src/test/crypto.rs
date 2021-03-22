@@ -5,7 +5,7 @@ use ark_ed_on_bls12_381::Fq;
 use ark_ff::ToConstraintField;
 use ark_groth16::{create_random_proof, generate_random_parameters, verify_proof};
 use ark_relations::r1cs::{ConstraintSynthesizer, ConstraintSystem};
-use ark_serialize::{CanonicalDeserialize};
+use ark_serialize::CanonicalDeserialize;
 use rand::{RngCore, SeedableRng};
 use rand_chacha::ChaCha20Rng;
 use x25519_dalek::{PublicKey, StaticSecret};

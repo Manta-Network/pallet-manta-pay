@@ -1,7 +1,7 @@
 use crate as pallet_manta_dap;
 use crate::{dh::*, manta_token::*, param::*, reclaim::*, serdes::*, transfer::*, *};
 use ark_ed_on_bls12_381::Fq;
-use ark_groth16::{create_random_proof};
+use ark_groth16::create_random_proof;
 use ark_relations::r1cs::{ConstraintSynthesizer, ConstraintSystem};
 use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
 use frame_support::{assert_noop, assert_ok, parameter_types};
