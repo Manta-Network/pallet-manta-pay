@@ -54,15 +54,15 @@ pub fn manta_verify_transfer_zkp(
 	verify_proof(&pvk, &proof, &inputs[..]).unwrap()
 }
 
-pub fn manta_verify_forfeit_zkp(
-	forfeit_key_bytes: Vec<u8>,
+pub fn manta_verify_reclaim_zkp(
+	reclaim_key_bytes: Vec<u8>,
 	value: u64,
 	proof: [u8; 192],
 	sn_old: [u8; 32],
 	k_old: [u8; 32],
 	merkle_root: [u8; 32],
 ) -> bool {
-	let vk = Groth16VK::deserialize(forfeit_key_bytes.as_ref()).unwrap();
+	let vk = Groth16VK::deserialize(reclaim_key_bytes.as_ref()).unwrap();
 	let pvk = Groth16PVK::from(vk);
 	let proof = Groth16Proof::deserialize(proof.as_ref()).unwrap();
 	let k_old = MantaCoinCommitmentOutput::deserialize(k_old.as_ref()).unwrap();

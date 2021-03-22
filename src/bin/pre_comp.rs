@@ -7,7 +7,7 @@ use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
 use data_encoding::BASE64;
 use frame_support::traits::Vec;
 use pallet_manta_dap::{
-	dh::*, forfeit::*, manta_token::*, param::*, priv_coin::*, serdes::*, transfer::*,
+	dh::*, reclaim::*, manta_token::*, param::*, priv_coin::*, serdes::*, transfer::*,
 };
 use rand::{RngCore, SeedableRng};
 use rand_chacha::ChaCha20Rng;
@@ -57,10 +57,10 @@ fn main() {
 	file.write_all(transfer_pk_bytes.as_mut()).unwrap();
 	println!("{}", transfer_pk_bytes.len());
 
-	let mut forfeit_pk_bytes = manta_forfeit_zkp_key_gen(&hash_param_seed, &commit_param_seed);
-	let mut file = File::create("forfeit_pk.bin").unwrap();
-	file.write_all(forfeit_pk_bytes.as_mut()).unwrap();
-	println!("{}", forfeit_pk_bytes.len());
+	let mut reclaim_pk_bytes = manta_forfeit_zkp_key_gen(&hash_param_seed, &commit_param_seed);
+	let mut file = File::create("reclaim_pk.bin").unwrap();
+	file.write_all(reclaim_pk_bytes.as_mut()).unwrap();
+	println!("{}", reclaim_pk_bytes.len());
 
 	// ===========================
 	// testing DH encryption
@@ -167,14 +167,14 @@ fn main() {
 	// testing forfeit circuit
 	// ===========================
 
-	let forfeit_pk = Groth16PK::deserialize_uncompressed(forfeit_pk_bytes.as_ref()).unwrap();
-	let forfeit_vk = forfeit_pk.vk.clone();
+	let reclaim_pk = Groth16PK::deserialize_uncompressed(reclaim_pk_bytes.as_ref()).unwrap();
+	let reclaim_vk = reclaim_pk.vk.clone();
 	let mut vk_buf: Vec<u8> = vec![];
-	forfeit_vk.serialize(&mut vk_buf).unwrap();
-	println!("pk_uncompressed len {}", forfeit_pk_bytes.len());
+	reclaim_vk.serialize(&mut vk_buf).unwrap();
+	println!("pk_uncompressed len {}", reclaim_pk_bytes.len());
 	println!("vk: {:?}", vk_buf);
 
-	let circuit2 = ForfeitCircuit {
+	let circuit2 = ReclaimCircuit {
 		commit_param,
 		hash_param: hash_param.clone(),
 		sender_coin: coin3.clone(),
@@ -191,7 +191,7 @@ fn main() {
 		.unwrap();
 	assert!(sanity_cs.is_satisfied().unwrap());
 
-	let proof = create_random_proof(circuit2, &forfeit_pk, &mut rng).unwrap();
+	let proof = create_random_proof(circuit2, &reclaim_pk, &mut rng).unwrap();
 	let mut proof_bytes = [0u8; 192];
 	proof.serialize(proof_bytes.as_mut()).unwrap();
 
@@ -205,7 +205,7 @@ fn main() {
 	let mut merkle_root_bytes = [0u8; 32];
 	merkle_root.serialize(merkle_root_bytes.as_mut()).unwrap();
 
-	assert!(manta_verify_forfeit_zkp(
+	assert!(manta_verify_reclaim_zkp(
 		vk_buf,
 		10,
 		proof_bytes,
@@ -360,7 +360,7 @@ fn manta_forfeit_zkp_key_gen(hash_param_seed: &[u8; 32], commit_param_seed: &[u8
 	let sender_priv_info = priv_infos[0].clone();
 
 	// forfeit circuit
-	let forfeit_circuit = ForfeitCircuit {
+	let forfeit_circuit = ReclaimCircuit {
 		commit_param,
 		hash_param,
 		sender_coin: sender,
@@ -380,7 +380,7 @@ fn manta_forfeit_zkp_key_gen(hash_param_seed: &[u8; 32], commit_param_seed: &[u8
 	// transfer pk_bytes
 	let mut rng = ChaCha20Rng::from_seed(zkp_seed);
 	let pk = generate_random_parameters::<Bls12_381, _, _>(forfeit_circuit, &mut rng).unwrap();
-	let mut forfeit_pk_bytes: Vec<u8> = Vec::new();
-	pk.serialize_uncompressed(&mut forfeit_pk_bytes).unwrap();
-	forfeit_pk_bytes
+	let mut reclaim_pk_bytes: Vec<u8> = Vec::new();
+	pk.serialize_uncompressed(&mut reclaim_pk_bytes).unwrap();
+	reclaim_pk_bytes
 }

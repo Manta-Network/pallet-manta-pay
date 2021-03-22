@@ -13,7 +13,7 @@ benchmarks! {
 
 	init {
 		let caller: T::AccountId = whitelisted_caller();
-	}: init(RawOrigin::Signed(caller.clone()), 1000)
+	}: init (RawOrigin::Signed(caller.clone()), 1000)
 	verify {
 		assert_eq!(
 			<TotalSupply>::get(), 1000
@@ -66,7 +66,7 @@ benchmarks! {
 			cm_bytes: cm_bytes.clone(),
 		};
 
-	}: mint(
+	}: mint (
 		RawOrigin::Signed(caller),
 		10,
 		k_bytes,
@@ -185,7 +185,7 @@ benchmarks! {
 			.unwrap();
 		root_bytes.copy_from_slice(root_vec[0..32].as_ref());
 
-	}: manta_transfer(
+	}: manta_transfer (
 		RawOrigin::Signed(caller),
 		root_bytes,
 		old_sn_bytes,
@@ -215,7 +215,7 @@ benchmarks! {
 	}
 
 
-	forfeit {
+	reclaim {
 		let caller: T::AccountId = whitelisted_caller();
 		let origin: T::Origin = T::Origin::from(RawOrigin::Signed(caller.clone()));
 		<Balances<T>>::insert(&caller, 1000);
@@ -330,7 +330,7 @@ benchmarks! {
 			.decode(b"QDWIJvSmMmIS1incXpqZA+oZKOuvP42PNVyLKWC0gGQ=")
 			.unwrap();
 		root_bytes.copy_from_slice(root_vec[0..32].as_ref());
-	}: forfeit(
+	}: reclaim (
 		RawOrigin::Signed(caller),
 		100,
 		root_bytes,

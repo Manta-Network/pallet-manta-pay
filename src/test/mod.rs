@@ -1,6 +1,6 @@
-use crate as pallet_manta_dap;
 use super::*;
-use crate::{dh::*, forfeit::*, manta_token::*, param::*, serdes::*, transfer::*};
+use crate as pallet_manta_dap;
+use crate::{dh::*, reclaim::*, manta_token::*, param::*, serdes::*, transfer::*};
 use ark_bls12_381::Bls12_381;
 use ark_crypto_primitives::{CommitmentScheme, FixedLengthCRH};
 use ark_ed_on_bls12_381::Fq;
@@ -486,7 +486,7 @@ fn test_transfer_should_work() {
 }
 
 #[test]
-fn test_forfeit_hardcode_should_work() {
+fn test_reclaim_hardcode_should_work() {
 	new_test_ext().execute_with(|| {
         assert_ok!(Assets::init(Origin::signed(1), 1000));
         assert_eq!(Assets::balance(1), 1000);
@@ -604,7 +604,7 @@ fn test_forfeit_hardcode_should_work() {
         root_bytes.copy_from_slice(root_vec[0..32].as_ref());
 
         // make the transfer
-        assert_ok!(Assets::forfeit(
+        assert_ok!(Assets::reclaim(
             Origin::signed(1),
             100,
             root_bytes,
@@ -627,7 +627,7 @@ fn test_forfeit_hardcode_should_work() {
 
 /// this is a local test on zero knowledge proof generation and verifications
 #[test]
-fn test_forfeit_zkp_local() {
+fn test_reclaim_zkp_local() {
 	let hash_param = hash_param_deserialize(HASHPARAMBYTES.as_ref());
 	let commit_param = commit_param_deserialize(COMPARAMBYTES.as_ref());
 
@@ -649,7 +649,7 @@ fn test_forfeit_zkp_local() {
 	let tree = LedgerMerkleTree::new(hash_param.clone(), &list).unwrap();
 	let merkle_root = tree.root();
 
-	let circuit = ForfeitCircuit {
+	let circuit = ReclaimCircuit {
 		commit_param: commit_param.clone(),
 		hash_param: hash_param.clone(),
 		sender_coin: sender.clone(),
@@ -691,7 +691,7 @@ fn test_forfeit_zkp_local() {
 
 // #[ignore]
 #[test]
-fn test_forfeit_should_work() {
+fn test_reclaim_should_work() {
 	new_test_ext().execute_with(|| {
 		// setup
 		assert_ok!(Assets::init(Origin::signed(1), 100000));
@@ -737,10 +737,10 @@ fn test_forfeit_should_work() {
 		}
 
 		// build ZKP circuit
-		let mut file = File::open("forfeit_pk.bin").unwrap();
-		let mut forfeit_pk_bytes: Vec<u8> = vec![];
-		file.read_to_end(&mut forfeit_pk_bytes).unwrap();
-		let pk = Groth16PK::deserialize_uncompressed(forfeit_pk_bytes.as_ref()).unwrap();
+		let mut file = File::open("reclaim_pk.bin").unwrap();
+		let mut reclaim_pk_bytes: Vec<u8> = vec![];
+		file.read_to_end(&mut reclaim_pk_bytes).unwrap();
+		let pk = Groth16PK::deserialize_uncompressed(reclaim_pk_bytes.as_ref()).unwrap();
 
 		// generate and verify transactions
 		let coin_list = CoinList::get();
@@ -750,7 +750,7 @@ fn test_forfeit_should_work() {
 		for i in 0usize..size {
 			let token_value = 10 + i as u64;
 			// generate ZKP
-			let circuit = ForfeitCircuit {
+			let circuit = ReclaimCircuit {
 				commit_param: commit_param.clone(),
 				hash_param: hash_param.clone(),
 				sender_coin: senders[i].0.clone(),
@@ -768,15 +768,15 @@ fn test_forfeit_should_work() {
 			assert!(sanity_cs.is_satisfied().unwrap());
 
 			let proof = create_random_proof(circuit, &pk, &mut rng).unwrap();
-			let vk_bytes = ForfeitZKPKey::get();
+			let vk_bytes = ReclaimZKPKey::get();
 			let vk = Groth16VK::deserialize(vk_bytes.as_ref()).unwrap();
 			assert_eq!(pk.vk, vk);
 
 			let mut proof_bytes = [0u8; 192];
 			proof.serialize(proof_bytes.as_mut()).unwrap();
 
-			// make the forfeit
-			assert_ok!(Assets::forfeit(
+			// make the reclaim
+			assert_ok!(Assets::reclaim(
 				Origin::signed(1),
 				token_value,
 				root,

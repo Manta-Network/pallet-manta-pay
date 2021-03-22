@@ -18,7 +18,7 @@ use ark_std::vec::Vec;
 // 4. sender's value matches input value
 // =============================
 #[derive(Clone)]
-pub struct ForfeitCircuit {
+pub struct ReclaimCircuit {
 	// param
 	pub commit_param: MantaCoinCommitmentParam,
 	pub hash_param: HashParam,
@@ -35,7 +35,7 @@ pub struct ForfeitCircuit {
 	pub list: Vec<[u8; 32]>,
 }
 
-impl ConstraintSynthesizer<Fq> for ForfeitCircuit {
+impl ConstraintSynthesizer<Fq> for ReclaimCircuit {
 	fn generate_constraints(self, cs: ConstraintSystemRef<Fq>) -> Result<(), SynthesisError> {
 		// 1. both sender's and receiver's coins are well-formed
 		//  k = com(pk||rho, r)
@@ -83,7 +83,7 @@ impl ConstraintSynthesizer<Fq> for ForfeitCircuit {
 			cs.clone(),
 		);
 
-		// 4. sender's value is the same as forfeit value
+		// 4. sender's value is the same as reclaimed value
 		let value_fq = Fq::from(self.value);
 		let value_var =
 			FqVar::new_input(ark_relations::ns!(cs, "sender value"), || Ok(&value_fq)).unwrap();

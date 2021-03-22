@@ -99,10 +99,10 @@ extern crate x25519_dalek;
 
 mod benchmark;
 pub mod dh;
-pub mod forfeit;
 pub mod manta_token;
 pub mod param;
 pub mod priv_coin;
+pub mod reclaim;
 pub mod serdes;
 pub mod transfer;
 
@@ -113,7 +113,7 @@ use ark_std::vec::Vec;
 use frame_support::{decl_error, decl_event, decl_module, decl_storage, ensure};
 use frame_system::ensure_signed;
 use manta_token::MantaCoin;
-use param::{COMPARAMBYTES, FORFEITVKBYTES, HASHPARAMBYTES, TRANSFERVKBYTES};
+use param::{COMPARAMBYTES, HASHPARAMBYTES, RECLAIMVKBYTES, TRANSFERVKBYTES};
 use serdes::{
 	commit_param_checksum, commit_param_deserialize, hash_param_checksum, hash_param_deserialize,
 };
@@ -166,7 +166,7 @@ decl_module! {
 			// and then depoly that vk
 			//
 			TransferZKPKey::put(TRANSFERVKBYTES.to_vec());
-			ForfeitZKPKey::put(FORFEITVKBYTES.to_vec());
+			ReclaimZKPKey::put(RECLAIMVKBYTES.to_vec());
 
 			CoinList::put(Vec::<MantaCoin>::new());
 			LedgerState::put([4u8; 32]);
@@ -350,9 +350,9 @@ decl_module! {
 		}
 
 
-		/// Forfeit
+		/// Reclaim
 		#[weight = 0]
-		fn forfeit(origin,
+		fn reclaim(origin,
 			amount: u64,
 			merkle_root: [u8; 32],
 			sn_old: [u8; 32],
@@ -388,7 +388,7 @@ decl_module! {
 			let coin_list = CoinList::get();
 
 			// get the verification key from the ledger
-			let forfeit_vk_bytes = ForfeitZKPKey::get();
+			let reclaim_vk_bytes = ReclaimZKPKey::get();
 
 			// get the ledger state from the ledger
 			// and check the validity of the state
@@ -398,7 +398,7 @@ decl_module! {
 
 			// check validity of zkp
 			ensure!(
-				priv_coin::manta_verify_forfeit_zkp(forfeit_vk_bytes, amount, proof, sn_old, k_old, merkle_root),
+				priv_coin::manta_verify_reclaim_zkp(reclaim_vk_bytes, amount, proof, sn_old, k_old, merkle_root),
 				<Error<T>>::ZKPFail,
 			);
 
@@ -406,7 +406,7 @@ decl_module! {
 
 			// update ledger storage
 			// FIXME: change RawEvent here
-			Self::deposit_event(RawEvent::PrivateForfeited(origin));
+			Self::deposit_event(RawEvent::PrivateReclaimed(origin));
 			CoinList::put(coin_list);
 			SNList::put(sn_list);
 			LedgerState::put(new_root);
@@ -428,8 +428,8 @@ decl_event! {
 		Minted(AccountId, u64),
 		/// Private transfer
 		PrivateTransferred(AccountId),
-		/// The assest was forfeited
-		PrivateForfeited(AccountId),
+		/// The assest was reclaimed
+		PrivateReclaimed(AccountId),
 	}
 }
 
@@ -500,7 +500,7 @@ decl_storage! {
 		/// verification key for zero-knowledge proof
 		/// at the moment we are storing the whole serialized key
 		/// in the blockchain storage.
-		pub ForfeitZKPKey get(fn forfeit_zkp_vk): Vec<u8>;
+		pub ReclaimZKPKey get(fn reclaim_zkp_vk): Vec<u8>;
 	}
 }
 
