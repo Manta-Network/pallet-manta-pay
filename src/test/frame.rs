@@ -78,10 +78,10 @@ fn test_constants_should_work() {
 	new_test_ext().execute_with(|| {
 		assert_ok!(Assets::init(Origin::signed(1), 100));
 		assert_eq!(Assets::balance(1), 100);
-		let hash_param = hash_param_deserialize(HASHPARAMBYTES.as_ref());
-		let commit_param = commit_param_deserialize(COMPARAMBYTES.as_ref());
-		let hash_param_checksum_local = hash_param_checksum(&hash_param);
-		let commit_param_checksum_local = commit_param_checksum(&commit_param);
+		let hash_param = HashParam::deserialize(HASHPARAMBYTES.as_ref());
+		let commit_param = MantaCoinCommitmentParam::deserialize(COMPARAMBYTES.as_ref());
+		let hash_param_checksum_local = hash_param.get_checksum();
+		let commit_param_checksum_local = commit_param.get_checksum();
 		let hash_param_checksum = HashParamChecksum::get();
 		let commit_param_checksum = CommitParamChecksum::get();
 		assert_eq!(hash_param_checksum, hash_param_checksum_local);
@@ -95,23 +95,25 @@ fn test_mint_should_work() {
 		assert_ok!(Assets::init(Origin::signed(1), 1000));
 		assert_eq!(Assets::balance(1), 1000);
 		assert_eq!(PoolBalance::get(), 0);
-		let commit_param = commit_param_deserialize(COMPARAMBYTES.as_ref());
+		let commit_param = MantaCoinCommitmentParam::deserialize(COMPARAMBYTES.as_ref());
 		let mut rng = ChaCha20Rng::from_seed([3u8; 32]);
 		let mut sk = [0u8; 32];
 		rng.fill_bytes(&mut sk);
 		let (coin, pub_info, _priv_info) = make_coin(&commit_param, sk, 10, &mut rng);
-		let mint_data = crate::manta_token::MintData {
-			cm: coin.cm_bytes,
-			k: pub_info.k,
-			s: pub_info.s,
-		};
+		let mut mint_data = [0u8; 96];
+		mint_data.copy_from_slice(
+			[coin.cm_bytes.clone(), pub_info.k, pub_info.s]
+				.concat()
+				.as_ref(),
+		);
+
 		assert_ok!(Assets::mint(Origin::signed(1), 10, mint_data));
 
 		assert_eq!(TotalSupply::get(), 1000);
 		assert_eq!(PoolBalance::get(), 10);
 		let coin_list = CoinList::get();
 		assert_eq!(coin_list.len(), 1);
-		assert_eq!(coin_list[0], coin.cm_bytes);
+		assert_eq!(coin_list[0].as_ref(), coin.cm_bytes);
 		let sn_list = SNList::get();
 		assert_eq!(sn_list.len(), 0);
 	});
@@ -126,8 +128,8 @@ fn test_transfer_should_work() {
 		assert_eq!(Assets::balance(1), 100000);
 		assert_eq!(PoolBalance::get(), 0);
 
-		let hash_param = hash_param_deserialize(HASHPARAMBYTES.as_ref());
-		let commit_param = commit_param_deserialize(COMPARAMBYTES.as_ref());
+		let hash_param = HashParam::deserialize(HASHPARAMBYTES.as_ref());
+		let commit_param = MantaCoinCommitmentParam::deserialize(COMPARAMBYTES.as_ref());
 
 		let mut rng = ChaCha20Rng::from_seed([3u8; 32]);
 		let mut pool = 0;
@@ -143,11 +145,16 @@ fn test_transfer_should_work() {
 			let (sender, sender_pub_info, sender_priv_info) =
 				make_coin(&commit_param, sk, token_value, &mut rng);
 
-			let mint_data = crate::manta_token::MintData {
-				cm: sender.cm_bytes,
-				k: sender_pub_info.k,
-				s: sender_pub_info.s,
-			};
+			let mut mint_data = [0u8; 96];
+			mint_data.copy_from_slice(
+				[
+					sender.cm_bytes.clone(),
+					sender_pub_info.k,
+					sender_pub_info.s,
+				]
+				.concat()
+				.as_ref(),
+			);
 
 			// mint a sender token
 			assert_ok!(Assets::mint(Origin::signed(1), token_value, mint_data));
@@ -221,16 +228,19 @@ fn test_transfer_should_work() {
 			let (sender_pk_bytes, cipher) =
 				manta_dh_enc(&receiver_pk_bytes, 10 + i as u64, &mut rng);
 
-			let sender_data = crate::manta_token::SenderData {
-				k: senders[i].1.k,
-				sn: senders[i].2.sn,
-			};
+			let mut sender_data = [0u8; 64];
+			sender_data.copy_from_slice([senders[i].1.k, senders[i].2.sn].concat().as_ref());
 
-			let receiver_data = crate::manta_token::ReceiverData {
-				k: receivers[i].1.k,
-				cm: receivers[i].0.cm_bytes,
-				cipher,
-			};
+			let mut receiver_data = [0u8; 80];
+			receiver_data.copy_from_slice(
+				[
+					receivers[i].1.k.as_ref(),
+					receivers[i].0.cm_bytes.as_ref(),
+					cipher.as_ref(),
+				]
+				.concat()
+				.as_ref(),
+			);
 
 			assert_ok!(Assets::manta_transfer(
 				Origin::signed(1),
@@ -270,8 +280,8 @@ fn test_reclaim_should_work() {
 		assert_eq!(Assets::balance(1), 100000);
 		assert_eq!(PoolBalance::get(), 0);
 
-		let hash_param = hash_param_deserialize(HASHPARAMBYTES.as_ref());
-		let commit_param = commit_param_deserialize(COMPARAMBYTES.as_ref());
+		let hash_param = HashParam::deserialize(HASHPARAMBYTES.as_ref());
+		let commit_param = MantaCoinCommitmentParam::deserialize(COMPARAMBYTES.as_ref());
 
 		let mut rng = ChaCha20Rng::from_seed([3u8; 32]);
 		let mut pool = 0;
@@ -288,11 +298,16 @@ fn test_reclaim_should_work() {
 				make_coin(&commit_param, sk, token_value, &mut rng);
 			senders.push((sender, sender_pub_info, sender_priv_info));
 
-			let mint_data = crate::manta_token::MintData {
-				cm: senders[i].0.cm_bytes,
-				k: senders[i].1.k,
-				s: senders[i].1.s,
-			};
+			let mut mint_data = [0u8; 96];
+			mint_data.copy_from_slice(
+				[
+					senders[i].0.cm_bytes.clone(),
+					senders[i].1.k,
+					senders[i].1.s,
+				]
+				.concat()
+				.as_ref(),
+			);
 
 			// mint a sender token
 			assert_ok!(Assets::mint(Origin::signed(1), token_value, mint_data));
@@ -346,10 +361,9 @@ fn test_reclaim_should_work() {
 			let mut proof_bytes = [0u8; 192];
 			proof.serialize(proof_bytes.as_mut()).unwrap();
 
-			let sender_data = crate::manta_token::SenderData {
-				k: senders[i].1.k,
-				sn: senders[i].2.sn,
-			};
+			let mut sender_data = [0u8; 64];
+			sender_data.copy_from_slice([senders[i].1.k, senders[i].2.sn].concat().as_ref());
+
 			// make the reclaim
 			assert_ok!(Assets::reclaim(
 				Origin::signed(1),

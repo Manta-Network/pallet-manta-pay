@@ -112,10 +112,9 @@ pub mod test;
 use ark_std::vec::Vec;
 use frame_support::{decl_error, decl_event, decl_module, decl_storage, ensure};
 use frame_system::ensure_signed;
-use param::{COMPARAMBYTES, HASHPARAMBYTES, RECLAIMVKBYTES, TRANSFERVKBYTES};
-use serdes::{
-	commit_param_checksum, commit_param_deserialize, hash_param_checksum, hash_param_deserialize,
-};
+use manta_token::*;
+use param::{COMPARAMBYTES, HASHPARAMBYTES, RECLAIMVKBYTES, TRANSFERVKBYTES, *};
+use serdes::{Checksum, MantaSerDes};
 use sp_runtime::traits::{StaticLookup, Zero};
 
 /// The module configuration trait.
@@ -149,10 +148,10 @@ decl_module! {
 			//  * hash parameter seed: [1u8; 32]
 			//  * commitment parameter seed: [2u8; 32]
 			// We may want to pass those two in for `init`
-			let hash_param = hash_param_deserialize(HASHPARAMBYTES.as_ref());
-			let commit_param = commit_param_deserialize(COMPARAMBYTES.as_ref());
-			let hash_param_checksum = hash_param_checksum(&hash_param);
-			let commit_param_checksum = commit_param_checksum(&commit_param);
+			let hash_param = HashParam::deserialize(HASHPARAMBYTES.as_ref());
+			let commit_param = MantaCoinCommitmentParam::deserialize(COMPARAMBYTES.as_ref());
+			let hash_param_checksum = hash_param.get_checksum();
+			let commit_param_checksum = commit_param.get_checksum();
 
 			// push the ZKP verification key to the ledger storage
 			//
@@ -212,8 +211,13 @@ decl_module! {
 		#[weight = 0]
 		fn mint(origin,
 			amount: u64,
-			input: manta_token::MintData,
+			input_data: [u8; 96]
 		) {
+			// todo: Implement the fix denomination method
+
+			// parse the input_data into input
+			let input = MintData::deserialize(input_data.as_ref());
+
 			// get the original balance
 			ensure!(Self::is_init(), <Error<T>>::BasecoinNotInit);
 			let origin = ensure_signed(origin)?;
@@ -222,10 +226,11 @@ decl_module! {
 			let origin_balance = <Balances<T>>::get(&origin_account);
 			ensure!(origin_balance >= amount, Error::<T>::BalanceLow);
 
-			let hash_param = hash_param_deserialize(HASHPARAMBYTES.as_ref());
-			let commit_param = commit_param_deserialize(COMPARAMBYTES.as_ref());
-			let hash_param_checksum_local = hash_param_checksum(&hash_param);
-			let commit_param_checksum_local = commit_param_checksum(&commit_param);
+			let hash_param = HashParam::deserialize(HASHPARAMBYTES.as_ref());
+			let commit_param = MantaCoinCommitmentParam::deserialize(COMPARAMBYTES.as_ref());
+			let hash_param_checksum_local = hash_param.get_checksum();
+			let commit_param_checksum_local = commit_param.get_checksum();
+
 
 			// get the parameter checksum from the ledger
 			let hash_param_checksum = HashParamChecksum::get();
@@ -279,16 +284,19 @@ decl_module! {
 		#[weight = 0]
 		fn manta_transfer(origin,
 			merkle_root: [u8; 32],
-			sender_data: manta_token::SenderData,
-			receiver_data: manta_token::ReceiverData,
-			proof: manta_token::Proof,
+			sender_data: [u8; 64],
+			receiver_data: [u8; 80],
+			proof: [u8; 192],
 		) {
 
+			let sender_data = SenderData::deserialize(sender_data.as_ref());
+			let receiver_data = ReceiverData::deserialize(receiver_data.as_ref());
 			ensure!(Self::is_init(), <Error<T>>::BasecoinNotInit);
 			let origin = ensure_signed(origin)?;
 
-			let hash_param = hash_param_deserialize(HASHPARAMBYTES.as_ref());
-			let hash_param_checksum_local = hash_param_checksum(&hash_param);
+			let hash_param = HashParam::deserialize(HASHPARAMBYTES.as_ref());
+			let hash_param_checksum_local = hash_param.get_checksum();
+
 
 			// get the parameter checksum from the ledger
 			let hash_param_checksum = HashParamChecksum::get();
@@ -347,16 +355,20 @@ decl_module! {
 		fn reclaim(origin,
 			amount: u64,
 			merkle_root: [u8; 32],
-			sender_data: manta_token::SenderData,
-			proof: manta_token::Proof
+			sender_data: [u8; 64],
+			proof: [u8; 192],
 		) {
+
+			let sender_data = SenderData::deserialize(sender_data.as_ref());
+
 			let origin = ensure_signed(origin)?;
 			let origin_account = origin.clone();
 			let origin_balance = <Balances<T>>::get(&origin);
 			ensure!(Self::is_init(), <Error<T>>::BasecoinNotInit);
 
-			let hash_param = hash_param_deserialize(HASHPARAMBYTES.as_ref());
-			let hash_param_checksum_local = hash_param_checksum(&hash_param);
+			let hash_param = HashParam::deserialize(HASHPARAMBYTES.as_ref());
+			let hash_param_checksum_local = hash_param.get_checksum();
+
 
 			// get the parameter checksum from the ledger
 			let hash_param_checksum = HashParamChecksum::get();

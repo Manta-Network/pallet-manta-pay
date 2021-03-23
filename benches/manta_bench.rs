@@ -9,13 +9,7 @@ use ark_relations::r1cs::{ConstraintSynthesizer, ConstraintSystem};
 use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
 use criterion::{Benchmark, Criterion};
 use data_encoding::BASE64;
-use pallet_manta_dap::{
-	manta_token::*,
-	param::*,
-	priv_coin::*,
-	serdes::{commit_param_deserialize, hash_param_deserialize},
-	transfer::*,
-};
+use pallet_manta_dap::{manta_token::*, param::*, priv_coin::*, serdes::*, transfer::*};
 use rand::SeedableRng;
 use rand_chacha::ChaCha20Rng;
 use rand_core::RngCore;
@@ -35,14 +29,14 @@ fn bench_param_io(c: &mut Criterion) {
 	let bench_str = format!("hash param");
 	let bench = Benchmark::new(bench_str, move |b| {
 		b.iter(|| {
-			hash_param_deserialize(HASHPARAMBYTES.as_ref());
+			HashParam::deserialize(HASHPARAMBYTES.as_ref());
 		})
 	});
 
 	let bench_str = format!("commit param");
 	let bench = bench.with_function(bench_str, move |b| {
 		b.iter(|| {
-			commit_param_deserialize(COMPARAMBYTES.as_ref());
+			MantaCoinCommitmentParam::deserialize(COMPARAMBYTES.as_ref());
 		})
 	});
 
