@@ -100,19 +100,18 @@ fn test_mint_should_work() {
 		let mut sk = [0u8; 32];
 		rng.fill_bytes(&mut sk);
 		let (coin, pub_info, _priv_info) = make_coin(&commit_param, sk, 10, &mut rng);
-		assert_ok!(Assets::mint(
-			Origin::signed(1),
-			10,
-			pub_info.k,
-			pub_info.s,
-			coin.cm_bytes
-		));
+		let mint_data = crate::manta_token::MintData {
+			cm: coin.cm_bytes,
+			k: pub_info.k,
+			s: pub_info.s,
+		};
+		assert_ok!(Assets::mint(Origin::signed(1), 10, mint_data));
 
 		assert_eq!(TotalSupply::get(), 1000);
 		assert_eq!(PoolBalance::get(), 10);
 		let coin_list = CoinList::get();
 		assert_eq!(coin_list.len(), 1);
-		assert_eq!(coin_list[0], coin);
+		assert_eq!(coin_list[0], coin.cm_bytes);
 		let sn_list = SNList::get();
 		assert_eq!(sn_list.len(), 0);
 	});
@@ -143,16 +142,15 @@ fn test_transfer_should_work() {
 			rng.fill_bytes(&mut sk);
 			let (sender, sender_pub_info, sender_priv_info) =
 				make_coin(&commit_param, sk, token_value, &mut rng);
-			senders.push((sender, sender_pub_info, sender_priv_info));
+
+			let mint_data = crate::manta_token::MintData {
+				cm: sender.cm_bytes,
+				k: sender_pub_info.k,
+				s: sender_pub_info.s,
+			};
 
 			// mint a sender token
-			assert_ok!(Assets::mint(
-				Origin::signed(1),
-				token_value,
-				senders[i].1.k,
-				senders[i].1.s,
-				senders[i].0.cm_bytes
-			));
+			assert_ok!(Assets::mint(Origin::signed(1), token_value, mint_data));
 
 			pool += token_value;
 
@@ -160,9 +158,11 @@ fn test_transfer_should_work() {
 			assert_eq!(PoolBalance::get(), pool);
 			let coin_list = CoinList::get();
 			assert_eq!(coin_list.len(), i + 1);
-			assert_eq!(coin_list[i], senders[i].0);
+			assert_eq!(coin_list[i], sender.cm_bytes);
 			let sn_list = SNList::get();
 			assert_eq!(sn_list.len(), 0);
+
+			senders.push((sender, sender_pub_info, sender_priv_info));
 		}
 
 		// build receivers
@@ -186,7 +186,6 @@ fn test_transfer_should_work() {
 		for i in 0usize..size {
 			let coin_list = CoinList::get();
 			let root = LedgerState::get();
-			let list = coin_list.iter().map(|x| x.cm_bytes).collect();
 			// generate ZKP
 			let circuit = TransferCircuit {
 				commit_param: commit_param.clone(),
@@ -196,7 +195,7 @@ fn test_transfer_should_work() {
 				sender_priv_info: senders[i].2.clone(),
 				receiver_coin: receivers[i].0.clone(),
 				receiver_pub_info: receivers[i].1.clone(),
-				list,
+				list: coin_list.to_vec(),
 			};
 
 			let sanity_cs = ConstraintSystem::<Fq>::new_ref();
@@ -222,14 +221,22 @@ fn test_transfer_should_work() {
 			let (sender_pk_bytes, cipher) =
 				manta_dh_enc(&receiver_pk_bytes, 10 + i as u64, &mut rng);
 
+			let sender_data = crate::manta_token::SenderData {
+				k: senders[i].1.k,
+				sn: senders[i].2.sn,
+			};
+
+			let receiver_data = crate::manta_token::ReceiverData {
+				k: receivers[i].1.k,
+				cm: receivers[i].0.cm_bytes,
+				cipher,
+			};
+
 			assert_ok!(Assets::manta_transfer(
 				Origin::signed(1),
 				root,
-				senders[i].2.sn,
-				senders[i].1.k,
-				receivers[i].1.k,
-				receivers[i].0.cm_bytes,
-				cipher,
+				sender_data,
+				receiver_data,
 				proof_bytes,
 			));
 
@@ -238,8 +245,8 @@ fn test_transfer_should_work() {
 			assert_eq!(PoolBalance::get(), pool);
 			let coin_list = CoinList::get();
 			assert_eq!(coin_list.len(), size + 1 + i);
-			assert_eq!(coin_list[i], senders[i].0);
-			assert_eq!(coin_list[size + i], receivers[i].0);
+			assert_eq!(coin_list[i], senders[i].0.cm_bytes);
+			assert_eq!(coin_list[size + i], receivers[i].0.cm_bytes);
 			let sn_list = SNList::get();
 			assert_eq!(sn_list.len(), i + 1);
 			assert_eq!(sn_list[i], senders[i].2.sn);
@@ -281,14 +288,14 @@ fn test_reclaim_should_work() {
 				make_coin(&commit_param, sk, token_value, &mut rng);
 			senders.push((sender, sender_pub_info, sender_priv_info));
 
+			let mint_data = crate::manta_token::MintData {
+				cm: senders[i].0.cm_bytes,
+				k: senders[i].1.k,
+				s: senders[i].1.s,
+			};
+
 			// mint a sender token
-			assert_ok!(Assets::mint(
-				Origin::signed(1),
-				token_value,
-				senders[i].1.k,
-				senders[i].1.s,
-				senders[i].0.cm_bytes
-			));
+			assert_ok!(Assets::mint(Origin::signed(1), token_value, mint_data));
 
 			pool += token_value;
 
@@ -296,7 +303,7 @@ fn test_reclaim_should_work() {
 			assert_eq!(PoolBalance::get(), pool);
 			let coin_list = CoinList::get();
 			assert_eq!(coin_list.len(), i + 1);
-			assert_eq!(coin_list[i], senders[i].0);
+			assert_eq!(coin_list[i], senders[i].0.cm_bytes);
 			let sn_list = SNList::get();
 			assert_eq!(sn_list.len(), 0);
 		}
@@ -310,7 +317,6 @@ fn test_reclaim_should_work() {
 		// generate and verify transactions
 		let coin_list = CoinList::get();
 		let root = LedgerState::get();
-		let list: Vec<[u8; 32]> = coin_list.iter().map(|x| x.cm_bytes).collect();
 
 		for i in 0usize..size {
 			let token_value = 10 + i as u64;
@@ -322,7 +328,7 @@ fn test_reclaim_should_work() {
 				sender_pub_info: senders[i].1.clone(),
 				sender_priv_info: senders[i].2.clone(),
 				value: token_value,
-				list: list.clone(),
+				list: coin_list.to_vec(),
 			};
 
 			let sanity_cs = ConstraintSystem::<Fq>::new_ref();
@@ -340,13 +346,16 @@ fn test_reclaim_should_work() {
 			let mut proof_bytes = [0u8; 192];
 			proof.serialize(proof_bytes.as_mut()).unwrap();
 
+			let sender_data = crate::manta_token::SenderData {
+				k: senders[i].1.k,
+				sn: senders[i].2.sn,
+			};
 			// make the reclaim
 			assert_ok!(Assets::reclaim(
 				Origin::signed(1),
 				token_value,
 				root,
-				senders[i].2.sn,
-				senders[i].1.k,
+				sender_data,
 				proof_bytes,
 			));
 

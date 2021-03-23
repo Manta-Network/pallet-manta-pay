@@ -1,5 +1,5 @@
 use crate as pallet_manta_dap;
-use crate::{manta_token::*, *};
+use crate::*;
 use data_encoding::BASE64;
 use frame_support::{assert_ok, parameter_types};
 use sp_core::H256;
@@ -92,23 +92,19 @@ fn test_mint_hardcode_should_work() {
 			.unwrap();
 		cm_bytes.copy_from_slice(cm_vec[0..32].as_ref());
 
-		let coin = MantaCoin {
-			cm_bytes: cm_bytes.clone(),
+		let mint_data = crate::manta_token::MintData {
+			cm: cm_bytes,
+			k: k_bytes,
+			s: s_bytes,
 		};
 
-		assert_ok!(Assets::mint(
-			Origin::signed(1),
-			10,
-			k_bytes,
-			s_bytes,
-			cm_bytes
-		));
+		assert_ok!(Assets::mint(Origin::signed(1), 10, mint_data));
 
 		assert_eq!(TotalSupply::get(), 1000);
 		assert_eq!(PoolBalance::get(), 10);
 		let coin_list = CoinList::get();
 		assert_eq!(coin_list.len(), 1);
-		assert_eq!(coin_list[0], coin);
+		assert_eq!(coin_list[0], cm_bytes);
 
 		// those are parameters for coin_2 in coin.json
 		let mut k_bytes = [0u8; 32];
@@ -129,23 +125,19 @@ fn test_mint_hardcode_should_work() {
 			.unwrap();
 		cm_bytes.copy_from_slice(cm_vec[0..32].as_ref());
 
-		let coin = MantaCoin {
-			cm_bytes: cm_bytes.clone(),
+		let mint_data = crate::manta_token::MintData {
+			cm: cm_bytes,
+			k: k_bytes,
+			s: s_bytes,
 		};
 
-		assert_ok!(Assets::mint(
-			Origin::signed(1),
-			100,
-			k_bytes,
-			s_bytes,
-			cm_bytes
-		));
+		assert_ok!(Assets::mint(Origin::signed(1), 100, mint_data));
 
 		assert_eq!(TotalSupply::get(), 1000);
 		assert_eq!(PoolBalance::get(), 110);
 		let coin_list = CoinList::get();
 		assert_eq!(coin_list.len(), 2);
-		assert_eq!(coin_list[1], coin);
+		assert_eq!(coin_list[1], cm_bytes);
 
 		let sn_list = SNList::get();
 		assert_eq!(sn_list.len(), 0);
@@ -185,24 +177,24 @@ fn test_transfer_hardcode_should_work() {
             .unwrap();
         old_sn_bytes.copy_from_slice(&old_sn_vec[0..32].as_ref());
 
-        let sender = MantaCoin {
-            cm_bytes: old_cm_bytes.clone(),
-        };
+		let mint_data = crate::manta_token::MintData {
+			cm: old_cm_bytes,
+			k: old_k_bytes,
+			s: old_s_bytes,
+		};
 
         // mint the sender coin
         assert_ok!(Assets::mint(
             Origin::signed(1),
             10,
-            old_k_bytes,
-            old_s_bytes,
-            old_cm_bytes
+            mint_data
         ));
 
         // check that minting is successful
         assert_eq!(PoolBalance::get(), 10);
         let coin_list = CoinList::get();
         assert_eq!(coin_list.len(), 1);
-        assert_eq!(coin_list[0], sender);
+        assert_eq!(coin_list[0], old_cm_bytes);
         let sn_list = SNList::get();
         assert_eq!(sn_list.len(), 0);
 
@@ -219,9 +211,6 @@ fn test_transfer_hardcode_should_work() {
             .decode(b"1zuOv92V7e1qX1bP7+QNsV+gW5E3xUsghte/lZ7h5pg=")
             .unwrap();
         new_cm_bytes.copy_from_slice(new_cm_vec[0..32].as_ref());
-        let receiver = MantaCoin{
-            cm_bytes: new_cm_bytes,
-        };
 
         // hardcoded proof
         let mut proof_bytes = [0u8; 192];
@@ -257,15 +246,23 @@ fn test_transfer_hardcode_should_work() {
             .unwrap();
         root_bytes.copy_from_slice(root_vec[0..32].as_ref());
 
+        let sender_data = crate::manta_token::SenderData {
+            k: old_k_bytes,
+            sn: old_sn_bytes,
+        };
+
+        let receiver_data = crate::manta_token::ReceiverData {
+            k: new_k_bytes,
+            cm: new_cm_bytes,
+            cipher: cipher_bytes,
+        };
+
         // make the transfer
         assert_ok!(Assets::manta_transfer(
             Origin::signed(1),
             root_bytes,
-            old_sn_bytes,
-            old_k_bytes,
-            new_k_bytes,
-            new_cm_bytes,
-            cipher_bytes,
+            sender_data,
+            receiver_data,
             proof_bytes,
         ));
 
@@ -274,8 +271,8 @@ fn test_transfer_hardcode_should_work() {
         assert_eq!(PoolBalance::get(), 10);
         let coin_list = CoinList::get();
         assert_eq!(coin_list.len(), 2);
-        assert_eq!(coin_list[0], sender);
-        assert_eq!(coin_list[1], receiver);
+        assert_eq!(coin_list[0], old_cm_bytes);
+        assert_eq!(coin_list[1], new_cm_bytes);
         let sn_list = SNList::get();
         assert_eq!(sn_list.len(), 1);
         assert_eq!(sn_list[0], old_sn_bytes);
@@ -326,24 +323,24 @@ fn test_reclaim_hardcode_should_work() {
             .unwrap();
         old_sn_bytes.copy_from_slice(&old_sn_vec[0..32].as_ref());
 
-        let sender = MantaCoin {
-            cm_bytes: old_cm_bytes.clone(),
-        };
+        // mint the first coin
+		let mint_data = crate::manta_token::MintData {
+			cm: old_cm_bytes,
+			k: old_k_bytes,
+			s: old_s_bytes,
+		};
 
-        // mint the sender coin
         assert_ok!(Assets::mint(
             Origin::signed(1),
             10,
-            old_k_bytes,
-            old_s_bytes,
-            old_cm_bytes
+            mint_data
         ));
 
         // check that minting is successful
         assert_eq!(PoolBalance::get(), 10);
         let coin_list = CoinList::get();
         assert_eq!(coin_list.len(), 1);
-        assert_eq!(coin_list[0], sender);
+        assert_eq!(coin_list[0], old_cm_bytes);
         let sn_list = SNList::get();
         assert_eq!(sn_list.len(), 0);
 
@@ -374,24 +371,25 @@ fn test_reclaim_hardcode_should_work() {
             .unwrap();
         old_sn_bytes.copy_from_slice(&old_sn_vec[0..32].as_ref());
 
-        let sender = MantaCoin {
-            cm_bytes: old_cm_bytes.clone(),
-        };
+        // mint the second coin
+		let mint_data = crate::manta_token::MintData {
+			cm: old_cm_bytes,
+			k: old_k_bytes,
+			s: old_s_bytes,
+		};
 
         // mint the sender coin
         assert_ok!(Assets::mint(
             Origin::signed(1),
             10,
-            old_k_bytes,
-            old_s_bytes,
-            old_cm_bytes
+            mint_data
         ));
 
         // check that minting is successful
         assert_eq!(PoolBalance::get(), 20);
         let coin_list = CoinList::get();
         assert_eq!(coin_list.len(), 2);
-        assert_eq!(coin_list[1], sender);
+        assert_eq!(coin_list[1], old_cm_bytes);
         let sn_list = SNList::get();
         assert_eq!(sn_list.len(), 0);
 
@@ -411,12 +409,17 @@ fn test_reclaim_hardcode_should_work() {
         root_bytes.copy_from_slice(root_vec[0..32].as_ref());
 
         // make the transfer
+
+        let sender_data = crate::manta_token::SenderData {
+            k: old_k_bytes,
+            sn: old_sn_bytes,
+        };
+
         assert_ok!(Assets::reclaim(
             Origin::signed(1),
             10,
             root_bytes,
-            old_sn_bytes,
-            old_k_bytes,
+            sender_data,
             proof_bytes,
         ));
 

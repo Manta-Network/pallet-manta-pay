@@ -11,6 +11,35 @@ use ark_std::vec::Vec;
 use frame_support::codec::{Decode, Encode};
 use rand_core::{CryptoRng, RngCore};
 
+#[derive(Encode, Debug, Decode, Clone, Default, PartialEq)]
+pub struct MintData {
+	pub(crate) cm: [u8; 32],
+	pub(crate) k: [u8; 32],
+	pub(crate) s: [u8; 32],
+}
+
+impl MintData {
+	pub(crate) fn sanity_check(&self, value: u64, param: &MantaCoinCommitmentParam) -> bool {
+		let payload = [value.to_le_bytes().as_ref(), self.k.as_ref()].concat();
+		super::priv_coin::comm_open(&param, &self.s, &payload, &self.cm)
+	}
+}
+
+#[derive(Encode, Debug, Decode, Clone, Default, PartialEq)]
+pub struct SenderData {
+	pub(crate) k: [u8; 32],
+	pub(crate) sn: [u8; 32],
+}
+
+#[derive(Encode, Debug, Decode, Clone, Default, PartialEq)]
+pub struct ReceiverData {
+	pub(crate) k: [u8; 32],
+	pub(crate) cm: [u8; 32],
+	pub(crate) cipher: [u8; 16],
+}
+
+pub type Proof = [u8; 192];
+
 /// a MantaCoin is a pair of commitment cm, where
 ///  * cm = com(v||k, s), commits to the value, and
 #[derive(Encode, Debug, Decode, Clone, Default, PartialEq)]

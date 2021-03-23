@@ -112,7 +112,6 @@ pub mod test;
 use ark_std::vec::Vec;
 use frame_support::{decl_error, decl_event, decl_module, decl_storage, ensure};
 use frame_system::ensure_signed;
-use manta_token::MantaCoin;
 use param::{COMPARAMBYTES, HASHPARAMBYTES, RECLAIMVKBYTES, TRANSFERVKBYTES};
 use serdes::{
 	commit_param_checksum, commit_param_deserialize, hash_param_checksum, hash_param_deserialize,
@@ -168,7 +167,7 @@ decl_module! {
 			TransferZKPKey::put(TRANSFERVKBYTES.to_vec());
 			ReclaimZKPKey::put(RECLAIMVKBYTES.to_vec());
 
-			CoinList::put(Vec::<MantaCoin>::new());
+			CoinList::put(Vec::<[u8;32]>::new());
 			LedgerState::put([4u8; 32]);
 			PoolBalance::put(0);
 			SNList::put(Vec::<[u8; 32]>::new());
@@ -213,9 +212,7 @@ decl_module! {
 		#[weight = 0]
 		fn mint(origin,
 			amount: u64,
-			k: [u8; 32],
-			s: [u8; 32],
-			cm: [u8; 32]
+			input: manta_token::MintData,
 		) {
 			// get the original balance
 			ensure!(Self::is_init(), <Error<T>>::BasecoinNotInit);
@@ -246,9 +243,8 @@ decl_module! {
 
 
 			// check the validity of the commitment
-			let payload = [amount.to_le_bytes().as_ref(), k.as_ref()].concat();
 			ensure!(
-				priv_coin::comm_open(&commit_param, &s, &payload, &cm),
+				input.sanity_check(amount, &commit_param),
 				<Error<T>>::MintFail
 			);
 
@@ -256,16 +252,13 @@ decl_module! {
 			let mut coin_list = CoinList::get();
 			for e in coin_list.iter() {
 				ensure!(
-					e.cm_bytes != cm,
+					*e != input.cm,
 					Error::<T>::MantaCoinExist
 				)
 			}
 
 			// add the new coin to the ledger
-			let coin = MantaCoin {
-				cm_bytes: cm,
-			};
-			coin_list.push(coin);
+			coin_list.push(input.cm);
 
 			// update the merkle root
 			// let t: Vec<MantaCoin> = Vec::new();
@@ -286,12 +279,9 @@ decl_module! {
 		#[weight = 0]
 		fn manta_transfer(origin,
 			merkle_root: [u8; 32],
-			sn_old: [u8; 32],
-			k_old: [u8; 32],
-			k_new: [u8; 32],
-			cm_new: [u8; 32],
-			enc_amount: [u8; 16],
-			proof: [u8; 192]
+			sender_data: manta_token::SenderData,
+			receiver_data: manta_token::ReceiverData,
+			proof: manta_token::Proof,
 		) {
 
 			ensure!(Self::is_init(), <Error<T>>::BasecoinNotInit);
@@ -311,15 +301,12 @@ decl_module! {
 
 			// check if sn_old already spent
 			let mut sn_list = SNList::get();
-			ensure!(!sn_list.contains(&sn_old), <Error<T>>::MantaCoinSpent);
-			sn_list.push(sn_old);
+			ensure!(!sn_list.contains(&sender_data.sn), <Error<T>>::MantaCoinSpent);
+			sn_list.push(sender_data.sn);
 
 			// update coin list
 			let mut coin_list = CoinList::get();
-			let coin_new = MantaCoin{
-				cm_bytes: cm_new,
-			};
-			coin_list.push(coin_new);
+			coin_list.push(receiver_data.cm);
 
 			// get the verification key from the ledger
 			let transfer_vk_bytes = TransferZKPKey::get();
@@ -332,7 +319,12 @@ decl_module! {
 
 			// check validity of zkp
 			ensure!(
-				priv_coin::manta_verify_transfer_zkp(transfer_vk_bytes, proof, sn_old, k_old, k_new, cm_new, merkle_root),
+				priv_coin::manta_verify_transfer_zkp(
+					transfer_vk_bytes,
+					proof,
+					&sender_data,
+					&receiver_data,
+					merkle_root),
 				<Error<T>>::ZKPFail,
 			);
 
@@ -340,7 +332,7 @@ decl_module! {
 
 			// update ledger storage
 			let mut enc_value_list = EncValueList::get();
-			enc_value_list.push(enc_amount);
+			enc_value_list.push(receiver_data.cipher);
 
 			Self::deposit_event(RawEvent::PrivateTransferred(origin));
 			CoinList::put(coin_list);
@@ -355,9 +347,8 @@ decl_module! {
 		fn reclaim(origin,
 			amount: u64,
 			merkle_root: [u8; 32],
-			sn_old: [u8; 32],
-			k_old: [u8; 32],
-			proof: [u8; 192]
+			sender_data: manta_token::SenderData,
+			proof: manta_token::Proof
 		) {
 			let origin = ensure_signed(origin)?;
 			let origin_account = origin.clone();
@@ -382,8 +373,8 @@ decl_module! {
 
 			// check if sn_old already spent
 			let mut sn_list = SNList::get();
-			ensure!(!sn_list.contains(&sn_old), <Error<T>>::MantaCoinSpent);
-			sn_list.push(sn_old);
+			ensure!(!sn_list.contains(&sender_data.sn), <Error<T>>::MantaCoinSpent);
+			sn_list.push(sender_data.sn);
 
 			// get the coin list
 			let coin_list = CoinList::get();
@@ -399,14 +390,18 @@ decl_module! {
 
 			// check validity of zkp
 			ensure!(
-				priv_coin::manta_verify_reclaim_zkp(reclaim_vk_bytes, amount, proof, sn_old, k_old, merkle_root),
+				priv_coin::manta_verify_reclaim_zkp(
+					reclaim_vk_bytes,
+					amount,
+					proof,
+					&sender_data,
+					merkle_root),
 				<Error<T>>::ZKPFail,
 			);
 
 			// TODO: revisit replay attack here
 
 			// update ledger storage
-			// FIXME: change RawEvent here
 			Self::deposit_event(RawEvent::PrivateReclaimed(origin));
 			CoinList::put(coin_list);
 			SNList::put(sn_list);
@@ -477,7 +472,7 @@ decl_storage! {
 		pub SNList get(fn sn_list): Vec<[u8; 32]>;
 
 		/// List of Coins that has ever been created
-		pub CoinList get(fn coin_list): Vec<MantaCoin>;
+		pub CoinList get(fn coin_list): Vec<[u8; 32]>;
 
 		/// List of encrypted values
 		pub EncValueList get(fn enc_value_list): Vec<[u8; 16]>;

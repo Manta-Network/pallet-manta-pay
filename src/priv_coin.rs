@@ -1,4 +1,4 @@
-use crate::{manta_token::MantaCoin, param::*};
+use crate::param::*;
 use ark_crypto_primitives::{commitment::pedersen::Randomness, CommitmentScheme};
 use ark_ed_on_bls12_381::{Fq, Fr};
 use ark_ff::ToConstraintField;
@@ -19,9 +19,8 @@ pub fn comm_open(
 }
 
 #[allow(dead_code)]
-pub fn merkle_root(hash_param: HashParam, payload: &[MantaCoin]) -> [u8; 32] {
-	let leaf: Vec<[u8; 32]> = payload.iter().map(|x| (x.cm_bytes)).collect();
-	let tree = LedgerMerkleTree::new(hash_param, &leaf).unwrap();
+pub fn merkle_root(hash_param: HashParam, payload: &[[u8; 32]]) -> [u8; 32] {
+	let tree = LedgerMerkleTree::new(hash_param, payload).unwrap();
 	let root = tree.root();
 
 	let mut bytes = [0u8; 32];
@@ -32,22 +31,20 @@ pub fn merkle_root(hash_param: HashParam, payload: &[MantaCoin]) -> [u8; 32] {
 pub fn manta_verify_transfer_zkp(
 	transfer_key_bytes: Vec<u8>,
 	proof: [u8; 192],
-	sn_old: [u8; 32],
-	k_old: [u8; 32],
-	k_new: [u8; 32],
-	cm_new: [u8; 32],
+	sender_data: &super::manta_token::SenderData,
+	receiver_data: &super::manta_token::ReceiverData,
 	merkle_root: [u8; 32],
 ) -> bool {
 	let vk = Groth16VK::deserialize(transfer_key_bytes.as_ref()).unwrap();
 	let pvk = Groth16PVK::from(vk);
 	let proof = Groth16Proof::deserialize(proof.as_ref()).unwrap();
-	let k_old = MantaCoinCommitmentOutput::deserialize(k_old.as_ref()).unwrap();
-	let k_new = MantaCoinCommitmentOutput::deserialize(k_new.as_ref()).unwrap();
-	let cm_new = MantaCoinCommitmentOutput::deserialize(cm_new.as_ref()).unwrap();
+	let k_old = MantaCoinCommitmentOutput::deserialize(sender_data.k.as_ref()).unwrap();
+	let k_new = MantaCoinCommitmentOutput::deserialize(receiver_data.k.as_ref()).unwrap();
+	let cm_new = MantaCoinCommitmentOutput::deserialize(receiver_data.cm.as_ref()).unwrap();
 	let merkle_root = HashOutput::deserialize(merkle_root.as_ref()).unwrap();
 
 	let mut inputs = [k_old.x, k_old.y, k_new.x, k_new.y, cm_new.x, cm_new.y].to_vec();
-	let sn: Vec<Fq> = ToConstraintField::<Fq>::to_field_elements(sn_old.as_ref()).unwrap();
+	let sn: Vec<Fq> = ToConstraintField::<Fq>::to_field_elements(sender_data.sn.as_ref()).unwrap();
 	let mr: Vec<Fq> = ToConstraintField::<Fq>::to_field_elements(&merkle_root).unwrap();
 	inputs = [inputs[..].as_ref(), sn.as_ref(), mr.as_ref()].concat();
 
@@ -58,18 +55,17 @@ pub fn manta_verify_reclaim_zkp(
 	reclaim_key_bytes: Vec<u8>,
 	value: u64,
 	proof: [u8; 192],
-	sn_old: [u8; 32],
-	k_old: [u8; 32],
+	sender_data: &super::manta_token::SenderData,
 	merkle_root: [u8; 32],
 ) -> bool {
 	let vk = Groth16VK::deserialize(reclaim_key_bytes.as_ref()).unwrap();
 	let pvk = Groth16PVK::from(vk);
 	let proof = Groth16Proof::deserialize(proof.as_ref()).unwrap();
-	let k_old = MantaCoinCommitmentOutput::deserialize(k_old.as_ref()).unwrap();
+	let k_old = MantaCoinCommitmentOutput::deserialize(sender_data.k.as_ref()).unwrap();
 	let merkle_root = HashOutput::deserialize(merkle_root.as_ref()).unwrap();
 
 	let mut inputs = [k_old.x, k_old.y].to_vec();
-	let sn: Vec<Fq> = ToConstraintField::<Fq>::to_field_elements(sn_old.as_ref()).unwrap();
+	let sn: Vec<Fq> = ToConstraintField::<Fq>::to_field_elements(sender_data.sn.as_ref()).unwrap();
 	let mr: Vec<Fq> = ToConstraintField::<Fq>::to_field_elements(&merkle_root).unwrap();
 	let value_fq = Fq::from(value);
 	inputs = [
