@@ -106,6 +106,15 @@ fn bench_trasnfer_verify(c: &mut Criterion) {
 	let merkle_root = tree.root();
 	let mut merkle_root_bytes = [0u8; 32];
 	merkle_root.serialize(merkle_root_bytes.as_mut()).unwrap();
+	let sender_data = SenderData {
+		k: sender_pub_info.k,
+		sn: sender_priv_info.sn,
+	};
+	let receiver_data = ReceiverData {
+		k: receiver_pub_info.k,
+		cm: receiver.cm_bytes,
+		cipher: [0u8; 16],
+	};
 
 	println!("start benchmarking proof verification");
 	let bench_str = format!("ZKP verification");
@@ -114,10 +123,8 @@ fn bench_trasnfer_verify(c: &mut Criterion) {
 			assert!(manta_verify_transfer_zkp(
 				pallet_manta_dap::param::TRANSFERVKBYTES.to_vec(),
 				proof_bytes,
-				sender_priv_info.sn,
-				sender_pub_info.k,
-				receiver_pub_info.k,
-				receiver.cm_bytes,
+				&sender_data,
+				&receiver_data,
 				merkle_root_bytes,
 			))
 		})
@@ -132,58 +139,44 @@ fn bench_merkle_tree(c: &mut Criterion) {
 	let mut rng = ChaCha20Rng::from_seed(hash_param_seed);
 	let hash_param = Hash::setup(&mut rng).unwrap();
 
-	let mut cm_bytes = [0u8; 32];
+	let mut cm_bytes1 = [0u8; 32];
 	let cm_vec = BASE64
 		.decode(b"XzoWOzhp6rXjQ/HDEN6jSLsLs64hKXWUNuFVtCUq0AA=")
 		.unwrap();
-	cm_bytes.copy_from_slice(cm_vec[0..32].as_ref());
+	cm_bytes1.copy_from_slice(cm_vec[0..32].as_ref());
 
-	let coin1 = MantaCoin { cm_bytes: cm_bytes };
-	let coin1_clone = coin1.clone();
 	let hash_param_clone = hash_param.clone();
 	let bench_str = format!("with 1 leaf");
 	let bench = Benchmark::new(bench_str, move |b| {
 		b.iter(|| {
-			merkle_root(hash_param_clone.clone(), &[coin1_clone.clone()]);
+			merkle_root(hash_param_clone.clone(), &[cm_bytes1]);
 		})
 	});
 
-	let mut cm_bytes = [0u8; 32];
+	let mut cm_bytes2 = [0u8; 32];
 	let cm_vec = BASE64
 		.decode(b"3Oye4AqhzdysdWdCzMcoImTnYNGd21OmF8ztph4dRqI=")
 		.unwrap();
-	cm_bytes.copy_from_slice(cm_vec[0..32].as_ref());
+	cm_bytes2.copy_from_slice(cm_vec[0..32].as_ref());
 
-	let coin2 = MantaCoin { cm_bytes: cm_bytes };
-
-	let coin1_clone = coin1.clone();
-	let coin2_clone = coin2.clone();
 	let hash_param_clone = hash_param.clone();
 	let bench_str = format!("with 2 leaf");
 	let bench = bench.with_function(bench_str, move |b| {
 		b.iter(|| {
-			merkle_root(
-				hash_param_clone.clone(),
-				&[coin1_clone.clone(), coin2_clone.clone()],
-			);
+			merkle_root(hash_param_clone.clone(), &[cm_bytes1, cm_bytes2]);
 		})
 	});
 
-	let mut cm_bytes = [0u8; 32];
+	let mut cm_bytes3 = [0u8; 32];
 	let cm_vec = BASE64
 		.decode(b"1zuOv92V7e1qX1bP7+QNsV+gW5E3xUsghte/lZ7h5pg=")
 		.unwrap();
-	cm_bytes.copy_from_slice(cm_vec[0..32].as_ref());
-
-	let coin3 = MantaCoin { cm_bytes: cm_bytes };
+	cm_bytes3.copy_from_slice(cm_vec[0..32].as_ref());
 
 	let bench_str = format!("with 3 leaf");
 	let bench = bench.with_function(bench_str, move |b| {
 		b.iter(|| {
-			merkle_root(
-				hash_param.clone(),
-				&[coin1.clone(), coin2.clone(), coin3.clone()],
-			);
+			merkle_root(hash_param.clone(), &[cm_bytes1, cm_bytes2, cm_bytes3]);
 		})
 	});
 

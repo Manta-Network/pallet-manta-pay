@@ -13,9 +13,9 @@ use rand_core::{CryptoRng, RngCore};
 
 #[derive(Encode, Debug, Decode, Clone, Default, PartialEq)]
 pub struct MintData {
-	pub(crate) cm: [u8; 32],
-	pub(crate) k: [u8; 32],
-	pub(crate) s: [u8; 32],
+	pub cm: [u8; 32],
+	pub k: [u8; 32],
+	pub s: [u8; 32],
 }
 
 impl MintData {
@@ -27,15 +27,15 @@ impl MintData {
 
 #[derive(Encode, Debug, Decode, Clone, Default, PartialEq)]
 pub struct SenderData {
-	pub(crate) k: [u8; 32],
-	pub(crate) sn: [u8; 32],
+	pub k: [u8; 32],
+	pub sn: [u8; 32],
 }
 
 #[derive(Encode, Debug, Decode, Clone, Default, PartialEq)]
 pub struct ReceiverData {
-	pub(crate) k: [u8; 32],
-	pub(crate) cm: [u8; 32],
-	pub(crate) cipher: [u8; 16],
+	pub k: [u8; 32],
+	pub cm: [u8; 32],
+	pub cipher: [u8; 16],
 }
 
 pub type Proof = [u8; 192];

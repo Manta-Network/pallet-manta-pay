@@ -153,7 +153,7 @@ fn test_transfer_hardcode_should_work() {
 
         // hardcoded sender
         // those are parameters for coin_1 in coin.json
-        let  mut old_k_bytes = [0u8;32];
+        let mut old_k_bytes = [0u8;32];
         let old_k_vec = BASE64
             .decode(b"+tMTpSikpdACxuDGZTl5pxwT7tpYcX/DFKJRZ1oLfqc=")
             .unwrap();
@@ -200,7 +200,7 @@ fn test_transfer_hardcode_should_work() {
 
         // hardcoded receiver
         // those are parameters for coin_2 in coin.json
-        let  mut new_k_bytes = [0u8;32];
+        let mut new_k_bytes = [0u8;32];
         let new_k_vec = BASE64
             .decode(b"2HbWGQCLOfxuA4jOiDftBRSbjjAs/a0vjrq/H4p6QBI=")
             .unwrap();
@@ -299,7 +299,7 @@ fn test_reclaim_hardcode_should_work() {
 
         // hardcoded coin_1
         // those are parameters for coin_1 in coin.json
-        let  mut old_k_bytes = [0u8;32];
+        let mut old_k_bytes = [0u8;32];
         let old_k_vec = BASE64
             .decode(b"+tMTpSikpdACxuDGZTl5pxwT7tpYcX/DFKJRZ1oLfqc=")
             .unwrap();
@@ -347,7 +347,7 @@ fn test_reclaim_hardcode_should_work() {
 
         // hardcoded coin_2
         // those are parameters for coin_2 in coin.json
-        let  mut old_k_bytes = [0u8;32];
+        let mut old_k_bytes = [0u8;32];
         let old_k_vec = BASE64
             .decode(b"2HbWGQCLOfxuA4jOiDftBRSbjjAs/a0vjrq/H4p6QBI=")
             .unwrap();
