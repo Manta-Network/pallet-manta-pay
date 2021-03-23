@@ -104,6 +104,7 @@ pub mod param;
 pub mod priv_coin;
 pub mod reclaim;
 pub mod serdes;
+pub mod shard;
 pub mod transfer;
 
 #[cfg(test)]
@@ -115,6 +116,7 @@ use frame_system::ensure_signed;
 use manta_token::*;
 use param::{COMPARAMBYTES, HASHPARAMBYTES, RECLAIMVKBYTES, TRANSFERVKBYTES, *};
 use serdes::{Checksum, MantaSerDes};
+use shard::*;
 use sp_runtime::traits::{StaticLookup, Zero};
 
 /// The module configuration trait.
@@ -166,8 +168,10 @@ decl_module! {
 			TransferZKPKey::put(TRANSFERVKBYTES.to_vec());
 			ReclaimZKPKey::put(RECLAIMVKBYTES.to_vec());
 
-			CoinList::put(Vec::<[u8;32]>::new());
-			LedgerState::put([4u8; 32]);
+			// coin_shards are a 256 lists of commitments
+			let coin_shards = Shards::default();
+			CoinShards::put(coin_shards);
+
 			PoolBalance::put(0);
 			SNList::put(Vec::<[u8; 32]>::new());
 			EncValueList::put(Vec::<[u8; 16]>::new());
@@ -253,27 +257,20 @@ decl_module! {
 				<Error<T>>::MintFail
 			);
 
-			// check cm is not in coin_list
-			let mut coin_list = CoinList::get();
-			for e in coin_list.iter() {
-				ensure!(
-					*e != input.cm,
-					Error::<T>::MantaCoinExist
-				)
-			}
+			// check cm is not in the ledger
+			let mut coin_shards = CoinShards::get();
+			ensure!(
+				!coin_shards.exist(&input.cm),
+				Error::<T>::MantaCoinExist
+			);
 
-			// add the new coin to the ledger
-			coin_list.push(input.cm);
-
-			// update the merkle root
-			// let t: Vec<MantaCoin> = Vec::new();
-			let new_state = priv_coin::merkle_root(hash_param, &coin_list);
+			// update the shards
+			coin_shards.update(&input.cm, hash_param);
 
 			// write back to ledger storage
 			Self::deposit_event(RawEvent::Minted(origin, amount));
-			CoinList::put(coin_list);
-			// let new_state = [0u8; 32];
-			LedgerState::put(new_state);
+			CoinShards::put(coin_shards);
+
 			let old_pool_balance = PoolBalance::get();
 			PoolBalance::put(old_pool_balance + amount);
 			<Balances<T>>::insert(origin_account, origin_balance - amount);
@@ -309,21 +306,25 @@ decl_module! {
 
 			// check if sn_old already spent
 			let mut sn_list = SNList::get();
-			ensure!(!sn_list.contains(&sender_data.sn), <Error<T>>::MantaCoinSpent);
+			ensure!(
+				!sn_list.contains(&sender_data.sn),
+				<Error<T>>::MantaCoinSpent
+			);
 			sn_list.push(sender_data.sn);
-
-			// update coin list
-			let mut coin_list = CoinList::get();
-			coin_list.push(receiver_data.cm);
-
-			// get the verification key from the ledger
-			let transfer_vk_bytes = TransferZKPKey::get();
 
 			// get the ledger state from the ledger
 			// and check the validity of the state
-			let state = LedgerState::get();
-			ensure!(state == merkle_root, <Error<T>>::InvalidLedgerState);
-			let new_root = priv_coin::merkle_root(hash_param, &coin_list);
+			let mut coin_shards = CoinShards::get();
+			ensure!(
+				coin_shards.check_root(&merkle_root),
+				<Error<T>>::InvalidLedgerState
+			);
+
+			// update coin list
+			coin_shards.update(&receiver_data.cm, hash_param);
+
+			// get the verification key from the ledger
+			let transfer_vk_bytes = TransferZKPKey::get();
 
 			// check validity of zkp
 			ensure!(
@@ -343,10 +344,9 @@ decl_module! {
 			enc_value_list.push(receiver_data.cipher);
 
 			Self::deposit_event(RawEvent::PrivateTransferred(origin));
-			CoinList::put(coin_list);
+			CoinShards::put(coin_shards);
 			SNList::put(sn_list);
 			EncValueList::put(enc_value_list);
-			LedgerState::put(new_root);
 		}
 
 
@@ -385,20 +385,24 @@ decl_module! {
 
 			// check if sn_old already spent
 			let mut sn_list = SNList::get();
-			ensure!(!sn_list.contains(&sender_data.sn), <Error<T>>::MantaCoinSpent);
+			ensure!(
+				!sn_list.contains(&sender_data.sn),
+				<Error<T>>::MantaCoinSpent
+			);
 			sn_list.push(sender_data.sn);
 
 			// get the coin list
-			let coin_list = CoinList::get();
+			let coin_shards = CoinShards::get();
 
 			// get the verification key from the ledger
 			let reclaim_vk_bytes = ReclaimZKPKey::get();
 
 			// get the ledger state from the ledger
 			// and check the validity of the state
-			let state = LedgerState::get();
-			ensure!(state == merkle_root, <Error<T>>::InvalidLedgerState);
-			let new_root = priv_coin::merkle_root(hash_param, &coin_list);
+			ensure!(
+				coin_shards.check_root(&merkle_root),
+				<Error<T>>::InvalidLedgerState
+			);
 
 			// check validity of zkp
 			ensure!(
@@ -415,9 +419,7 @@ decl_module! {
 
 			// update ledger storage
 			Self::deposit_event(RawEvent::PrivateReclaimed(origin));
-			CoinList::put(coin_list);
 			SNList::put(sn_list);
-			LedgerState::put(new_root);
 			PoolBalance::put(pool);
 			<Balances<T>>::insert(origin_account, origin_balance + amount);
 		}
@@ -484,13 +486,10 @@ decl_storage! {
 		pub SNList get(fn sn_list): Vec<[u8; 32]>;
 
 		/// List of Coins that has ever been created
-		pub CoinList get(fn coin_list): Vec<[u8; 32]>;
+		pub CoinShards get(fn coin_shards): Shards;
 
 		/// List of encrypted values
 		pub EncValueList get(fn enc_value_list): Vec<[u8; 16]>;
-
-		/// merkle root of list of commitments
-		pub LedgerState get(fn legder_state): [u8; 32];
 
 		/// the balance of minted coins
 		pub PoolBalance get(fn pool_balance): u64;

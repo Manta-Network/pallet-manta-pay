@@ -1,8 +1,6 @@
 use crate as pallet_manta_dap;
 use crate::{dh::*, manta_token::*, param::*, reclaim::*, serdes::*, transfer::*, *};
-use ark_ed_on_bls12_381::Fq;
 use ark_groth16::create_random_proof;
-use ark_relations::r1cs::{ConstraintSynthesizer, ConstraintSystem};
 use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
 use frame_support::{assert_noop, assert_ok, parameter_types};
 use rand::{RngCore, SeedableRng};
@@ -14,6 +12,9 @@ use sp_runtime::{
 };
 use std::{fs::File, io::prelude::*};
 use x25519_dalek::{PublicKey, StaticSecret};
+
+// use ark_ed_on_bls12_381::Fq;
+// use ark_relations::r1cs::{ConstraintSynthesizer, ConstraintSystem};
 
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Test>;
 type Block = frame_system::mocking::MockBlock<Test>;
@@ -111,9 +112,8 @@ fn test_mint_should_work() {
 
 		assert_eq!(TotalSupply::get(), 1000);
 		assert_eq!(PoolBalance::get(), 10);
-		let coin_list = CoinList::get();
-		assert_eq!(coin_list.len(), 1);
-		assert_eq!(coin_list[0].as_ref(), coin.cm_bytes);
+		let coin_shards = CoinShards::get();
+		assert!(coin_shards.exist(&coin.cm_bytes));
 		let sn_list = SNList::get();
 		assert_eq!(sn_list.len(), 0);
 	});
@@ -124,8 +124,8 @@ fn test_mint_should_work() {
 fn test_transfer_should_work() {
 	new_test_ext().execute_with(|| {
 		// setup
-		assert_ok!(Assets::init(Origin::signed(1), 100000));
-		assert_eq!(Assets::balance(1), 100000);
+		assert_ok!(Assets::init(Origin::signed(1), 10_000_000));
+		assert_eq!(Assets::balance(1), 10_000_000);
 		assert_eq!(PoolBalance::get(), 0);
 
 		let hash_param = HashParam::deserialize(HASHPARAMBYTES.as_ref());
@@ -133,7 +133,7 @@ fn test_transfer_should_work() {
 
 		let mut rng = ChaCha20Rng::from_seed([3u8; 32]);
 		let mut pool = 0;
-		let size = 10usize;
+		let size = 1000usize;
 
 		// sender tokens
 		let mut senders = Vec::new();
@@ -163,9 +163,8 @@ fn test_transfer_should_work() {
 
 			// sanity checks
 			assert_eq!(PoolBalance::get(), pool);
-			let coin_list = CoinList::get();
-			assert_eq!(coin_list.len(), i + 1);
-			assert_eq!(coin_list[i], sender.cm_bytes);
+			let coin_shards = CoinShards::get();
+			assert!(coin_shards.exist(&sender.cm_bytes));
 			let sn_list = SNList::get();
 			assert_eq!(sn_list.len(), 0);
 
@@ -188,11 +187,14 @@ fn test_transfer_should_work() {
 		let mut transfer_key_bytes: Vec<u8> = vec![];
 		file.read_to_end(&mut transfer_key_bytes).unwrap();
 		let pk = Groth16PK::deserialize_uncompressed(transfer_key_bytes.as_ref()).unwrap();
+		let vk_bytes = TransferZKPKey::get();
+		let vk = Groth16VK::deserialize(vk_bytes.as_ref()).unwrap();
+		assert_eq!(pk.vk, vk);
 
 		// generate and verify transactions
 		for i in 0usize..size {
-			let coin_list = CoinList::get();
-			let root = LedgerState::get();
+			let coin_shards = CoinShards::get();
+			let shard_index = senders[i].0.cm_bytes[0] as usize;
 			// generate ZKP
 			let circuit = TransferCircuit {
 				commit_param: commit_param.clone(),
@@ -202,21 +204,17 @@ fn test_transfer_should_work() {
 				sender_priv_info: senders[i].2.clone(),
 				receiver_coin: receivers[i].0.clone(),
 				receiver_pub_info: receivers[i].1.clone(),
-				list: coin_list.to_vec(),
+				list: coin_shards.shard[shard_index].list.clone(),
 			};
 
-			let sanity_cs = ConstraintSystem::<Fq>::new_ref();
-			circuit
-				.clone()
-				.generate_constraints(sanity_cs.clone())
-				.unwrap();
-			assert!(sanity_cs.is_satisfied().unwrap());
+			// let sanity_cs = ConstraintSystem::<Fq>::new_ref();
+			// circuit
+			// 	.clone()
+			// 	.generate_constraints(sanity_cs.clone())
+			// 	.unwrap();
+			// assert!(sanity_cs.is_satisfied().unwrap());
 
 			let proof = create_random_proof(circuit, &pk, &mut rng).unwrap();
-			let vk_bytes = TransferZKPKey::get();
-			let vk = Groth16VK::deserialize(vk_bytes.as_ref()).unwrap();
-			assert_eq!(pk.vk, vk);
-
 			let mut proof_bytes = [0u8; 192];
 			proof.serialize(proof_bytes.as_mut()).unwrap();
 
@@ -244,22 +242,12 @@ fn test_transfer_should_work() {
 
 			assert_ok!(Assets::manta_transfer(
 				Origin::signed(1),
-				root,
+				coin_shards.shard[shard_index].root,
 				sender_data,
 				receiver_data,
 				proof_bytes,
 			));
 
-			// check the resulting status of the ledger storage
-			assert_eq!(TotalSupply::get(), 100000);
-			assert_eq!(PoolBalance::get(), pool);
-			let coin_list = CoinList::get();
-			assert_eq!(coin_list.len(), size + 1 + i);
-			assert_eq!(coin_list[i], senders[i].0.cm_bytes);
-			assert_eq!(coin_list[size + i], receivers[i].0.cm_bytes);
-			let sn_list = SNList::get();
-			assert_eq!(sn_list.len(), i + 1);
-			assert_eq!(sn_list[i], senders[i].2.sn);
 			let enc_value_list = EncValueList::get();
 			assert_eq!(enc_value_list.len(), i + 1);
 			assert_eq!(enc_value_list[i], cipher);
@@ -267,6 +255,18 @@ fn test_transfer_should_work() {
 				manta_dh_dec(&cipher, &sender_pk_bytes, &receiver_sk_bytes),
 				10 + i as u64
 			);
+
+			assert_eq!(PoolBalance::get(), pool);
+		}
+
+		// check the resulting status of the ledger storage
+		assert_eq!(TotalSupply::get(), 10_000_000);
+		let coin_shards = CoinShards::get();
+		let sn_list = SNList::get();
+		for i in 0usize..size {
+			assert!(coin_shards.exist(&senders[i].0.cm_bytes));
+			assert!(coin_shards.exist(&receivers[i].0.cm_bytes));
+			assert_eq!(sn_list[i], senders[i].2.sn);
 		}
 	});
 }
@@ -276,8 +276,8 @@ fn test_transfer_should_work() {
 fn test_reclaim_should_work() {
 	new_test_ext().execute_with(|| {
 		// setup
-		assert_ok!(Assets::init(Origin::signed(1), 100000));
-		assert_eq!(Assets::balance(1), 100000);
+		assert_ok!(Assets::init(Origin::signed(1), 10_000_000));
+		assert_eq!(Assets::balance(1), 10_000_000);
 		assert_eq!(PoolBalance::get(), 0);
 
 		let hash_param = HashParam::deserialize(HASHPARAMBYTES.as_ref());
@@ -285,7 +285,7 @@ fn test_reclaim_should_work() {
 
 		let mut rng = ChaCha20Rng::from_seed([3u8; 32]);
 		let mut pool = 0;
-		let size = 10usize;
+		let size = 1000usize;
 
 		// sender tokens
 		let mut senders = Vec::new();
@@ -316,9 +316,8 @@ fn test_reclaim_should_work() {
 
 			// sanity checks
 			assert_eq!(PoolBalance::get(), pool);
-			let coin_list = CoinList::get();
-			assert_eq!(coin_list.len(), i + 1);
-			assert_eq!(coin_list[i], senders[i].0.cm_bytes);
+			let coin_shards = CoinShards::get();
+			assert!(coin_shards.exist(&senders[i].0.cm_bytes));
 			let sn_list = SNList::get();
 			assert_eq!(sn_list.len(), 0);
 		}
@@ -328,13 +327,15 @@ fn test_reclaim_should_work() {
 		let mut reclaim_pk_bytes: Vec<u8> = vec![];
 		file.read_to_end(&mut reclaim_pk_bytes).unwrap();
 		let pk = Groth16PK::deserialize_uncompressed(reclaim_pk_bytes.as_ref()).unwrap();
+		let vk_bytes = ReclaimZKPKey::get();
+		let vk = Groth16VK::deserialize(vk_bytes.as_ref()).unwrap();
+		assert_eq!(pk.vk, vk);
 
 		// generate and verify transactions
-		let coin_list = CoinList::get();
-		let root = LedgerState::get();
-
+		let coin_shards = CoinShards::get();
 		for i in 0usize..size {
 			let token_value = 10 + i as u64;
+			let shard_index = senders[i].0.cm_bytes[0] as usize;
 			// generate ZKP
 			let circuit = ReclaimCircuit {
 				commit_param: commit_param.clone(),
@@ -343,21 +344,17 @@ fn test_reclaim_should_work() {
 				sender_pub_info: senders[i].1.clone(),
 				sender_priv_info: senders[i].2.clone(),
 				value: token_value,
-				list: coin_list.to_vec(),
+				list: coin_shards.shard[shard_index].list.clone(),
 			};
 
-			let sanity_cs = ConstraintSystem::<Fq>::new_ref();
-			circuit
-				.clone()
-				.generate_constraints(sanity_cs.clone())
-				.unwrap();
-			assert!(sanity_cs.is_satisfied().unwrap());
+			// let sanity_cs = ConstraintSystem::<Fq>::new_ref();
+			// circuit
+			// 	.clone()
+			// 	.generate_constraints(sanity_cs.clone())
+			// 	.unwrap();
+			// assert!(sanity_cs.is_satisfied().unwrap());
 
 			let proof = create_random_proof(circuit, &pk, &mut rng).unwrap();
-			let vk_bytes = ReclaimZKPKey::get();
-			let vk = Groth16VK::deserialize(vk_bytes.as_ref()).unwrap();
-			assert_eq!(pk.vk, vk);
-
 			let mut proof_bytes = [0u8; 192];
 			proof.serialize(proof_bytes.as_mut()).unwrap();
 
@@ -368,13 +365,13 @@ fn test_reclaim_should_work() {
 			assert_ok!(Assets::reclaim(
 				Origin::signed(1),
 				token_value,
-				root,
+				coin_shards.shard[shard_index].root,
 				sender_data,
 				proof_bytes,
 			));
 
 			// check the resulting status of the ledger storage
-			assert_eq!(TotalSupply::get(), 100000);
+			assert_eq!(TotalSupply::get(), 10_000_000);
 			pool -= token_value;
 			assert_eq!(PoolBalance::get(), pool);
 
@@ -382,8 +379,6 @@ fn test_reclaim_should_work() {
 			assert_eq!(sn_list.len(), i + 1);
 			assert_eq!(sn_list[i], senders[i].2.sn);
 		}
-		let coin_list = CoinList::get();
-		assert_eq!(coin_list.len(), size);
 		let enc_value_list = EncValueList::get();
 		assert_eq!(enc_value_list.len(), 0);
 	});
