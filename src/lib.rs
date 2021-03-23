@@ -359,9 +359,10 @@ decl_module! {
 			k_old: [u8; 32],
 			proof: [u8; 192]
 		) {
-
-			ensure!(Self::is_init(), <Error<T>>::BasecoinNotInit);
 			let origin = ensure_signed(origin)?;
+			let origin_account = origin.clone();
+			let origin_balance = <Balances<T>>::get(&origin);
+			ensure!(Self::is_init(), <Error<T>>::BasecoinNotInit);
 
 			let hash_param = hash_param_deserialize(HASHPARAMBYTES.as_ref());
 			let hash_param_checksum_local = hash_param_checksum(&hash_param);
@@ -411,6 +412,7 @@ decl_module! {
 			SNList::put(sn_list);
 			LedgerState::put(new_root);
 			PoolBalance::put(pool);
+			<Balances<T>>::insert(origin_account, origin_balance + amount);
 		}
 
 	}
