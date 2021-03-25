@@ -21,6 +21,7 @@ criterion_group!(
 	bench_pedersen_hash,
 	bench_pedersen_com,
 	bench_merkle_tree,
+	bench_transfer_prove,
 	bench_trasnfer_verify,
 );
 criterion_main!(manta_bench);
@@ -203,4 +204,55 @@ fn bench_pedersen_hash(c: &mut Criterion) {
 	});
 
 	c.bench("perdersen", bench);
+}
+
+fn bench_transfer_prove(c: &mut Criterion) {
+	let hash_param_seed = pallet_manta_dap::param::HASHPARAMSEED;
+	let commit_param_seed = pallet_manta_dap::param::COMMITPARAMSEED;
+
+	let mut rng = ChaCha20Rng::from_seed(commit_param_seed);
+	let commit_param = MantaCoinCommitmentScheme::setup(&mut rng).unwrap();
+
+	let mut rng = ChaCha20Rng::from_seed(hash_param_seed);
+	let hash_param = Hash::setup(&mut rng).unwrap();
+
+	let mut file = File::open("transfer_pk.bin").unwrap();
+	let mut transfer_key_bytes: Vec<u8> = vec![];
+	file.read_to_end(&mut transfer_key_bytes).unwrap();
+	let tmp: &[u8] = transfer_key_bytes.as_ref();
+	let pk = Groth16PK::deserialize_uncompressed(tmp).unwrap();
+
+	println!("proving key loaded from disk");
+
+	// sender
+	let mut sk = [0u8; 32];
+	rng.fill_bytes(&mut sk);
+	let (sender, sender_pub_info, sender_priv_info) = make_coin(&commit_param, sk, 100, &mut rng);
+
+	// receiver
+	let mut sk = [0u8; 32];
+	rng.fill_bytes(&mut sk);
+	let (receiver, receiver_pub_info, _receiver_priv_info) =
+		make_coin(&commit_param, sk, 100, &mut rng);
+
+	let circuit = TransferCircuit {
+		commit_param,
+		hash_param: hash_param.clone(),
+		sender_coin: sender.clone(),
+		sender_pub_info: sender_pub_info.clone(),
+		sender_priv_info: sender_priv_info.clone(),
+		receiver_coin: receiver.clone(),
+		receiver_pub_info: receiver_pub_info.clone(),
+		list: vec![sender.cm_bytes],
+	};
+
+	let bench_str = format!("ZKP proof generation");
+	let bench = Benchmark::new(bench_str, move |b| {
+		b.iter(|| {
+			create_random_proof(circuit.clone(), &pk, &mut rng).unwrap();
+		})
+	});
+
+	let bench = bench.sample_size(10);
+	c.bench("transfer", bench);
 }

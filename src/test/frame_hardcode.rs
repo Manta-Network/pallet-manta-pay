@@ -263,7 +263,6 @@ fn test_transfer_hardcode_should_work() {
     });
 }
 
-
 // TODO fix this test
 // #[test]
 // fn test_reclaim_hardcode_should_work() {
