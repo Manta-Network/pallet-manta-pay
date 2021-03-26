@@ -2,20 +2,16 @@
 extern crate criterion;
 extern crate pallet_manta_dap;
 
-use ark_crypto_primitives::{commitment::pedersen::Randomness, CommitmentScheme, FixedLengthCRH};
+use ark_crypto_primitives::{
+	commitment::pedersen::Randomness, CommitmentScheme as ArkCommitmentScheme, FixedLengthCRH,
+};
 use ark_ed_on_bls12_381::{Fq, Fr};
 use ark_groth16::create_random_proof;
 use ark_relations::r1cs::{ConstraintSynthesizer, ConstraintSystem};
 use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
 use criterion::{Benchmark, Criterion};
 use data_encoding::BASE64;
-use pallet_manta_dap::{
-	manta_token::*,
-	param::*,
-	priv_coin::*,
-	serdes::{commit_param_deserialize, hash_param_deserialize},
-	transfer::*,
-};
+use pallet_manta_dap::*;
 use rand::SeedableRng;
 use rand_chacha::ChaCha20Rng;
 use rand_core::RngCore;
@@ -27,6 +23,7 @@ criterion_group!(
 	bench_pedersen_hash,
 	bench_pedersen_com,
 	bench_merkle_tree,
+	bench_transfer_prove,
 	bench_trasnfer_verify,
 );
 criterion_main!(manta_bench);
@@ -35,14 +32,14 @@ fn bench_param_io(c: &mut Criterion) {
 	let bench_str = format!("hash param");
 	let bench = Benchmark::new(bench_str, move |b| {
 		b.iter(|| {
-			hash_param_deserialize(HASHPARAMBYTES.as_ref());
+			HashParam::deserialize(HASHPARAMBYTES.as_ref());
 		})
 	});
 
 	let bench_str = format!("commit param");
 	let bench = bench.with_function(bench_str, move |b| {
 		b.iter(|| {
-			commit_param_deserialize(COMPARAMBYTES.as_ref());
+			CommitmentParam::deserialize(COMPARAMBYTES.as_ref());
 		})
 	});
 
@@ -51,11 +48,11 @@ fn bench_param_io(c: &mut Criterion) {
 }
 
 fn bench_trasnfer_verify(c: &mut Criterion) {
-	let hash_param_seed = pallet_manta_dap::param::HASHPARAMSEED;
-	let commit_param_seed = pallet_manta_dap::param::COMMITPARAMSEED;
+	let hash_param_seed = HASHPARAMSEED;
+	let commit_param_seed = COMMITPARAMSEED;
 
 	let mut rng = ChaCha20Rng::from_seed(commit_param_seed);
-	let commit_param = MantaCoinCommitmentScheme::setup(&mut rng).unwrap();
+	let commit_param = CommitmentScheme::setup(&mut rng).unwrap();
 
 	let mut rng = ChaCha20Rng::from_seed(hash_param_seed);
 	let hash_param = Hash::setup(&mut rng).unwrap();
@@ -121,7 +118,7 @@ fn bench_trasnfer_verify(c: &mut Criterion) {
 	let bench = Benchmark::new(bench_str, move |b| {
 		b.iter(|| {
 			assert!(manta_verify_transfer_zkp(
-				pallet_manta_dap::param::TRANSFERVKBYTES.to_vec(),
+				TRANSFERVKBYTES.to_vec(),
 				proof_bytes,
 				&sender_data,
 				&receiver_data,
@@ -135,7 +132,7 @@ fn bench_trasnfer_verify(c: &mut Criterion) {
 }
 
 fn bench_merkle_tree(c: &mut Criterion) {
-	let hash_param_seed = pallet_manta_dap::param::HASHPARAMSEED;
+	let hash_param_seed = pallet_manta_dap::HASHPARAMSEED;
 	let mut rng = ChaCha20Rng::from_seed(hash_param_seed);
 	let hash_param = Hash::setup(&mut rng).unwrap();
 
@@ -184,14 +181,14 @@ fn bench_merkle_tree(c: &mut Criterion) {
 }
 
 fn bench_pedersen_com(c: &mut Criterion) {
-	let commit_param_seed = pallet_manta_dap::param::COMMITPARAMSEED;
+	let commit_param_seed = COMMITPARAMSEED;
 	let mut rng = ChaCha20Rng::from_seed(commit_param_seed);
-	let param = MantaCoinCommitmentScheme::setup(&mut rng).unwrap();
+	let param = CommitmentScheme::setup(&mut rng).unwrap();
 	let bench_str = format!("commit open");
 	let bench = Benchmark::new(bench_str, move |b| {
 		b.iter(|| {
 			let open = Randomness(Fr::deserialize([0u8; 32].as_ref()).unwrap());
-			MantaCoinCommitmentScheme::commit(&param, [0u8; 32].as_ref(), &open).unwrap()
+			CommitmentScheme::commit(&param, [0u8; 32].as_ref(), &open).unwrap()
 		})
 	});
 
@@ -199,7 +196,7 @@ fn bench_pedersen_com(c: &mut Criterion) {
 }
 
 fn bench_pedersen_hash(c: &mut Criterion) {
-	let hash_param_seed = pallet_manta_dap::param::COMMITPARAMSEED;
+	let hash_param_seed = COMMITPARAMSEED;
 	let bench_str = format!("hash param gen");
 	let bench = Benchmark::new(bench_str, move |b| {
 		b.iter(|| {
@@ -209,4 +206,55 @@ fn bench_pedersen_hash(c: &mut Criterion) {
 	});
 
 	c.bench("perdersen", bench);
+}
+
+fn bench_transfer_prove(c: &mut Criterion) {
+	let hash_param_seed = HASHPARAMSEED;
+	let commit_param_seed = COMMITPARAMSEED;
+
+	let mut rng = ChaCha20Rng::from_seed(commit_param_seed);
+	let commit_param = CommitmentScheme::setup(&mut rng).unwrap();
+
+	let mut rng = ChaCha20Rng::from_seed(hash_param_seed);
+	let hash_param = Hash::setup(&mut rng).unwrap();
+
+	let mut file = File::open("transfer_pk.bin").unwrap();
+	let mut transfer_key_bytes: Vec<u8> = vec![];
+	file.read_to_end(&mut transfer_key_bytes).unwrap();
+	let tmp: &[u8] = transfer_key_bytes.as_ref();
+	let pk = Groth16PK::deserialize_uncompressed(tmp).unwrap();
+
+	println!("proving key loaded from disk");
+
+	// sender
+	let mut sk = [0u8; 32];
+	rng.fill_bytes(&mut sk);
+	let (sender, sender_pub_info, sender_priv_info) = make_coin(&commit_param, sk, 100, &mut rng);
+
+	// receiver
+	let mut sk = [0u8; 32];
+	rng.fill_bytes(&mut sk);
+	let (receiver, receiver_pub_info, _receiver_priv_info) =
+		make_coin(&commit_param, sk, 100, &mut rng);
+
+	let circuit = TransferCircuit {
+		commit_param,
+		hash_param: hash_param.clone(),
+		sender_coin: sender.clone(),
+		sender_pub_info: sender_pub_info.clone(),
+		sender_priv_info: sender_priv_info.clone(),
+		receiver_coin: receiver.clone(),
+		receiver_pub_info: receiver_pub_info.clone(),
+		list: vec![sender.cm_bytes],
+	};
+
+	let bench_str = format!("ZKP proof generation");
+	let bench = Benchmark::new(bench_str, move |b| {
+		b.iter(|| {
+			create_random_proof(circuit.clone(), &pk, &mut rng).unwrap();
+		})
+	});
+
+	let bench = bench.sample_size(10);
+	c.bench("transfer", bench);
 }

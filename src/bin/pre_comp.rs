@@ -1,14 +1,11 @@
 use ark_bls12_381::Bls12_381;
-use ark_crypto_primitives::{CommitmentScheme, FixedLengthCRH};
+use ark_crypto_primitives::{CommitmentScheme as ArkCommitmentScheme, FixedLengthCRH};
 use ark_ed_on_bls12_381::Fq;
 use ark_groth16::{create_random_proof, generate_random_parameters};
 use ark_relations::r1cs::{ConstraintSynthesizer, ConstraintSystem};
 use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
 use data_encoding::BASE64;
-use frame_support::traits::Vec;
-use pallet_manta_dap::{
-	dh::*, manta_token::*, param::*, priv_coin::*, reclaim::*, serdes::*, transfer::*,
-};
+use pallet_manta_dap::*;
 use rand::{RngCore, SeedableRng};
 use rand_chacha::ChaCha20Rng;
 use std::{fs::File, io::prelude::*};
@@ -24,15 +21,15 @@ fn main() {
 	let hash_param = Hash::setup(&mut rng).unwrap();
 
 	let mut hash_param_bytes = vec![];
-	hash_param_serialize(&hash_param, &mut hash_param_bytes);
+	hash_param.serialize(&mut hash_param_bytes);
 	println!("hash param len: {}", hash_param_bytes.len());
 	// println!("hash_param_bytes: {:?}", hash_param_bytes);
 
 	let mut rng = ChaCha20Rng::from_seed(commit_param_seed);
-	let commit_param = MantaCoinCommitmentScheme::setup(&mut rng).unwrap();
+	let commit_param = CommitmentScheme::setup(&mut rng).unwrap();
 
 	let mut commit_param_bytes = vec![];
-	commit_param_serialize(&commit_param, &mut commit_param_bytes);
+	commit_param.serialize(&mut commit_param_bytes);
 	println!("commit param len: {}", commit_param_bytes.len());
 	// println!("commit_param_bytes: {:?}", commit_param_bytes);
 
@@ -148,6 +145,14 @@ fn main() {
 		merkle_root_bytes
 	));
 
+	let sender_data = [pub_info1.k, priv_info1.sn].concat();
+	let receiver_data = [
+		pub_info3.k.as_ref(),
+		coin3.cm_bytes.as_ref(),
+		[0u8; 16].as_ref(),
+	]
+	.concat();
+
 	println!(
 		"\"merkle_roots\": \"{}\",",
 		BASE64.encode(&merkle_root_bytes)
@@ -159,6 +164,8 @@ fn main() {
 	println!("\"enc_amount\": \"{}\",", BASE64.encode(&cipher));
 	println!("\"value\": 10,");
 	println!("\"proof encoded\": \"{}\",", BASE64.encode(&proof_bytes));
+	println!("\"sender_data\": \"{}\",", BASE64.encode(&sender_data));
+	println!("\"receiver_data\": \"{}\",", BASE64.encode(&receiver_data));
 
 	println!("===========");
 	println!("\"merkle_roots\": \"{:02x?}\",", merkle_root_bytes);
@@ -169,6 +176,8 @@ fn main() {
 	println!("\"enc_amount\": \"{:02x?}\",", cipher);
 	println!("\"value\": 10,");
 	println!("\"proof encoded\": \"{:02x?}\",", proof_bytes);
+	println!("\"sender_data\": \"{:02x?}\",", sender_data);
+	println!("\"receiver_data\": \"{:02x?}\",", receiver_data);
 	println!("===========");
 
 	// ===========================
@@ -225,6 +234,8 @@ fn main() {
 		merkle_root_bytes
 	));
 
+	let sender_data = [pub_info3.k, priv_info3.sn].concat();
+
 	println!(
 		"\"merkle_roots\": \"{}\",",
 		BASE64.encode(&merkle_root_bytes)
@@ -233,6 +244,7 @@ fn main() {
 	println!("\"k_old\": \"{}\",", BASE64.encode(&pub_info3.k));
 	println!("\"value\": 10,");
 	println!("\"proof encoded\": \"{}\",", BASE64.encode(&proof_bytes));
+	println!("\"sender_data\": \"{}\",", BASE64.encode(&sender_data));
 
 	println!("===========");
 	println!("\"merkle_roots\": \"{:02x?}\",", merkle_root_bytes);
@@ -240,6 +252,7 @@ fn main() {
 	println!("\"k_old\": \"{:02x?}\",", pub_info3.k);
 	println!("\"value\": 10,");
 	println!("\"proof encoded\": \"{:02x?}\",", proof_bytes);
+	println!("\"sender_data\": \"{:02x?}\",", sender_data);
 	println!("===========");
 }
 
@@ -254,6 +267,21 @@ fn coin_print_json(coin: &MantaCoin, pub_info: &MantaCoinPubInfo, priv_info: &Ma
 	println!("\"k\": \"{}\",", BASE64.encode(&pub_info.k));
 	println!("\"sk\": \"{}\",", BASE64.encode(&priv_info.sk));
 	println!("\"sn\": \"{}\",", BASE64.encode(&priv_info.sn));
+
+	let mint_data = [coin.cm_bytes, pub_info.k, pub_info.s].concat();
+	println!("\"mint_data\": \"{}\",", BASE64.encode(&mint_data));
+
+	let sender_data = [pub_info.k, priv_info.sn].concat();
+	println!("\"sender_data\": \"{}\",", BASE64.encode(&sender_data));
+
+	let receiver_data = [
+		pub_info.k.as_ref(),
+		coin.cm_bytes.as_ref(),
+		[0u8; 16].as_ref(),
+	]
+	.concat();
+	println!("\"reciver_data\": \"{}\",", BASE64.encode(&receiver_data));
+
 	println!("==================\n");
 }
 
@@ -268,6 +296,20 @@ fn coin_print_plain(coin: &MantaCoin, pub_info: &MantaCoinPubInfo, priv_info: &M
 	println!("\"k\": \"{:02x?}\",", pub_info.k);
 	println!("\"sk\": \"{:02x?}\",", priv_info.sk);
 	println!("\"sn\": \"{:02x?}\",", priv_info.sn);
+
+	let mint_data = [coin.cm_bytes, pub_info.k, pub_info.s].concat();
+	println!("\"mint_data\": \"{:02x?}\",", mint_data);
+
+	let sender_data = [pub_info.k, priv_info.sn].concat();
+	println!("\"sender_data\": \"{:02x?}\",", sender_data);
+
+	let receiver_data = [
+		pub_info.k.as_ref(),
+		coin.cm_bytes.as_ref(),
+		[0u8; 16].as_ref(),
+	]
+	.concat();
+	println!("\"receiver_data\": \"{:02x?}\",", receiver_data);
 	println!("==================\n");
 }
 
@@ -275,7 +317,7 @@ fn coin_print_plain(coin: &MantaCoin, pub_info: &MantaCoinPubInfo, priv_info: &M
 fn manta_transfer_zkp_key_gen(hash_param_seed: &[u8; 32], commit_param_seed: &[u8; 32]) -> Vec<u8> {
 	// rebuild the parameters from the inputs
 	let mut rng = ChaCha20Rng::from_seed(*commit_param_seed);
-	let commit_param = MantaCoinCommitmentScheme::setup(&mut rng).unwrap();
+	let commit_param = CommitmentScheme::setup(&mut rng).unwrap();
 
 	let mut rng = ChaCha20Rng::from_seed(*hash_param_seed);
 	let hash_param = Hash::setup(&mut rng).unwrap();
@@ -341,7 +383,7 @@ fn manta_transfer_zkp_key_gen(hash_param_seed: &[u8; 32], commit_param_seed: &[u
 fn manta_reclaim_zkp_key_gen(hash_param_seed: &[u8; 32], commit_param_seed: &[u8; 32]) -> Vec<u8> {
 	// rebuild the parameters from the inputs
 	let mut rng = ChaCha20Rng::from_seed(*commit_param_seed);
-	let commit_param = MantaCoinCommitmentScheme::setup(&mut rng).unwrap();
+	let commit_param = CommitmentScheme::setup(&mut rng).unwrap();
 
 	let mut rng = ChaCha20Rng::from_seed(*hash_param_seed);
 	let hash_param = Hash::setup(&mut rng).unwrap();
