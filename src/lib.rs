@@ -108,7 +108,6 @@ mod test;
 
 pub use coin::*;
 pub use constants::{COMPARAMBYTES, HASHPARAMBYTES, RECLAIMVKBYTES, TRANSFERVKBYTES};
-pub use crypto::*;
 pub use param::*;
 pub use serdes::MantaSerDes;
 

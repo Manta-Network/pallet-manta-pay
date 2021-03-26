@@ -20,7 +20,7 @@ use x25519_dalek::{EphemeralSecret, PublicKey, StaticSecret};
 ///     5. compute c = aes_enc(value.to_le_bytes(), aes_key)
 /// return (sender_pk, c)
 #[allow(dead_code)]
-pub(crate) fn manta_dh_enc<R: RngCore + CryptoRng>(
+pub fn manta_dh_enc<R: RngCore + CryptoRng>(
 	receiver_pk_bytes: &[u8; 32],
 	value: u64,
 	rng: &mut R,
@@ -52,7 +52,7 @@ pub(crate) fn manta_dh_enc<R: RngCore + CryptoRng>(
 ///     3. compute m = aes_dec(cipher, aes_key)
 /// return m as u64
 #[allow(dead_code)]
-pub(crate) fn manta_dh_dec(
+pub fn manta_dh_dec(
 	cipher: &[u8; 16],
 	sender_pk_bytes: &[u8; 32],
 	receiver_sk_bytes: &[u8; 32],
