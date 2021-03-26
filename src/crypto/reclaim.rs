@@ -20,7 +20,7 @@ use ark_std::vec::Vec;
 #[derive(Clone)]
 pub struct ReclaimCircuit {
 	// param
-	pub commit_param: MantaCoinCommitmentParam,
+	pub commit_param: CommitmentParam,
 	pub hash_param: HashParam,
 
 	// sender
@@ -42,11 +42,11 @@ impl ConstraintSynthesizer<Fq> for ReclaimCircuit {
 		//  cm = com(v||k, s)
 
 		// parameters
-		let parameters_var = MantaCoinCommitmentParamVar::new_input(
-			ark_relations::ns!(cs, "gadget_parameters"),
-			|| Ok(&self.commit_param),
-		)
-		.unwrap();
+		let parameters_var =
+			CommitmentParamVar::new_input(ark_relations::ns!(cs, "gadget_parameters"), || {
+				Ok(&self.commit_param)
+			})
+			.unwrap();
 
 		super::transfer::token_well_formed_circuit_helper(
 			true,

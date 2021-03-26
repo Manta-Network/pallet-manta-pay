@@ -14,7 +14,7 @@ use x25519_dalek::{PublicKey, StaticSecret};
 #[test]
 fn test_transfer_zkp_local() {
 	let hash_param = HashParam::deserialize(HASHPARAMBYTES.as_ref());
-	let commit_param = MantaCoinCommitmentParam::deserialize(COMPARAMBYTES.as_ref());
+	let commit_param = CommitmentParam::deserialize(COMPARAMBYTES.as_ref());
 
 	let mut rng = ChaCha20Rng::from_seed([3u8; 32]);
 
@@ -61,10 +61,9 @@ fn test_transfer_zkp_local() {
 	let proof = create_random_proof(circuit, &pk, &mut rng).unwrap();
 	let pvk = param::Groth16PVK::from(pk.vk.clone());
 
-	let k_old = param::MantaCoinCommitmentOutput::deserialize(sender_pub_info.k.as_ref()).unwrap();
-	let k_new =
-		param::MantaCoinCommitmentOutput::deserialize(receiver_pub_info.k.as_ref()).unwrap();
-	let cm_new = param::MantaCoinCommitmentOutput::deserialize(receiver.cm_bytes.as_ref()).unwrap();
+	let k_old = param::CommitmentOutput::deserialize(sender_pub_info.k.as_ref()).unwrap();
+	let k_new = param::CommitmentOutput::deserialize(receiver_pub_info.k.as_ref()).unwrap();
+	let cm_new = param::CommitmentOutput::deserialize(receiver.cm_bytes.as_ref()).unwrap();
 
 	// format the input to the verification
 	let mut inputs = [k_old.x, k_old.y, k_new.x, k_new.y, cm_new.x, cm_new.y].to_vec();
@@ -103,7 +102,7 @@ fn test_transfer_zkp_local() {
 	assert!(sanity_cs.is_satisfied().unwrap());
 
 	let proof = create_random_proof(circuit, &pk, &mut rng).unwrap();
-	let k_old = param::MantaCoinCommitmentOutput::deserialize(sender_pub_info2.k.as_ref()).unwrap();
+	let k_old = param::CommitmentOutput::deserialize(sender_pub_info2.k.as_ref()).unwrap();
 	let mut inputs = [k_old.x, k_old.y, k_new.x, k_new.y, cm_new.x, cm_new.y].to_vec();
 	let sn: Vec<Fq> =
 		ToConstraintField::<Fq>::to_field_elements(sender_priv_info2.sn.as_ref()).unwrap();
@@ -116,7 +115,7 @@ fn test_transfer_zkp_local() {
 #[test]
 fn test_reclaim_zkp_local() {
 	let hash_param = HashParam::deserialize(HASHPARAMBYTES.as_ref());
-	let commit_param = MantaCoinCommitmentParam::deserialize(COMPARAMBYTES.as_ref());
+	let commit_param = CommitmentParam::deserialize(COMPARAMBYTES.as_ref());
 
 	let mut rng = ChaCha20Rng::from_seed([3u8; 32]);
 
@@ -157,7 +156,7 @@ fn test_reclaim_zkp_local() {
 	let proof = create_random_proof(circuit, &pk, &mut rng).unwrap();
 	let pvk = param::Groth16PVK::from(pk.vk.clone());
 
-	let k_old = param::MantaCoinCommitmentOutput::deserialize(sender_pub_info.k.as_ref()).unwrap();
+	let k_old = param::CommitmentOutput::deserialize(sender_pub_info.k.as_ref()).unwrap();
 
 	// format the input to the verification
 	let mut inputs = [k_old.x, k_old.y].to_vec();
@@ -203,11 +202,11 @@ fn test_param_serdes() {
 
 	let commit_param_seed = [2u8; 32];
 	let mut rng = ChaCha20Rng::from_seed(commit_param_seed);
-	let commit_param = param::MantaCoinCommitmentScheme::setup(&mut rng).unwrap();
+	let commit_param = param::CommitmentScheme::setup(&mut rng).unwrap();
 	let mut buf: Vec<u8> = vec![];
 
 	commit_param.serialize(&mut buf);
-	let commit_param2 = MantaCoinCommitmentParam::deserialize(buf.as_ref());
+	let commit_param2 = CommitmentParam::deserialize(buf.as_ref());
 	assert_eq!(commit_param.generators, commit_param2.generators);
 	assert_eq!(
 		commit_param.randomness_generator,

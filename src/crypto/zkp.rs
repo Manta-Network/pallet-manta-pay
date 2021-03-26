@@ -15,9 +15,9 @@ pub fn manta_verify_transfer_zkp(
 	let vk = Groth16VK::deserialize(transfer_key_bytes.as_ref()).unwrap();
 	let pvk = Groth16PVK::from(vk);
 	let proof = Groth16Proof::deserialize(proof.as_ref()).unwrap();
-	let k_old = MantaCoinCommitmentOutput::deserialize(sender_data.k.as_ref()).unwrap();
-	let k_new = MantaCoinCommitmentOutput::deserialize(receiver_data.k.as_ref()).unwrap();
-	let cm_new = MantaCoinCommitmentOutput::deserialize(receiver_data.cm.as_ref()).unwrap();
+	let k_old = CommitmentOutput::deserialize(sender_data.k.as_ref()).unwrap();
+	let k_new = CommitmentOutput::deserialize(receiver_data.k.as_ref()).unwrap();
+	let cm_new = CommitmentOutput::deserialize(receiver_data.cm.as_ref()).unwrap();
 	let merkle_root = HashOutput::deserialize(merkle_root.as_ref()).unwrap();
 
 	let mut inputs = [k_old.x, k_old.y, k_new.x, k_new.y, cm_new.x, cm_new.y].to_vec();
@@ -38,7 +38,7 @@ pub fn manta_verify_reclaim_zkp(
 	let vk = Groth16VK::deserialize(reclaim_key_bytes.as_ref()).unwrap();
 	let pvk = Groth16PVK::from(vk);
 	let proof = Groth16Proof::deserialize(proof.as_ref()).unwrap();
-	let k_old = MantaCoinCommitmentOutput::deserialize(sender_data.k.as_ref()).unwrap();
+	let k_old = CommitmentOutput::deserialize(sender_data.k.as_ref()).unwrap();
 	let merkle_root = HashOutput::deserialize(merkle_root.as_ref()).unwrap();
 
 	let mut inputs = [k_old.x, k_old.y].to_vec();

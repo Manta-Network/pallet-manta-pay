@@ -6,7 +6,7 @@ use ark_crypto_primitives::{
 		FixedLengthCRH, FixedLengthCRHGadget,
 	},
 	merkle_tree::{Config, Digest, Path},
-	CommitmentScheme, MerkleTree, SNARK, *,
+	CommitmentScheme as ArkCommitmentScheme, MerkleTree, SNARK, *,
 };
 use ark_ed_on_bls12_381::{constraints::EdwardsVar, EdwardsParameters, EdwardsProjective, Fq};
 use ark_groth16::Groth16;
@@ -54,17 +54,16 @@ pub(crate) type LedgerMerkleTreeRoot = Digest<MerkleTreeParams>;
 
 // the membership is a path on the merkle tree, including the leaf itself
 #[allow(dead_code)]
-pub(crate) type MantaCoinAccountMembership = Path<MerkleTreeParams>;
+pub(crate) type AccountMembership = Path<MerkleTreeParams>;
 
 //=======================
 // Commitments
 //=======================
-pub type MantaCoinCommitmentScheme = Commitment<EdwardsProjective, PedersenWindow>;
-pub type MantaCoinCommitmentParam = <MantaCoinCommitmentScheme as CommitmentScheme>::Parameters;
+pub type CommitmentScheme = Commitment<EdwardsProjective, PedersenWindow>;
+pub type CommitmentParam = <CommitmentScheme as ArkCommitmentScheme>::Parameters;
 #[allow(dead_code)]
-pub(crate) type MantaCoinCommitmentOpen =
-	<MantaCoinCommitmentScheme as CommitmentScheme>::Randomness;
-pub(crate) type MantaCoinCommitmentOutput = <MantaCoinCommitmentScheme as CommitmentScheme>::Output;
+pub(crate) type CommitmentOpen = <CommitmentScheme as ArkCommitmentScheme>::Randomness;
+pub(crate) type CommitmentOutput = <CommitmentScheme as ArkCommitmentScheme>::Output;
 
 // gadgets for hash function
 pub(crate) type HashVar = CRHGadget<EdwardsProjective, EdwardsVar, PedersenWindow>;
@@ -73,7 +72,7 @@ pub(crate) type HashParamVar = <HashVar as FixedLengthCRHGadget<Hash, Fq>>::Para
 
 // gadget for private coin account membership
 #[allow(dead_code)]
-pub(crate) type MantaCoinAccountMembershipVar = PathVar<MerkleTreeParams, HashVar, Fq>;
+pub(crate) type AccountMembershipVar = PathVar<MerkleTreeParams, HashVar, Fq>;
 
 //=======================
 // ZK proofs over BLS curve
@@ -89,14 +88,9 @@ pub type Groth16Proof = <Groth16<Bls12_381> as SNARK<Fq>>::Proof;
 //=======================
 // Commitments
 //=======================
-pub(crate) type MantaCoinCommitmentSchemeVar =
-	CommGadget<EdwardsProjective, EdwardsVar, PedersenWindow>;
-pub(crate) type MantaCoinCommitmentParamVar = <MantaCoinCommitmentSchemeVar as CommitmentGadget<
-	MantaCoinCommitmentScheme,
-	Fq,
->>::ParametersVar;
-pub(crate) type MantaCoinCommitmentOpenVar = <MantaCoinCommitmentSchemeVar as CommitmentGadget<
-	MantaCoinCommitmentScheme,
-	Fq,
->>::RandomnessVar;
+pub(crate) type CommitmentSchemeVar = CommGadget<EdwardsProjective, EdwardsVar, PedersenWindow>;
+pub(crate) type CommitmentParamVar =
+	<CommitmentSchemeVar as CommitmentGadget<CommitmentScheme, Fq>>::ParametersVar;
+pub(crate) type MantaCoinCommitmentOpenVar =
+	<CommitmentSchemeVar as CommitmentGadget<CommitmentScheme, Fq>>::RandomnessVar;
 pub(crate) type MantaCoinCommitmentOutputVar = AffineVar<EdwardsParameters, FpVar<Fq>>;

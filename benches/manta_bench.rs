@@ -2,7 +2,9 @@
 extern crate criterion;
 extern crate pallet_manta_dap;
 
-use ark_crypto_primitives::{commitment::pedersen::Randomness, CommitmentScheme, FixedLengthCRH};
+use ark_crypto_primitives::{
+	commitment::pedersen::Randomness, CommitmentScheme as ArkCommitmentScheme, FixedLengthCRH,
+};
 use ark_ed_on_bls12_381::{Fq, Fr};
 use ark_groth16::create_random_proof;
 use ark_relations::r1cs::{ConstraintSynthesizer, ConstraintSystem};
@@ -37,7 +39,7 @@ fn bench_param_io(c: &mut Criterion) {
 	let bench_str = format!("commit param");
 	let bench = bench.with_function(bench_str, move |b| {
 		b.iter(|| {
-			MantaCoinCommitmentParam::deserialize(COMPARAMBYTES.as_ref());
+			CommitmentParam::deserialize(COMPARAMBYTES.as_ref());
 		})
 	});
 
@@ -50,7 +52,7 @@ fn bench_trasnfer_verify(c: &mut Criterion) {
 	let commit_param_seed = COMMITPARAMSEED;
 
 	let mut rng = ChaCha20Rng::from_seed(commit_param_seed);
-	let commit_param = MantaCoinCommitmentScheme::setup(&mut rng).unwrap();
+	let commit_param = CommitmentScheme::setup(&mut rng).unwrap();
 
 	let mut rng = ChaCha20Rng::from_seed(hash_param_seed);
 	let hash_param = Hash::setup(&mut rng).unwrap();
@@ -181,12 +183,12 @@ fn bench_merkle_tree(c: &mut Criterion) {
 fn bench_pedersen_com(c: &mut Criterion) {
 	let commit_param_seed = COMMITPARAMSEED;
 	let mut rng = ChaCha20Rng::from_seed(commit_param_seed);
-	let param = MantaCoinCommitmentScheme::setup(&mut rng).unwrap();
+	let param = CommitmentScheme::setup(&mut rng).unwrap();
 	let bench_str = format!("commit open");
 	let bench = Benchmark::new(bench_str, move |b| {
 		b.iter(|| {
 			let open = Randomness(Fr::deserialize([0u8; 32].as_ref()).unwrap());
-			MantaCoinCommitmentScheme::commit(&param, [0u8; 32].as_ref(), &open).unwrap()
+			CommitmentScheme::commit(&param, [0u8; 32].as_ref(), &open).unwrap()
 		})
 	});
 
@@ -211,7 +213,7 @@ fn bench_transfer_prove(c: &mut Criterion) {
 	let commit_param_seed = COMMITPARAMSEED;
 
 	let mut rng = ChaCha20Rng::from_seed(commit_param_seed);
-	let commit_param = MantaCoinCommitmentScheme::setup(&mut rng).unwrap();
+	let commit_param = CommitmentScheme::setup(&mut rng).unwrap();
 
 	let mut rng = ChaCha20Rng::from_seed(hash_param_seed);
 	let hash_param = Hash::setup(&mut rng).unwrap();

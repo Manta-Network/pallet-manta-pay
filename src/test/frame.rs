@@ -85,7 +85,7 @@ fn test_constants_should_work() {
 		assert_ok!(Assets::init(Origin::signed(1), 100));
 		assert_eq!(Assets::balance(1), 100);
 		let hash_param = HashParam::deserialize(HASHPARAMBYTES.as_ref());
-		let commit_param = MantaCoinCommitmentParam::deserialize(COMPARAMBYTES.as_ref());
+		let commit_param = CommitmentParam::deserialize(COMPARAMBYTES.as_ref());
 		let hash_param_checksum_local = hash_param.get_checksum();
 		let commit_param_checksum_local = commit_param.get_checksum();
 		let hash_param_checksum = HashParamChecksum::get();
@@ -101,7 +101,7 @@ fn test_mint_should_work() {
 		assert_ok!(Assets::init(Origin::signed(1), 1000));
 		assert_eq!(Assets::balance(1), 1000);
 		assert_eq!(PoolBalance::get(), 0);
-		let commit_param = MantaCoinCommitmentParam::deserialize(COMPARAMBYTES.as_ref());
+		let commit_param = CommitmentParam::deserialize(COMPARAMBYTES.as_ref());
 		let mut rng = ChaCha20Rng::from_seed([3u8; 32]);
 		let mut sk = [0u8; 32];
 		rng.fill_bytes(&mut sk);
@@ -246,7 +246,7 @@ fn transfer_test_helper(iter: usize) {
 	assert_eq!(PoolBalance::get(), 0);
 
 	let hash_param = HashParam::deserialize(HASHPARAMBYTES.as_ref());
-	let commit_param = MantaCoinCommitmentParam::deserialize(COMPARAMBYTES.as_ref());
+	let commit_param = CommitmentParam::deserialize(COMPARAMBYTES.as_ref());
 
 	let mut rng = ChaCha20Rng::from_seed([3u8; 32]);
 	let mut pool = 0;
@@ -387,7 +387,7 @@ fn reclaim_test_helper(iter: usize) {
 	assert_eq!(PoolBalance::get(), 0);
 
 	let hash_param = HashParam::deserialize(HASHPARAMBYTES.as_ref());
-	let commit_param = MantaCoinCommitmentParam::deserialize(COMPARAMBYTES.as_ref());
+	let commit_param = CommitmentParam::deserialize(COMPARAMBYTES.as_ref());
 
 	let mut rng = ChaCha20Rng::from_seed([3u8; 32]);
 	let mut pool = 0;

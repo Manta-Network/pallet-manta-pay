@@ -155,7 +155,7 @@ decl_module! {
 			//  * commitment parameter seed: [2u8; 32]
 			// We may want to pass those two in for `init`
 			let hash_param = HashParam::deserialize(HASHPARAMBYTES.as_ref());
-			let commit_param = MantaCoinCommitmentParam::deserialize(COMPARAMBYTES.as_ref());
+			let commit_param = CommitmentParam::deserialize(COMPARAMBYTES.as_ref());
 			let hash_param_checksum = hash_param.get_checksum();
 			let commit_param_checksum = commit_param.get_checksum();
 
@@ -235,7 +235,7 @@ decl_module! {
 			ensure!(origin_balance >= amount, Error::<T>::BalanceLow);
 
 			let hash_param = HashParam::deserialize(HASHPARAMBYTES.as_ref());
-			let commit_param = MantaCoinCommitmentParam::deserialize(COMPARAMBYTES.as_ref());
+			let commit_param = CommitmentParam::deserialize(COMPARAMBYTES.as_ref());
 			let hash_param_checksum_local = hash_param.get_checksum();
 			let commit_param_checksum_local = commit_param.get_checksum();
 

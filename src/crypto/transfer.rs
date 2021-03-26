@@ -26,7 +26,7 @@ use ark_std::vec::Vec;
 #[derive(Clone)]
 pub struct TransferCircuit {
 	// param
-	pub commit_param: MantaCoinCommitmentParam,
+	pub commit_param: CommitmentParam,
 	pub hash_param: HashParam,
 
 	// sender
@@ -49,11 +49,11 @@ impl ConstraintSynthesizer<Fq> for TransferCircuit {
 		//  cm = com(v||k, s)
 
 		// parameters
-		let parameters_var = MantaCoinCommitmentParamVar::new_input(
-			ark_relations::ns!(cs, "gadget_parameters"),
-			|| Ok(&self.commit_param),
-		)
-		.unwrap();
+		let parameters_var =
+			CommitmentParamVar::new_input(ark_relations::ns!(cs, "gadget_parameters"), || {
+				Ok(&self.commit_param)
+			})
+			.unwrap();
 
 		token_well_formed_circuit_helper(
 			true,
@@ -116,7 +116,7 @@ impl ConstraintSynthesizer<Fq> for TransferCircuit {
 // =============================
 pub(crate) fn token_well_formed_circuit_helper(
 	is_sender: bool,
-	parameters_var: &MantaCoinCommitmentParamVar,
+	parameters_var: &CommitmentParamVar,
 	coin: &MantaCoin,
 	pub_info: &MantaCoinPubInfo,
 	value: u64,
@@ -142,10 +142,10 @@ pub(crate) fn token_well_formed_circuit_helper(
 
 	// commitment
 	let result_var =
-		MantaCoinCommitmentSchemeVar::commit(&parameters_var, &input_var, &randomness_var).unwrap();
+		CommitmentSchemeVar::commit(&parameters_var, &input_var, &randomness_var).unwrap();
 
 	// circuit to compare the commited value with supplied value
-	let k = MantaCoinCommitmentOutput::deserialize(pub_info.k.as_ref()).unwrap();
+	let k = CommitmentOutput::deserialize(pub_info.k.as_ref()).unwrap();
 	let commitment_var2 = MantaCoinCommitmentOutputVar::new_input(
 		ark_relations::ns!(cs, "gadget_commitment"),
 		|| Ok(k),
@@ -172,11 +172,10 @@ pub(crate) fn token_well_formed_circuit_helper(
 
 	// commitment
 	let result_var: MantaCoinCommitmentOutputVar =
-		MantaCoinCommitmentSchemeVar::commit(&parameters_var, &input_var, &randomness_var).unwrap();
+		CommitmentSchemeVar::commit(&parameters_var, &input_var, &randomness_var).unwrap();
 
 	// the other commitment
-	let cm: MantaCoinCommitmentOutput =
-		MantaCoinCommitmentOutput::deserialize(coin.cm_bytes.as_ref()).unwrap();
+	let cm: CommitmentOutput = CommitmentOutput::deserialize(coin.cm_bytes.as_ref()).unwrap();
 	// if the commitment is from the sender, then the commitment is hidden
 	// else, it is public
 	let commitment_var2 = if is_sender {
