@@ -2,7 +2,7 @@ use crate::param::*;
 use ark_crypto_primitives::{
 	commitment::pedersen::Randomness,
 	prf::{Blake2s, PRF},
-	CommitmentScheme,
+	CommitmentScheme as ArkCommitmentScheme,
 };
 use ark_ed_on_bls12_381::Fr;
 use ark_ff::UniformRand;
@@ -19,9 +19,9 @@ pub struct MintData {
 }
 
 impl MintData {
-	pub(crate) fn sanity_check(&self, value: u64, param: &MantaCoinCommitmentParam) -> bool {
+	pub(crate) fn sanity_check(&self, value: u64, param: &CommitmentParam) -> bool {
 		let payload = [value.to_le_bytes().as_ref(), self.k.as_ref()].concat();
-		super::priv_coin::comm_open(&param, &self.s, &payload, &self.cm)
+		crate::crypto::comm_open(&param, &self.s, &payload, &self.cm)
 	}
 }
 
@@ -38,7 +38,7 @@ pub struct ReceiverData {
 	pub cipher: [u8; 16],
 }
 
-pub type Proof = [u8; 192];
+// pub type Proof = [u8; 192];
 
 /// a MantaCoin is a pair of commitment cm, where
 ///  * cm = com(v||k, s), commits to the value, and
@@ -66,7 +66,7 @@ pub struct MantaCoinPrivInfo {
 /// make a coin from inputs
 #[allow(dead_code)]
 pub fn make_coin<R: RngCore + CryptoRng>(
-	commit_param: &MantaCoinCommitmentParam,
+	commit_param: &CommitmentParam,
 	sk: [u8; 32],
 	value: u64,
 	rng: &mut R,
@@ -93,7 +93,7 @@ pub fn make_coin<R: RngCore + CryptoRng>(
 	r.serialize(r_bytes.as_mut()).unwrap();
 	let r = Randomness(r);
 
-	let k = MantaCoinCommitmentScheme::commit(&commit_param, &buf, &r).unwrap();
+	let k = CommitmentScheme::commit(&commit_param, &buf, &r).unwrap();
 	let mut k_bytes = [0u8; 32];
 	k.serialize(k_bytes.as_mut()).unwrap();
 
@@ -105,7 +105,7 @@ pub fn make_coin<R: RngCore + CryptoRng>(
 	s.serialize(s_bytes.as_mut()).unwrap();
 	let s = Randomness(s);
 
-	let cm = MantaCoinCommitmentScheme::commit(&commit_param, &buf, &s).unwrap();
+	let cm = CommitmentScheme::commit(&commit_param, &buf, &s).unwrap();
 	let mut cm_bytes = [0u8; 32];
 	cm.serialize(cm_bytes.as_mut()).unwrap();
 

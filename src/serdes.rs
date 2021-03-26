@@ -1,4 +1,4 @@
-use crate::{manta_token::*, param::*};
+use crate::{coin::*, param::*};
 use ark_crypto_primitives::{commitment, crh};
 use ark_ed_on_bls12_381::EdwardsProjective;
 use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};

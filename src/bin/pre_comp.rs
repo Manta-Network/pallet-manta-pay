@@ -1,13 +1,11 @@
 use ark_bls12_381::Bls12_381;
-use ark_crypto_primitives::{CommitmentScheme, FixedLengthCRH};
+use ark_crypto_primitives::{CommitmentScheme as ArkCommitmentScheme, FixedLengthCRH};
 use ark_ed_on_bls12_381::Fq;
 use ark_groth16::{create_random_proof, generate_random_parameters};
 use ark_relations::r1cs::{ConstraintSynthesizer, ConstraintSystem};
 use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
 use data_encoding::BASE64;
-use pallet_manta_dap::{
-	dh::*, manta_token::*, param::*, priv_coin::*, reclaim::*, serdes::*, transfer::*,
-};
+use pallet_manta_dap::*;
 use rand::{RngCore, SeedableRng};
 use rand_chacha::ChaCha20Rng;
 use std::{fs::File, io::prelude::*};
@@ -28,7 +26,7 @@ fn main() {
 	// println!("hash_param_bytes: {:?}", hash_param_bytes);
 
 	let mut rng = ChaCha20Rng::from_seed(commit_param_seed);
-	let commit_param = MantaCoinCommitmentScheme::setup(&mut rng).unwrap();
+	let commit_param = CommitmentScheme::setup(&mut rng).unwrap();
 
 	let mut commit_param_bytes = vec![];
 	commit_param.serialize(&mut commit_param_bytes);
@@ -319,7 +317,7 @@ fn coin_print_plain(coin: &MantaCoin, pub_info: &MantaCoinPubInfo, priv_info: &M
 fn manta_transfer_zkp_key_gen(hash_param_seed: &[u8; 32], commit_param_seed: &[u8; 32]) -> Vec<u8> {
 	// rebuild the parameters from the inputs
 	let mut rng = ChaCha20Rng::from_seed(*commit_param_seed);
-	let commit_param = MantaCoinCommitmentScheme::setup(&mut rng).unwrap();
+	let commit_param = CommitmentScheme::setup(&mut rng).unwrap();
 
 	let mut rng = ChaCha20Rng::from_seed(*hash_param_seed);
 	let hash_param = Hash::setup(&mut rng).unwrap();
@@ -385,7 +383,7 @@ fn manta_transfer_zkp_key_gen(hash_param_seed: &[u8; 32], commit_param_seed: &[u
 fn manta_reclaim_zkp_key_gen(hash_param_seed: &[u8; 32], commit_param_seed: &[u8; 32]) -> Vec<u8> {
 	// rebuild the parameters from the inputs
 	let mut rng = ChaCha20Rng::from_seed(*commit_param_seed);
-	let commit_param = MantaCoinCommitmentScheme::setup(&mut rng).unwrap();
+	let commit_param = CommitmentScheme::setup(&mut rng).unwrap();
 
 	let mut rng = ChaCha20Rng::from_seed(*hash_param_seed);
 	let hash_param = Hash::setup(&mut rng).unwrap();
