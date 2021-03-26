@@ -9,7 +9,7 @@ use ark_relations::r1cs::{ConstraintSynthesizer, ConstraintSystem};
 use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
 use criterion::{Benchmark, Criterion};
 use data_encoding::BASE64;
-use pallet_manta_dap::{manta_token::*, param::*, priv_coin::*, serdes::*, transfer::*};
+use pallet_manta_dap::*;
 use rand::SeedableRng;
 use rand_chacha::ChaCha20Rng;
 use rand_core::RngCore;
@@ -46,8 +46,8 @@ fn bench_param_io(c: &mut Criterion) {
 }
 
 fn bench_trasnfer_verify(c: &mut Criterion) {
-	let hash_param_seed = pallet_manta_dap::param::HASHPARAMSEED;
-	let commit_param_seed = pallet_manta_dap::param::COMMITPARAMSEED;
+	let hash_param_seed = HASHPARAMSEED;
+	let commit_param_seed = COMMITPARAMSEED;
 
 	let mut rng = ChaCha20Rng::from_seed(commit_param_seed);
 	let commit_param = MantaCoinCommitmentScheme::setup(&mut rng).unwrap();
@@ -116,7 +116,7 @@ fn bench_trasnfer_verify(c: &mut Criterion) {
 	let bench = Benchmark::new(bench_str, move |b| {
 		b.iter(|| {
 			assert!(manta_verify_transfer_zkp(
-				pallet_manta_dap::param::TRANSFERVKBYTES.to_vec(),
+				TRANSFERVKBYTES.to_vec(),
 				proof_bytes,
 				&sender_data,
 				&receiver_data,
@@ -130,7 +130,7 @@ fn bench_trasnfer_verify(c: &mut Criterion) {
 }
 
 fn bench_merkle_tree(c: &mut Criterion) {
-	let hash_param_seed = pallet_manta_dap::param::HASHPARAMSEED;
+	let hash_param_seed = pallet_manta_dap::HASHPARAMSEED;
 	let mut rng = ChaCha20Rng::from_seed(hash_param_seed);
 	let hash_param = Hash::setup(&mut rng).unwrap();
 
@@ -179,7 +179,7 @@ fn bench_merkle_tree(c: &mut Criterion) {
 }
 
 fn bench_pedersen_com(c: &mut Criterion) {
-	let commit_param_seed = pallet_manta_dap::param::COMMITPARAMSEED;
+	let commit_param_seed = COMMITPARAMSEED;
 	let mut rng = ChaCha20Rng::from_seed(commit_param_seed);
 	let param = MantaCoinCommitmentScheme::setup(&mut rng).unwrap();
 	let bench_str = format!("commit open");
@@ -194,7 +194,7 @@ fn bench_pedersen_com(c: &mut Criterion) {
 }
 
 fn bench_pedersen_hash(c: &mut Criterion) {
-	let hash_param_seed = pallet_manta_dap::param::COMMITPARAMSEED;
+	let hash_param_seed = COMMITPARAMSEED;
 	let bench_str = format!("hash param gen");
 	let bench = Benchmark::new(bench_str, move |b| {
 		b.iter(|| {
@@ -207,8 +207,8 @@ fn bench_pedersen_hash(c: &mut Criterion) {
 }
 
 fn bench_transfer_prove(c: &mut Criterion) {
-	let hash_param_seed = pallet_manta_dap::param::HASHPARAMSEED;
-	let commit_param_seed = pallet_manta_dap::param::COMMITPARAMSEED;
+	let hash_param_seed = HASHPARAMSEED;
+	let commit_param_seed = COMMITPARAMSEED;
 
 	let mut rng = ChaCha20Rng::from_seed(commit_param_seed);
 	let commit_param = MantaCoinCommitmentScheme::setup(&mut rng).unwrap();

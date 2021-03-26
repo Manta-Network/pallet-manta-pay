@@ -1,4 +1,4 @@
-use crate::{manta_token::*, param::*};
+use crate::{coin::*, param::*};
 use ark_crypto_primitives::{
 	commitment::pedersen::Randomness,
 	prf::{blake2s::constraints::Blake2sGadget, PRFGadget},
@@ -19,7 +19,7 @@ use ark_std::vec::Vec;
 // 2. address and the secret key derives public key
 //  sender.pk = PRF(sender_sk, [0u8;32])
 // 3. sender's commitment is in List_all
-//  NOTE: we de not need to prove that sender's sn is not in List_USD
+//  NOTE: we de not need to prove that sender's sn is not in List_used
 //        this can be done in the public
 // 4. sender's and receiver's value are the same
 // =============================

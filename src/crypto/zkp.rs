@@ -1,38 +1,15 @@
-use crate::param::*;
-use ark_crypto_primitives::{commitment::pedersen::Randomness, CommitmentScheme};
-use ark_ed_on_bls12_381::{Fq, Fr};
+use crate::{coin::*, param::*};
+use ark_ed_on_bls12_381::Fq;
 use ark_ff::ToConstraintField;
 use ark_groth16::verify_proof;
-use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
+use ark_serialize::CanonicalDeserialize;
 use ark_std::vec::Vec;
-
-#[allow(dead_code)]
-pub fn comm_open(
-	com_param: &MantaCoinCommitmentParam,
-	r: &[u8; 32],
-	payload: &[u8],
-	cm: &[u8; 32],
-) -> bool {
-	let open = Randomness(Fr::deserialize(r.as_ref()).unwrap());
-	let cm = MantaCoinCommitmentOutput::deserialize(cm.as_ref()).unwrap();
-	MantaCoinCommitmentScheme::commit(com_param, payload, &open).unwrap() == cm
-}
-
-#[allow(dead_code)]
-pub fn merkle_root(hash_param: HashParam, payload: &[[u8; 32]]) -> [u8; 32] {
-	let tree = LedgerMerkleTree::new(hash_param, payload).unwrap();
-	let root = tree.root();
-
-	let mut bytes = [0u8; 32];
-	root.serialize(bytes.as_mut()).unwrap();
-	bytes
-}
 
 pub fn manta_verify_transfer_zkp(
 	transfer_key_bytes: Vec<u8>,
 	proof: [u8; 192],
-	sender_data: &super::manta_token::SenderData,
-	receiver_data: &super::manta_token::ReceiverData,
+	sender_data: &SenderData,
+	receiver_data: &ReceiverData,
 	merkle_root: [u8; 32],
 ) -> bool {
 	let vk = Groth16VK::deserialize(transfer_key_bytes.as_ref()).unwrap();
@@ -55,7 +32,7 @@ pub fn manta_verify_reclaim_zkp(
 	reclaim_key_bytes: Vec<u8>,
 	value: u64,
 	proof: [u8; 192],
-	sender_data: &super::manta_token::SenderData,
+	sender_data: &SenderData,
 	merkle_root: [u8; 32],
 ) -> bool {
 	let vk = Groth16VK::deserialize(reclaim_key_bytes.as_ref()).unwrap();

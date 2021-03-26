@@ -1,4 +1,4 @@
-use crate::{param::*, priv_coin::*};
+use crate::param::*;
 use frame_support::codec::{Decode, Encode};
 
 /// a shard is a list of commitment, and a merkle root of this list
@@ -64,7 +64,8 @@ impl LedgerSharding for Shards {
 
 		// update the list, and the root accordingly
 		self.shard[shard_index].list.push(*target);
-		self.shard[shard_index].root = merkle_root(param, &self.shard[shard_index].list);
+		self.shard[shard_index].root =
+			crate::crypto::merkle_root(param, &self.shard[shard_index].list);
 	}
 }
 

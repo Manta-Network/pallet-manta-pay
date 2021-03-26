@@ -82,8 +82,6 @@
 
 // Ensure we're `no_std` when compiling for Wasm.
 #![cfg_attr(not(feature = "std"), no_std)]
-// #![macro_use]
-// extern crate frame_benchmarking;
 
 extern crate ark_crypto_primitives;
 extern crate ark_ed_on_bls12_381;
@@ -98,24 +96,31 @@ extern crate rand_chacha;
 extern crate x25519_dalek;
 
 mod benchmark;
-pub mod dh;
-pub mod manta_token;
-pub mod param;
-pub mod priv_coin;
-pub mod reclaim;
-pub mod serdes;
-pub mod shard;
-pub mod transfer;
+mod coin;
+mod constants;
+mod crypto;
+mod param;
+mod serdes;
+mod shard;
 
 #[cfg(test)]
-pub mod test;
+mod test;
+
+pub use coin::*;
+pub use constants::{COMPARAMBYTES, HASHPARAMBYTES, RECLAIMVKBYTES, TRANSFERVKBYTES};
+pub use crypto::*;
+pub use param::*;
+pub use serdes::MantaSerDes;
+
+// TODO: this interface is only exposed for benchmarking
+// use a feature gate to control this expose
+#[allow(unused_imports)]
+pub use crypto::*;
 
 use ark_std::vec::Vec;
 use frame_support::{decl_error, decl_event, decl_module, decl_storage, ensure};
 use frame_system::ensure_signed;
-use manta_token::*;
-use param::{COMPARAMBYTES, HASHPARAMBYTES, RECLAIMVKBYTES, TRANSFERVKBYTES, *};
-use serdes::{Checksum, MantaSerDes};
+use serdes::Checksum;
 use shard::*;
 use sp_runtime::traits::{StaticLookup, Zero};
 
@@ -328,7 +333,7 @@ decl_module! {
 
 			// check validity of zkp
 			ensure!(
-				priv_coin::manta_verify_transfer_zkp(
+				crypto::manta_verify_transfer_zkp(
 					transfer_vk_bytes,
 					proof,
 					&sender_data,
@@ -351,6 +356,7 @@ decl_module! {
 
 
 		/// Reclaim
+		// TODO: shall we add a different receive for reclaim function?
 		#[weight = 0]
 		fn reclaim(origin,
 			amount: u64,
@@ -406,7 +412,7 @@ decl_module! {
 
 			// check validity of zkp
 			ensure!(
-				priv_coin::manta_verify_reclaim_zkp(
+				crypto::manta_verify_reclaim_zkp(
 					reclaim_vk_bytes,
 					amount,
 					proof,

@@ -1,5 +1,10 @@
 use crate as pallet_manta_dap;
-use crate::{dh::*, manta_token::*, param::*, reclaim::*, serdes::*, transfer::*, *};
+use crate::{
+	coin::*,
+	param::{Groth16PK, Groth16VK},
+	serdes::*,
+	*,
+};
 use ark_groth16::create_random_proof;
 use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
 use frame_support::{assert_noop, assert_ok, parameter_types};
@@ -308,7 +313,7 @@ fn transfer_test_helper(iter: usize) {
 		let coin_shards = CoinShards::get();
 		let shard_index = senders[i].0.cm_bytes[0] as usize;
 		// generate ZKP
-		let circuit = TransferCircuit {
+		let circuit = crypto::TransferCircuit {
 			commit_param: commit_param.clone(),
 			hash_param: hash_param.clone(),
 			sender_coin: senders[i].0.clone(),
@@ -328,7 +333,8 @@ fn transfer_test_helper(iter: usize) {
 		let receiver_pk = PublicKey::from(&receiver_sk);
 		let receiver_pk_bytes = receiver_pk.to_bytes();
 		let receiver_sk_bytes = receiver_sk.to_bytes();
-		let (sender_pk_bytes, cipher) = manta_dh_enc(&receiver_pk_bytes, 10 + i as u64, &mut rng);
+		let (sender_pk_bytes, cipher) =
+			crypto::manta_dh_enc(&receiver_pk_bytes, 10 + i as u64, &mut rng);
 
 		let mut sender_data = [0u8; 64];
 		sender_data.copy_from_slice([senders[i].1.k, senders[i].2.sn].concat().as_ref());
@@ -356,7 +362,7 @@ fn transfer_test_helper(iter: usize) {
 		assert_eq!(enc_value_list.len(), i + 1);
 		assert_eq!(enc_value_list[i], cipher);
 		assert_eq!(
-			manta_dh_dec(&cipher, &sender_pk_bytes, &receiver_sk_bytes),
+			crypto::manta_dh_dec(&cipher, &sender_pk_bytes, &receiver_sk_bytes),
 			10 + i as u64
 		);
 
@@ -373,8 +379,6 @@ fn transfer_test_helper(iter: usize) {
 		assert_eq!(sn_list[i], senders[i].2.sn);
 	}
 }
-
-
 
 fn reclaim_test_helper(iter: usize) {
 	// setup
@@ -439,7 +443,7 @@ fn reclaim_test_helper(iter: usize) {
 		let token_value = 10 + i as u64;
 		let shard_index = senders[i].0.cm_bytes[0] as usize;
 		// generate ZKP
-		let circuit = ReclaimCircuit {
+		let circuit = crypto::ReclaimCircuit {
 			commit_param: commit_param.clone(),
 			hash_param: hash_param.clone(),
 			sender_coin: senders[i].0.clone(),

@@ -255,7 +255,7 @@ fn test_transfer_hardcode_should_work() {
         assert_eq!(enc_value_list.len(), 1);
         assert_eq!(enc_value_list[0], cipher_bytes);
         assert_eq!(
-            dh::manta_dh_dec(&cipher_bytes, &sender_pk_bytes, &receiver_sk_bytes),
+            crypto::manta_dh_dec(&cipher_bytes, &sender_pk_bytes, &receiver_sk_bytes),
             10
         );
 

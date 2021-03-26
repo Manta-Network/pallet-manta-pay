@@ -21,7 +21,7 @@ pub struct MintData {
 impl MintData {
 	pub(crate) fn sanity_check(&self, value: u64, param: &MantaCoinCommitmentParam) -> bool {
 		let payload = [value.to_le_bytes().as_ref(), self.k.as_ref()].concat();
-		super::priv_coin::comm_open(&param, &self.s, &payload, &self.cm)
+		crate::crypto::comm_open(&param, &self.s, &payload, &self.cm)
 	}
 }
 
@@ -38,7 +38,7 @@ pub struct ReceiverData {
 	pub cipher: [u8; 16],
 }
 
-pub type Proof = [u8; 192];
+// pub type Proof = [u8; 192];
 
 /// a MantaCoin is a pair of commitment cm, where
 ///  * cm = com(v||k, s), commits to the value, and

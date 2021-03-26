@@ -1,4 +1,4 @@
-use crate::{manta_token::*, param::*};
+use crate::{coin::*, param::*};
 use ark_ed_on_bls12_381::{constraints::FqVar, Fq};
 use ark_r1cs_std::{alloc::AllocVar, prelude::*};
 use ark_relations::r1cs::{ConstraintSynthesizer, ConstraintSystemRef, SynthesisError};
@@ -13,7 +13,7 @@ use ark_std::vec::Vec;
 // 2. address and the secret key derives public key
 //  sender.pk = PRF(sender_sk, [0u8;32])
 // 3. sender's commitment is in List_all
-//  NOTE: we de not need to prove that sender's sn is not in List_USD
+//  NOTE: we de not need to prove that sender's sn is not in List_used
 //        this can be done in the public
 // 4. sender's value matches input value
 // =============================
