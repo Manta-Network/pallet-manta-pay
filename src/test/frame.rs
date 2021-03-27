@@ -251,12 +251,11 @@ fn transfer_test_helper(iter: usize) {
 	let mut rng = ChaCha20Rng::from_seed([3u8; 32]);
 	let mut pool = 0;
 	let mut sk = [0u8; 32];
-	let size = iter<<1;
+	let size = iter << 1;
 
 	// sender tokens
 	let mut senders = Vec::new();
 	for i in 0usize..size {
-
 		// build a sender token
 		let token_value = 10 + i as u64;
 		rng.fill_bytes(&mut sk);
@@ -308,18 +307,31 @@ fn transfer_test_helper(iter: usize) {
 	assert_eq!(pk.vk, vk);
 
 	// generate and verify transactions
-	for i in 0usize..size {
+	for i in 0usize..iter {
 		let coin_shards = CoinShards::get();
-		let shard_index = senders[i].0.cm_bytes[0] as usize;
+		let shard_index_1 = senders[i << 1].0.cm_bytes[0] as usize;
+		let shard_index_2 = senders[i << 1 + 1].0.cm_bytes[0] as usize;
 		// generate ZKP
 		let circuit = crypto::TransferCircuit {
 			commit_param: commit_param.clone(),
 			hash_param: hash_param.clone(),
-			sender_coin: senders[i].0.clone(),
-			sender_pub_info: senders[i].1.clone(),
-			sender_priv_info: senders[i].2.clone(),
-			receiver_coin: receivers[i].0.clone(),
-			receiver_pub_info: receivers[i].1.clone(),
+
+			sender_coin_1: senders[i << 1].0.clone(),
+			sender_pub_info_1: senders[i << 1].1.clone(),
+			sender_priv_info_1: senders[i << 1].2.clone(),
+
+			sender_coin_2: senders[i << 1 + 1].0.clone(),
+			sender_pub_info_2: senders[i << 1 + 1].1.clone(),
+			sender_priv_info_2: senders[i << 1 + 1].2.clone(),
+
+			receiver_coin_1: receivers[i << 1 + 1].0.clone(),
+			receiver_pub_info_1: receivers[i << 1 + 1].1.clone(),
+			receiver_value_1: receivers[i << 1 + 1].2.value,
+
+			receiver_coin_2: receivers[i << 1].0.clone(),
+			receiver_pub_info_2: receivers[i << 1].1.clone(),
+			receiver_value_2: receivers[i << 1].2.value,
+
 			list: coin_shards.shard[shard_index].list.clone(),
 		};
 

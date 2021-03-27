@@ -49,18 +49,32 @@ fn test_transfer_zkp_local() {
 		list.push(cm_rand);
 	}
 
+
+	let tree = param::LedgerMerkleTree::new(hash_param.clone(), &list).unwrap();
+	let merkle_root = tree.root();
+
+	let index_1 = list.iter().position(|x| *x == sender_1.cm_bytes).unwrap();
+	let path_1 =  tree.generate_proof(index_1, &sender_1.cm_bytes).unwrap();
+
+	let index_2 = list.iter().position(|x| *x == sender_2.cm_bytes).unwrap();
+	let path_2 =  tree.generate_proof(index_2, &sender_2.cm_bytes).unwrap();
+
 	// build the circuit
 	let circuit = crypto::TransferCircuit {
 		commit_param: commit_param.clone(),
 		hash_param: hash_param.clone(),
 
+		root: merkle_root,
+
 		sender_coin_1: sender_1.clone(),
 		sender_pub_info_1: sender_pub_info_1.clone(),
 		sender_priv_info_1: sender_priv_info_1.clone(),
+		sender_membership_1: path_1,
 
 		sender_coin_2: sender_2.clone(),
 		sender_pub_info_2: sender_pub_info_2.clone(),
 		sender_priv_info_2: sender_priv_info_2.clone(),
+		sender_membership_2: path_2,
 
 		receiver_coin_1: receiver_1.clone(),
 		receiver_pub_info_1: receiver_pub_info_1.clone(),
@@ -69,8 +83,6 @@ fn test_transfer_zkp_local() {
 		receiver_coin_2: receiver_2.clone(),
 		receiver_pub_info_2: receiver_pub_info_2.clone(),
 		receiver_value_2: 260,
-
-		list: list.clone(),
 	};
 
 	let sanity_cs = ConstraintSystem::<Fq>::new_ref();
@@ -203,17 +215,28 @@ fn test_transfer_helper(
 	let tree = param::LedgerMerkleTree::new(hash_param.clone(), &list).unwrap();
 	let merkle_root = tree.root();
 
+	let index_1 = list.iter().position(|x| *x == sender_1.0.cm_bytes).unwrap();
+	let path_1 =  tree.generate_proof(index_1, &sender_1.0.cm_bytes).unwrap();
+
+	let index_2 = list.iter().position(|x| *x == sender_2.0.cm_bytes).unwrap();
+	let path_2 =  tree.generate_proof(index_2, &sender_2.0.cm_bytes).unwrap();
+
+
 	let circuit = crypto::TransferCircuit {
 		commit_param: commit_param.clone(),
 		hash_param,
 
+		root: merkle_root, 
+
 		sender_coin_1: sender_1.0.clone(),
 		sender_pub_info_1: sender_1.1.clone(),
 		sender_priv_info_1: sender_1.2.clone(),
+		sender_membership_1: path_1.clone(),
 
 		sender_coin_2: sender_2.0.clone(),
 		sender_pub_info_2: sender_2.1.clone(),
 		sender_priv_info_2: sender_2.2.clone(),
+		sender_membership_2: path_2.clone(),
 
 		receiver_coin_1: receiver_1.0.clone(),
 		receiver_pub_info_1: receiver_1.1.clone(),
@@ -222,8 +245,6 @@ fn test_transfer_helper(
 		receiver_coin_2: receiver_2.0.clone(),
 		receiver_pub_info_2: receiver_2.1.clone(),
 		receiver_value_2: receiver_2.2.value,
-
-		list: list.to_vec(),
 	};
 
 	let sanity_cs = ConstraintSystem::<Fq>::new_ref();
@@ -295,26 +316,38 @@ fn test_reclaim_zkp_local() {
 		list.push(cm_rand);
 	}
 
+	let tree = param::LedgerMerkleTree::new(hash_param.clone(), &list).unwrap();
+	let merkle_root = tree.root();
+
+	let index_1 = list.iter().position(|x| *x == sender_1.cm_bytes).unwrap();
+	let path_1 =  tree.generate_proof(index_1, &sender_1.cm_bytes).unwrap();
+
+	let index_2 = list.iter().position(|x| *x == sender_2.cm_bytes).unwrap();
+	let path_2 =  tree.generate_proof(index_2, &sender_2.cm_bytes).unwrap();
+
 	// build the circuit
 	let circuit = crypto::ReclaimCircuit {
 		commit_param: commit_param.clone(),
 		hash_param: hash_param.clone(),
 
+		root: merkle_root,
+
 		sender_coin_1: sender_1.clone(),
 		sender_pub_info_1: sender_pub_info_1.clone(),
 		sender_priv_info_1: sender_priv_info_1.clone(),
+		sender_membership_1: path_1,
+
 
 		sender_coin_2: sender_2.clone(),
 		sender_pub_info_2: sender_pub_info_2.clone(),
 		sender_priv_info_2: sender_priv_info_2.clone(),
+		sender_membership_2: path_2,
 
 		receiver_coin: receiver.clone(),
 		receiver_pub_info: receiver_pub_info.clone(),
 		receiver_value: 240,
 
 		reclaim_value: 260,
-
-		list: list.clone(),
 	};
 
 	let sanity_cs = ConstraintSystem::<Fq>::new_ref();
@@ -442,25 +475,33 @@ fn test_reclaim_helper(
 	let tree = param::LedgerMerkleTree::new(hash_param.clone(), &list).unwrap();
 	let merkle_root = tree.root();
 
+	let index_1 = list.iter().position(|x| *x == sender_1.0.cm_bytes).unwrap();
+	let path_1 =  tree.generate_proof(index_1, &sender_1.0.cm_bytes).unwrap();
+
+	let index_2 = list.iter().position(|x| *x == sender_2.0.cm_bytes).unwrap();
+	let path_2 =  tree.generate_proof(index_2, &sender_2.0.cm_bytes).unwrap();
+
 	let circuit = crypto::ReclaimCircuit {
 		commit_param: commit_param.clone(),
 		hash_param,
 
+		root: merkle_root, 
+
 		sender_coin_1: sender_1.0.clone(),
 		sender_pub_info_1: sender_1.1.clone(),
 		sender_priv_info_1: sender_1.2.clone(),
+		sender_membership_1: path_1.clone(),
 
 		sender_coin_2: sender_2.0.clone(),
 		sender_pub_info_2: sender_2.1.clone(),
 		sender_priv_info_2: sender_2.2.clone(),
+		sender_membership_2: path_2.clone(),
 
 		receiver_coin: receiver.0.clone(),
 		receiver_pub_info: receiver.1.clone(),
 		receiver_value: receiver.2.value,
 
 		reclaim_value,
-
-		list: list.to_vec(),
 	};
 
 	let sanity_cs = ConstraintSystem::<Fq>::new_ref();

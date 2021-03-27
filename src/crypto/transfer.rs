@@ -29,14 +29,19 @@ pub struct TransferCircuit {
 	pub commit_param: CommitmentParam,
 	pub hash_param: HashParam,
 
+	// ledger
+	pub root: LedgerMerkleTreeRoot,
+
 	// sender
 	pub sender_coin_1: MantaCoin,
 	pub sender_pub_info_1: MantaCoinPubInfo,
 	pub sender_priv_info_1: MantaCoinPrivInfo,
+	pub sender_membership_1: AccountMembership,
 
 	pub sender_coin_2: MantaCoin,
 	pub sender_pub_info_2: MantaCoinPubInfo,
 	pub sender_priv_info_2: MantaCoinPrivInfo,
+	pub sender_membership_2: AccountMembership,
 
 	// receiver
 	pub receiver_coin_1: MantaCoin,
@@ -46,9 +51,6 @@ pub struct TransferCircuit {
 	pub receiver_coin_2: MantaCoin,
 	pub receiver_pub_info_2: MantaCoinPubInfo,
 	pub receiver_value_2: u64,
-
-	// ledger
-	pub list: Vec<[u8; 32]>,
 }
 
 impl ConstraintSynthesizer<Fq> for TransferCircuit {
@@ -141,29 +143,27 @@ impl ConstraintSynthesizer<Fq> for TransferCircuit {
 		.unwrap();
 
 		// build the merkle tree
-		let tree = LedgerMerkleTree::new(self.hash_param, &self.list).unwrap();
-		let merkle_root = tree.root();
+		// let tree = LedgerMerkleTree::new(self.hash_param, &self.list).unwrap();
+		// let merkle_root = tree.root();
 
 		// Allocate Merkle Tree Root
 		let root_var =
-			HashOutputVar::new_input(ark_relations::ns!(cs, "new_digest"), || Ok(merkle_root))
+			HashOutputVar::new_input(ark_relations::ns!(cs, "new_digest"), || Ok(self.root))
 				.unwrap();
 
 		merkle_membership_circuit_proof(
 			&self.sender_coin_1.cm_bytes,
-			&self.list,
+			&self.sender_membership_1,
 			param_var.clone(),
 			root_var.clone(),
-			&tree,
 			cs.clone(),
 		);
 
 		merkle_membership_circuit_proof(
 			&self.sender_coin_2.cm_bytes,
-			&self.list,
-			param_var.clone(),
+			&self.sender_membership_2,
+			param_var,
 			root_var,
-			&tree,
 			cs.clone(),
 		);
 
@@ -332,21 +332,14 @@ pub(crate) fn prf_circuit_helper(
 
 pub(crate) fn merkle_membership_circuit_proof(
 	cm: &[u8; 32],
-	list: &[[u8; 32]],
+	path: &AccountMembership,
 	param_var: HashParamVar,
 	root_var: HashOutputVar,
-	tree: &LedgerMerkleTree,
 	cs: ConstraintSystemRef<Fq>,
 ) {
-	// check if cm is in or not; if cm is not in, panic!
-	let index = list.iter().position(|x| x == cm).unwrap();
-
-	// build the merkle tree
-	let path = tree.generate_proof(index, &cm).unwrap();
-
 	// Allocate Merkle Tree Path
 	let membership_var =
-		PathVar::<_, HashVar, _>::new_witness(ark_relations::ns!(cs, "new_witness"), || Ok(&path))
+		PathVar::<_, HashVar, _>::new_witness(ark_relations::ns!(cs, "new_witness"), || Ok(path))
 			.unwrap();
 
 	// Allocate Leaf

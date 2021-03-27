@@ -3,7 +3,7 @@ use crate::{coin::*, param::*};
 use ark_ed_on_bls12_381::{constraints::FqVar, Fq};
 use ark_r1cs_std::{alloc::AllocVar, prelude::*};
 use ark_relations::r1cs::{ConstraintSynthesizer, ConstraintSystemRef, SynthesisError};
-use ark_std::vec::Vec;
+// use ark_std::vec::Vec;
 
 // =============================
 // circuit for the following statements
@@ -24,14 +24,19 @@ pub struct ReclaimCircuit {
 	pub commit_param: CommitmentParam,
 	pub hash_param: HashParam,
 
+	// ledger
+	pub root: LedgerMerkleTreeRoot,
+
 	// sender
 	pub sender_coin_1: MantaCoin,
 	pub sender_pub_info_1: MantaCoinPubInfo,
 	pub sender_priv_info_1: MantaCoinPrivInfo,
+	pub sender_membership_1: AccountMembership,
 
 	pub sender_coin_2: MantaCoin,
 	pub sender_pub_info_2: MantaCoinPubInfo,
 	pub sender_priv_info_2: MantaCoinPrivInfo,
+	pub sender_membership_2: AccountMembership,
 
 	// receiver
 	pub receiver_coin: MantaCoin,
@@ -40,9 +45,6 @@ pub struct ReclaimCircuit {
 
 	// reclaimed amount
 	pub reclaim_value: u64,
-
-	// ledger
-	pub list: Vec<[u8; 32]>,
 }
 
 impl ConstraintSynthesizer<Fq> for ReclaimCircuit {
@@ -126,29 +128,27 @@ impl ConstraintSynthesizer<Fq> for ReclaimCircuit {
 		.unwrap();
 
 		// build the merkle tree
-		let tree = LedgerMerkleTree::new(self.hash_param, &self.list).unwrap();
-		let merkle_root = tree.root();
+		// let tree = LedgerMerkleTree::new(self.hash_param, &self.list).unwrap();
+		// let merkle_root = tree.root();
 
 		// Allocate Merkle Tree Root
 		let root_var =
-			HashOutputVar::new_input(ark_relations::ns!(cs, "new_digest"), || Ok(merkle_root))
+			HashOutputVar::new_input(ark_relations::ns!(cs, "new_digest"), || Ok(self.root))
 				.unwrap();
 
 		merkle_membership_circuit_proof(
 			&self.sender_coin_1.cm_bytes,
-			&self.list,
+			&self.sender_membership_1,
 			param_var.clone(),
 			root_var.clone(),
-			&tree,
 			cs.clone(),
 		);
 
 		merkle_membership_circuit_proof(
 			&self.sender_coin_2.cm_bytes,
-			&self.list,
-			param_var.clone(),
+			&self.sender_membership_2,
+			param_var,
 			root_var,
-			&tree,
 			cs.clone(),
 		);
 
