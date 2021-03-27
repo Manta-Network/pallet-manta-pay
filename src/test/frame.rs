@@ -250,13 +250,14 @@ fn transfer_test_helper(iter: usize) {
 
 	let mut rng = ChaCha20Rng::from_seed([3u8; 32]);
 	let mut pool = 0;
-	let size = iter;
+	let mut sk = [0u8; 32];
+	let size = iter<<1;
 
 	// sender tokens
 	let mut senders = Vec::new();
 	for i in 0usize..size {
+
 		// build a sender token
-		let mut sk = [0u8; 32];
 		let token_value = 10 + i as u64;
 		rng.fill_bytes(&mut sk);
 		let (sender, sender_pub_info, sender_priv_info) =
@@ -282,17 +283,15 @@ fn transfer_test_helper(iter: usize) {
 		assert_eq!(PoolBalance::get(), pool);
 		let coin_shards = CoinShards::get();
 		assert!(coin_shards.exist(&sender.cm_bytes));
-		let sn_list = SNList::get();
-		assert_eq!(sn_list.len(), 0);
-
 		senders.push((sender, sender_pub_info, sender_priv_info));
 	}
+	let sn_list = SNList::get();
+	assert_eq!(sn_list.len(), 0);
 
 	// build receivers
 	let mut receivers = Vec::new();
 	for i in 0usize..size {
 		// build a receiver token
-		let mut sk = [0u8; 32];
 		rng.fill_bytes(&mut sk);
 		let (receiver, receiver_pub_info, receiver_priv_info) =
 			make_coin(&commit_param, sk, 10 + i as u64, &mut rng);
@@ -380,104 +379,104 @@ fn transfer_test_helper(iter: usize) {
 	}
 }
 
-fn reclaim_test_helper(iter: usize) {
-	// setup
-	assert_ok!(Assets::init(Origin::signed(1), 10_000_000));
-	assert_eq!(Assets::balance(1), 10_000_000);
-	assert_eq!(PoolBalance::get(), 0);
+// fn reclaim_test_helper(iter: usize) {
+// 	// setup
+// 	assert_ok!(Assets::init(Origin::signed(1), 10_000_000));
+// 	assert_eq!(Assets::balance(1), 10_000_000);
+// 	assert_eq!(PoolBalance::get(), 0);
 
-	let hash_param = HashParam::deserialize(HASHPARAMBYTES.as_ref());
-	let commit_param = CommitmentParam::deserialize(COMPARAMBYTES.as_ref());
+// 	let hash_param = HashParam::deserialize(HASHPARAMBYTES.as_ref());
+// 	let commit_param = CommitmentParam::deserialize(COMPARAMBYTES.as_ref());
 
-	let mut rng = ChaCha20Rng::from_seed([3u8; 32]);
-	let mut pool = 0;
-	let size = iter;
+// 	let mut rng = ChaCha20Rng::from_seed([3u8; 32]);
+// 	let mut pool = 0;
+// 	let size = iter;
 
-	// sender tokens
-	let mut senders = Vec::new();
-	for i in 0usize..size {
-		// build a sender token
-		let mut sk = [0u8; 32];
-		let token_value = 10 + i as u64;
-		rng.fill_bytes(&mut sk);
-		let (sender, sender_pub_info, sender_priv_info) =
-			make_coin(&commit_param, sk, token_value, &mut rng);
-		senders.push((sender, sender_pub_info, sender_priv_info));
+// 	// sender tokens
+// 	let mut senders = Vec::new();
+// 	for i in 0usize..size {
+// 		// build a sender token
+// 		let mut sk = [0u8; 32];
+// 		let token_value = 10 + i as u64;
+// 		rng.fill_bytes(&mut sk);
+// 		let (sender, sender_pub_info, sender_priv_info) =
+// 			make_coin(&commit_param, sk, token_value, &mut rng);
+// 		senders.push((sender, sender_pub_info, sender_priv_info));
 
-		let mut mint_data = [0u8; 96];
-		mint_data.copy_from_slice(
-			[
-				senders[i].0.cm_bytes.clone(),
-				senders[i].1.k,
-				senders[i].1.s,
-			]
-			.concat()
-			.as_ref(),
-		);
+// 		let mut mint_data = [0u8; 96];
+// 		mint_data.copy_from_slice(
+// 			[
+// 				senders[i].0.cm_bytes.clone(),
+// 				senders[i].1.k,
+// 				senders[i].1.s,
+// 			]
+// 			.concat()
+// 			.as_ref(),
+// 		);
 
-		// mint a sender token
-		assert_ok!(Assets::mint(Origin::signed(1), token_value, mint_data));
+// 		// mint a sender token
+// 		assert_ok!(Assets::mint(Origin::signed(1), token_value, mint_data));
 
-		pool += token_value;
+// 		pool += token_value;
 
-		// sanity checks
-		assert_eq!(PoolBalance::get(), pool);
-		let coin_shards = CoinShards::get();
-		assert!(coin_shards.exist(&senders[i].0.cm_bytes));
-		let sn_list = SNList::get();
-		assert_eq!(sn_list.len(), 0);
-	}
+// 		// sanity checks
+// 		assert_eq!(PoolBalance::get(), pool);
+// 		let coin_shards = CoinShards::get();
+// 		assert!(coin_shards.exist(&senders[i].0.cm_bytes));
+// 		let sn_list = SNList::get();
+// 		assert_eq!(sn_list.len(), 0);
+// 	}
 
-	// build ZKP circuit
-	let mut file = File::open("reclaim_pk.bin").unwrap();
-	let mut reclaim_pk_bytes: Vec<u8> = vec![];
-	file.read_to_end(&mut reclaim_pk_bytes).unwrap();
-	let pk = Groth16PK::deserialize_uncompressed(reclaim_pk_bytes.as_ref()).unwrap();
-	let vk_bytes = ReclaimZKPKey::get();
-	let vk = Groth16VK::deserialize(vk_bytes.as_ref()).unwrap();
-	assert_eq!(pk.vk, vk);
+// 	// build ZKP circuit
+// 	let mut file = File::open("reclaim_pk.bin").unwrap();
+// 	let mut reclaim_pk_bytes: Vec<u8> = vec![];
+// 	file.read_to_end(&mut reclaim_pk_bytes).unwrap();
+// 	let pk = Groth16PK::deserialize_uncompressed(reclaim_pk_bytes.as_ref()).unwrap();
+// 	let vk_bytes = ReclaimZKPKey::get();
+// 	let vk = Groth16VK::deserialize(vk_bytes.as_ref()).unwrap();
+// 	assert_eq!(pk.vk, vk);
 
-	// generate and verify transactions
-	let coin_shards = CoinShards::get();
-	for i in 0usize..size {
-		let token_value = 10 + i as u64;
-		let shard_index = senders[i].0.cm_bytes[0] as usize;
-		// generate ZKP
-		let circuit = crypto::ReclaimCircuit {
-			commit_param: commit_param.clone(),
-			hash_param: hash_param.clone(),
-			sender_coin: senders[i].0.clone(),
-			sender_pub_info: senders[i].1.clone(),
-			sender_priv_info: senders[i].2.clone(),
-			value: token_value,
-			list: coin_shards.shard[shard_index].list.clone(),
-		};
+// 	// generate and verify transactions
+// 	let coin_shards = CoinShards::get();
+// 	for i in 0usize..size {
+// 		let token_value = 10 + i as u64;
+// 		let shard_index = senders[i].0.cm_bytes[0] as usize;
+// 		// generate ZKP
+// 		let circuit = crypto::ReclaimCircuit {
+// 			commit_param: commit_param.clone(),
+// 			hash_param: hash_param.clone(),
+// 			sender_coin: senders[i].0.clone(),
+// 			sender_pub_info: senders[i].1.clone(),
+// 			sender_priv_info: senders[i].2.clone(),
+// 			value: token_value,
+// 			list: coin_shards.shard[shard_index].list.clone(),
+// 		};
 
-		let proof = create_random_proof(circuit, &pk, &mut rng).unwrap();
-		let mut proof_bytes = [0u8; 192];
-		proof.serialize(proof_bytes.as_mut()).unwrap();
+// 		let proof = create_random_proof(circuit, &pk, &mut rng).unwrap();
+// 		let mut proof_bytes = [0u8; 192];
+// 		proof.serialize(proof_bytes.as_mut()).unwrap();
 
-		let mut sender_data = [0u8; 64];
-		sender_data.copy_from_slice([senders[i].1.k, senders[i].2.sn].concat().as_ref());
+// 		let mut sender_data = [0u8; 64];
+// 		sender_data.copy_from_slice([senders[i].1.k, senders[i].2.sn].concat().as_ref());
 
-		// make the reclaim
-		assert_ok!(Assets::reclaim(
-			Origin::signed(1),
-			token_value,
-			coin_shards.shard[shard_index].root,
-			sender_data,
-			proof_bytes,
-		));
+// 		// make the reclaim
+// 		assert_ok!(Assets::reclaim(
+// 			Origin::signed(1),
+// 			token_value,
+// 			coin_shards.shard[shard_index].root,
+// 			sender_data,
+// 			proof_bytes,
+// 		));
 
-		// check the resulting status of the ledger storage
-		assert_eq!(TotalSupply::get(), 10_000_000);
-		pool -= token_value;
-		assert_eq!(PoolBalance::get(), pool);
+// 		// check the resulting status of the ledger storage
+// 		assert_eq!(TotalSupply::get(), 10_000_000);
+// 		pool -= token_value;
+// 		assert_eq!(PoolBalance::get(), pool);
 
-		let sn_list = SNList::get();
-		assert_eq!(sn_list.len(), i + 1);
-		assert_eq!(sn_list[i], senders[i].2.sn);
-	}
-	let enc_value_list = EncValueList::get();
-	assert_eq!(enc_value_list.len(), 0);
-}
+// 		let sn_list = SNList::get();
+// 		assert_eq!(sn_list.len(), i + 1);
+// 		assert_eq!(sn_list[i], senders[i].2.sn);
+// 	}
+// 	let enc_value_list = EncValueList::get();
+// 	assert_eq!(enc_value_list.len(), 0);
+// }
