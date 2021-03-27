@@ -58,9 +58,10 @@ pub fn manta_verify_reclaim_zkp(
 	value: u64,
 	proof: [u8; 192],
 	sender_data_1: &SenderData,
+	merkle_root_1: [u8; 32],
 	sender_data_2: &SenderData,
+	merkle_root_2: [u8; 32],
 	receiver_data: &ReceiverData,
-	merkle_root: [u8; 32],
 ) -> bool {
 	let vk = Groth16VK::deserialize(reclaim_key_bytes.as_ref()).unwrap();
 	let pvk = Groth16PVK::from(vk);
@@ -69,7 +70,8 @@ pub fn manta_verify_reclaim_zkp(
 	let k_old_2 = CommitmentOutput::deserialize(sender_data_2.k.as_ref()).unwrap();
 	let k_new = CommitmentOutput::deserialize(receiver_data.k.as_ref()).unwrap();
 	let cm_new = CommitmentOutput::deserialize(receiver_data.cm.as_ref()).unwrap();
-	let merkle_root = HashOutput::deserialize(merkle_root.as_ref()).unwrap();
+	let merkle_root_1 = HashOutput::deserialize(merkle_root_1.as_ref()).unwrap();
+	let merkle_root_2 = HashOutput::deserialize(merkle_root_2.as_ref()).unwrap();
 
 	let mut inputs = [
 		k_old_1.x, k_old_1.y, // sender coin 1
@@ -82,13 +84,15 @@ pub fn manta_verify_reclaim_zkp(
 	let sn_2: Vec<Fq> =
 		ToConstraintField::<Fq>::to_field_elements(sender_data_2.sn.as_ref()).unwrap();
 
-	let mr: Vec<Fq> = ToConstraintField::<Fq>::to_field_elements(&merkle_root).unwrap();
+	let mr_1: Vec<Fq> = ToConstraintField::<Fq>::to_field_elements(&merkle_root_1).unwrap();
+	let mr_2: Vec<Fq> = ToConstraintField::<Fq>::to_field_elements(&merkle_root_2).unwrap();
 	let value_fq = Fq::from(value);
 	inputs = [
 		inputs[..].as_ref(),
 		sn_1.as_ref(),
 		sn_2.as_ref(),
-		mr.as_ref(),
+		mr_1.as_ref(),
+		mr_2.as_ref(),
 		[value_fq].as_ref(),
 	]
 	.concat();

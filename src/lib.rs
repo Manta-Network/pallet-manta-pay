@@ -389,10 +389,11 @@ decl_module! {
 		#[weight = 0]
 		fn reclaim(origin,
 			amount: u64,
-			merkle_root: [u8; 32],
+			merkle_root_1: [u8; 32],
 			sender_data_1: [u8; 64],
+			merkle_root_2: [u8; 32],
 			sender_data_2: [u8; 64],
-			receiver_data: [u8; 64],
+			receiver_data: [u8; 80],
 			proof: [u8; 192],
 		) {
 
@@ -444,7 +445,11 @@ decl_module! {
 			// get the ledger state from the ledger
 			// and check the validity of the state
 			ensure!(
-				coin_shards.check_root(&merkle_root),
+				coin_shards.check_root(&merkle_root_1),
+				<Error<T>>::InvalidLedgerState
+			);
+			ensure!(
+				coin_shards.check_root(&merkle_root_2),
 				<Error<T>>::InvalidLedgerState
 			);
 			// check the commitment are not in the list already
@@ -461,9 +466,10 @@ decl_module! {
 					amount,
 					proof,
 					&sender_data_1,
+					merkle_root_1,
 					&sender_data_2,
-					&receiver_data,
-					merkle_root),
+					merkle_root_2,
+					&receiver_data),
 				<Error<T>>::ZKPFail,
 			);
 
@@ -480,6 +486,7 @@ decl_module! {
 			Self::deposit_event(RawEvent::PrivateReclaimed(origin));
 			SNList::put(sn_list);
 			PoolBalance::put(pool);
+			EncValueList::put(enc_value_list);
 			<Balances<T>>::insert(origin_account, origin_balance + amount);
 		}
 
