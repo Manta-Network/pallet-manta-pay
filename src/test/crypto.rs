@@ -326,8 +326,6 @@ fn test_reclaim_zkp_local() {
 
 	let pk = generate_random_parameters::<Bls12_381, _, _>(circuit.clone(), &mut rng).unwrap();
 
-
-
 	// =============================
 	// a normal test
 	// =============================
@@ -342,7 +340,6 @@ fn test_reclaim_zkp_local() {
 	rng.fill_bytes(&mut sk);
 	let receiver = make_coin(&commit_param, sk, 300, &mut rng);
 
-
 	test_reclaim_helper(
 		commit_param.clone(),
 		hash_param.clone(),
@@ -354,30 +351,80 @@ fn test_reclaim_zkp_local() {
 		&list,
 	);
 
+	// =============================
+	// test with a 0 sender token
+	// =============================
 
-	// let proof = create_random_proof(circuit, &pk, &mut rng).unwrap();
-	// let pvk = param::Groth16PVK::from(pk.vk.clone());
+	rng.fill_bytes(&mut sk);
+	let sender_1 = make_coin(&commit_param, sk, 0, &mut rng);
+	rng.fill_bytes(&mut sk);
+	let sender_2 = make_coin(&commit_param, sk, 500, &mut rng);
+	list.push(sender_1.0.cm_bytes);
+	list.push(sender_2.0.cm_bytes);
 
-	// let k_old_1 = param::CommitmentOutput::deserialize(sender_1.1.k.as_ref()).unwrap();
-	// let k_old_2 = param::CommitmentOutput::deserialize(sender_2.1.k.as_ref()).unwrap();
-	// let k_new = param::CommitmentOutput::deserialize(receiver.1.k.as_ref()).unwrap();
-	// let cm_new = param::CommitmentOutput::deserialize(receiver.0.cm_bytes.as_ref()).unwrap();
+	rng.fill_bytes(&mut sk);
+	let receiver = make_coin(&commit_param, sk, 100, &mut rng);
 
-	// // format the input to the verification
-	// let mut inputs = [k_old.x, k_old.y].to_vec();
-	// let sn: Vec<Fq> =
-	// 	ToConstraintField::<Fq>::to_field_elements(sender_priv_info.sn.as_ref()).unwrap();
-	// let mr: Vec<Fq> = ToConstraintField::<Fq>::to_field_elements(&merkle_root).unwrap();
-	// let value_fq = Fq::from(value);
-	// inputs = [
-	// 	inputs[..].as_ref(),
-	// 	sn.as_ref(),
-	// 	mr.as_ref(),
-	// 	[value_fq].as_ref(),
-	// ]
-	// .concat();
+	test_reclaim_helper(
+		commit_param.clone(),
+		hash_param.clone(),
+		&pk,
+		sender_1,
+		sender_2,
+		receiver,
+		400,
+		&list,
+	);
 
-	// assert!(verify_proof(&pvk, &proof, &inputs[..]).unwrap());
+	// =============================
+	// test with a 0 receiver token
+	// =============================
+
+	rng.fill_bytes(&mut sk);
+	let sender_1 = make_coin(&commit_param, sk, 77, &mut rng);
+	rng.fill_bytes(&mut sk);
+	let sender_2 = make_coin(&commit_param, sk, 423, &mut rng);
+	list.push(sender_1.0.cm_bytes);
+	list.push(sender_2.0.cm_bytes);
+
+	rng.fill_bytes(&mut sk);
+	let receiver = make_coin(&commit_param, sk, 0, &mut rng);
+
+	test_reclaim_helper(
+		commit_param.clone(),
+		hash_param.clone(),
+		&pk,
+		sender_1,
+		sender_2,
+		receiver,
+		500,
+		&list,
+	);
+
+	// =============================
+	// test with a 0 forfeit amount
+	// =============================
+
+	rng.fill_bytes(&mut sk);
+	let sender_1 = make_coin(&commit_param, sk, 42, &mut rng);
+	rng.fill_bytes(&mut sk);
+	let sender_2 = make_coin(&commit_param, sk, 458, &mut rng);
+	list.push(sender_1.0.cm_bytes);
+	list.push(sender_2.0.cm_bytes);
+
+	rng.fill_bytes(&mut sk);
+	let receiver = make_coin(&commit_param, sk, 500, &mut rng);
+
+	test_reclaim_helper(
+		commit_param.clone(),
+		hash_param.clone(),
+		&pk,
+		sender_1,
+		sender_2,
+		receiver,
+		0,
+		&list,
+	);
 }
 
 fn test_reclaim_helper(

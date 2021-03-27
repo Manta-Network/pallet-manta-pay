@@ -1,5 +1,5 @@
-use crate::{coin::*, param::*};
 use super::transfer::*;
+use crate::{coin::*, param::*};
 use ark_ed_on_bls12_381::{constraints::FqVar, Fq};
 use ark_r1cs_std::{alloc::AllocVar, prelude::*};
 use ark_relations::r1cs::{ConstraintSynthesizer, ConstraintSystemRef, SynthesisError};
@@ -38,7 +38,7 @@ pub struct ReclaimCircuit {
 	pub receiver_pub_info: MantaCoinPubInfo,
 	pub receiver_value: u64,
 
-	// reclaimed amount 
+	// reclaimed amount
 	pub reclaim_value: u64,
 
 	// ledger
@@ -175,11 +175,10 @@ impl ConstraintSynthesizer<Fq> for ReclaimCircuit {
 			})
 			.unwrap();
 		let reclaim_value_fq = Fq::from(self.reclaim_value);
-		let reclaim_value_var =
-			FqVar::new_input(ark_relations::ns!(cs, "reclaimed value"), || {
-				Ok(&reclaim_value_fq)
-			})
-			.unwrap();
+		let reclaim_value_var = FqVar::new_input(ark_relations::ns!(cs, "reclaimed value"), || {
+			Ok(&reclaim_value_fq)
+		})
+		.unwrap();
 		receiver_value_sum += reclaim_value_var;
 
 		sender_value_sum.enforce_equal(&receiver_value_sum).unwrap();
