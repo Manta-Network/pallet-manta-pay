@@ -75,13 +75,13 @@ impl ConstraintSynthesizer<Fq> for ReclaimCircuit {
 			cs.clone(),
 		);
 
-		// 3. sender's commitment is in List_all
-		super::transfer::merkle_membership_circuit_proof(
-			&self.hash_param,
-			&self.sender_coin.cm_bytes,
-			&self.list,
-			cs.clone(),
-		);
+		// // 3. sender's commitment is in List_all
+		// super::transfer::merkle_membership_circuit_proof(
+		// 	&self.hash_param,
+		// 	&self.sender_coin.cm_bytes,
+		// 	&self.list,
+		// 	cs.clone(),
+		// );
 
 		// 4. sender's value is the same as reclaimed value
 		let value_fq = Fq::from(self.value);
