@@ -384,11 +384,15 @@ decl_module! {
 		fn reclaim(origin,
 			amount: u64,
 			merkle_root: [u8; 32],
-			sender_data: [u8; 64],
+			sender_data_1: [u8; 64],
+			sender_data_2: [u8; 64],
+			receiver_data: [u8; 64],
 			proof: [u8; 192],
 		) {
 
-			let sender_data = SenderData::deserialize(sender_data.as_ref());
+			let sender_data_1 = SenderData::deserialize(sender_data_1.as_ref());
+			let sender_data_2 = SenderData::deserialize(sender_data_2.as_ref());
+			let receiver_data = ReceiverData::deserialize(receiver_data.as_ref());
 
 			let origin = ensure_signed(origin)?;
 			let origin_account = origin.clone();
@@ -415,13 +419,18 @@ decl_module! {
 			// check if sn_old already spent
 			let mut sn_list = SNList::get();
 			ensure!(
-				!sn_list.contains(&sender_data.sn),
+				!sn_list.contains(&sender_data_1.sn),
 				<Error<T>>::MantaCoinSpent
 			);
-			sn_list.push(sender_data.sn);
+			ensure!(
+				!sn_list.contains(&sender_data_2.sn),
+				<Error<T>>::MantaCoinSpent
+			);
+			sn_list.push(sender_data_1.sn);
+			sn_list.push(sender_data_2.sn);
 
 			// get the coin list
-			let coin_shards = CoinShards::get();
+			let mut coin_shards = CoinShards::get();
 
 			// get the verification key from the ledger
 			let reclaim_vk_bytes = ReclaimZKPKey::get();
@@ -432,6 +441,12 @@ decl_module! {
 				coin_shards.check_root(&merkle_root),
 				<Error<T>>::InvalidLedgerState
 			);
+			// check the commitment are not in the list already
+			ensure!(
+				!coin_shards.exist(&receiver_data.cm),
+				<Error<T>>::MantaCoinSpent
+			);
+
 
 			// check validity of zkp
 			ensure!(
@@ -439,7 +454,9 @@ decl_module! {
 					reclaim_vk_bytes,
 					amount,
 					proof,
-					&sender_data,
+					&sender_data_1,
+					&sender_data_2,
+					&receiver_data,
 					merkle_root),
 				<Error<T>>::ZKPFail,
 			);
@@ -447,6 +464,13 @@ decl_module! {
 			// TODO: revisit replay attack here
 
 			// update ledger storage
+			let mut enc_value_list = EncValueList::get();
+			enc_value_list.push(receiver_data.cipher);
+
+
+			coin_shards.update(&receiver_data.cm, hash_param);
+			CoinShards::put(coin_shards);
+
 			Self::deposit_event(RawEvent::PrivateReclaimed(origin));
 			SNList::put(sn_list);
 			PoolBalance::put(pool);

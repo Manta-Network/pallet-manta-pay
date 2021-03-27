@@ -206,18 +206,23 @@ fn test_transfer_helper(
 	let circuit = crypto::TransferCircuit {
 		commit_param: commit_param.clone(),
 		hash_param,
+
 		sender_coin_1: sender_1.0.clone(),
 		sender_pub_info_1: sender_1.1.clone(),
 		sender_priv_info_1: sender_1.2.clone(),
+
 		sender_coin_2: sender_2.0.clone(),
 		sender_pub_info_2: sender_2.1.clone(),
 		sender_priv_info_2: sender_2.2.clone(),
+
 		receiver_coin_1: receiver_1.0.clone(),
 		receiver_pub_info_1: receiver_1.1.clone(),
 		receiver_value_1: receiver_1.2.value,
+
 		receiver_coin_2: receiver_2.0.clone(),
 		receiver_pub_info_2: receiver_2.1.clone(),
 		receiver_value_2: receiver_2.2.value,
+
 		list: list.to_vec(),
 	};
 
@@ -268,28 +273,47 @@ fn test_reclaim_zkp_local() {
 	let mut rng = ChaCha20Rng::from_seed([3u8; 32]);
 
 	// sender
-	let value = 100;
 	let mut sk = [0u8; 32];
 	rng.fill_bytes(&mut sk);
-	let (sender, sender_pub_info, sender_priv_info) = make_coin(&commit_param, sk, value, &mut rng);
+	let (sender_1, sender_pub_info_1, sender_priv_info_1) =
+		make_coin(&commit_param, sk, 100, &mut rng);
+
+	rng.fill_bytes(&mut sk);
+	let (sender_2, sender_pub_info_2, sender_priv_info_2) =
+		make_coin(&commit_param, sk, 400, &mut rng);
+
+	// receiver
+	rng.fill_bytes(&mut sk);
+	let (receiver, receiver_pub_info, _receiver_priv_info) =
+		make_coin(&commit_param, sk, 240, &mut rng);
 
 	// list of commitment
-	let mut list = vec![sender.cm_bytes.clone()];
+	let mut list = vec![sender_1.cm_bytes.clone(), sender_2.cm_bytes.clone()];
 	for _e in 1..24 {
 		let mut cm_rand = [0u8; 32];
 		rng.fill_bytes(&mut cm_rand);
 		list.push(cm_rand);
 	}
-	let tree = param::LedgerMerkleTree::new(hash_param.clone(), &list).unwrap();
-	let merkle_root = tree.root();
 
+	// build the circuit
 	let circuit = crypto::ReclaimCircuit {
 		commit_param: commit_param.clone(),
 		hash_param: hash_param.clone(),
-		sender_coin: sender.clone(),
-		sender_pub_info: sender_pub_info.clone(),
-		sender_priv_info: sender_priv_info.clone(),
-		value,
+
+		sender_coin_1: sender_1.clone(),
+		sender_pub_info_1: sender_pub_info_1.clone(),
+		sender_priv_info_1: sender_priv_info_1.clone(),
+
+		sender_coin_2: sender_2.clone(),
+		sender_pub_info_2: sender_pub_info_2.clone(),
+		sender_priv_info_2: sender_priv_info_2.clone(),
+
+		receiver_coin: receiver.clone(),
+		receiver_pub_info: receiver_pub_info.clone(),
+		receiver_value: 240,
+
+		reclaim_value: 260,
+
 		list: list.clone(),
 	};
 
@@ -301,25 +325,131 @@ fn test_reclaim_zkp_local() {
 	assert!(sanity_cs.is_satisfied().unwrap());
 
 	let pk = generate_random_parameters::<Bls12_381, _, _>(circuit.clone(), &mut rng).unwrap();
-	let proof = create_random_proof(circuit, &pk, &mut rng).unwrap();
-	let pvk = param::Groth16PVK::from(pk.vk.clone());
 
-	let k_old = param::CommitmentOutput::deserialize(sender_pub_info.k.as_ref()).unwrap();
+
+
+	// =============================
+	// a normal test
+	// =============================
+
+	rng.fill_bytes(&mut sk);
+	let sender_1 = make_coin(&commit_param, sk, 100, &mut rng);
+	rng.fill_bytes(&mut sk);
+	let sender_2 = make_coin(&commit_param, sk, 400, &mut rng);
+	list.push(sender_1.0.cm_bytes);
+	list.push(sender_2.0.cm_bytes);
+
+	rng.fill_bytes(&mut sk);
+	let receiver = make_coin(&commit_param, sk, 300, &mut rng);
+
+
+	test_reclaim_helper(
+		commit_param.clone(),
+		hash_param.clone(),
+		&pk,
+		sender_1,
+		sender_2,
+		receiver,
+		200,
+		&list,
+	);
+
+
+	// let proof = create_random_proof(circuit, &pk, &mut rng).unwrap();
+	// let pvk = param::Groth16PVK::from(pk.vk.clone());
+
+	// let k_old_1 = param::CommitmentOutput::deserialize(sender_1.1.k.as_ref()).unwrap();
+	// let k_old_2 = param::CommitmentOutput::deserialize(sender_2.1.k.as_ref()).unwrap();
+	// let k_new = param::CommitmentOutput::deserialize(receiver.1.k.as_ref()).unwrap();
+	// let cm_new = param::CommitmentOutput::deserialize(receiver.0.cm_bytes.as_ref()).unwrap();
+
+	// // format the input to the verification
+	// let mut inputs = [k_old.x, k_old.y].to_vec();
+	// let sn: Vec<Fq> =
+	// 	ToConstraintField::<Fq>::to_field_elements(sender_priv_info.sn.as_ref()).unwrap();
+	// let mr: Vec<Fq> = ToConstraintField::<Fq>::to_field_elements(&merkle_root).unwrap();
+	// let value_fq = Fq::from(value);
+	// inputs = [
+	// 	inputs[..].as_ref(),
+	// 	sn.as_ref(),
+	// 	mr.as_ref(),
+	// 	[value_fq].as_ref(),
+	// ]
+	// .concat();
+
+	// assert!(verify_proof(&pvk, &proof, &inputs[..]).unwrap());
+}
+
+fn test_reclaim_helper(
+	commit_param: CommitmentParam,
+	hash_param: HashParam,
+	pk: &Groth16PK,
+	sender_1: (MantaCoin, MantaCoinPubInfo, MantaCoinPrivInfo),
+	sender_2: (MantaCoin, MantaCoinPubInfo, MantaCoinPrivInfo),
+	receiver: (MantaCoin, MantaCoinPubInfo, MantaCoinPrivInfo),
+	reclaim_value: u64,
+	list: &[[u8; 32]],
+) {
+	let mut rng = ChaCha20Rng::from_seed([8u8; 32]);
+
+	let tree = param::LedgerMerkleTree::new(hash_param.clone(), &list).unwrap();
+	let merkle_root = tree.root();
+
+	let circuit = crypto::ReclaimCircuit {
+		commit_param: commit_param.clone(),
+		hash_param,
+
+		sender_coin_1: sender_1.0.clone(),
+		sender_pub_info_1: sender_1.1.clone(),
+		sender_priv_info_1: sender_1.2.clone(),
+
+		sender_coin_2: sender_2.0.clone(),
+		sender_pub_info_2: sender_2.1.clone(),
+		sender_priv_info_2: sender_2.2.clone(),
+
+		receiver_coin: receiver.0.clone(),
+		receiver_pub_info: receiver.1.clone(),
+		receiver_value: receiver.2.value,
+
+		reclaim_value,
+
+		list: list.to_vec(),
+	};
+
+	let sanity_cs = ConstraintSystem::<Fq>::new_ref();
+	circuit
+		.clone()
+		.generate_constraints(sanity_cs.clone())
+		.unwrap();
+	assert!(sanity_cs.is_satisfied().unwrap());
+
+	let proof = create_random_proof(circuit, &pk, &mut rng).unwrap();
+
+	let k_old_1 = param::CommitmentOutput::deserialize(sender_1.1.k.as_ref()).unwrap();
+	let k_old_2 = param::CommitmentOutput::deserialize(sender_2.1.k.as_ref()).unwrap();
+	let k_new = param::CommitmentOutput::deserialize(receiver.1.k.as_ref()).unwrap();
+	let cm_new = param::CommitmentOutput::deserialize(receiver.0.cm_bytes.as_ref()).unwrap();
 
 	// format the input to the verification
-	let mut inputs = [k_old.x, k_old.y].to_vec();
-	let sn: Vec<Fq> =
-		ToConstraintField::<Fq>::to_field_elements(sender_priv_info.sn.as_ref()).unwrap();
+	let mut inputs = [
+		k_old_1.x, k_old_1.y, // sender coin 3
+		k_old_2.x, k_old_2.y, // sender coin 4
+		k_new.x, k_new.y, cm_new.x, cm_new.y, // receiver coin 1
+	]
+	.to_vec();
+	let sn_1: Vec<Fq> = ToConstraintField::<Fq>::to_field_elements(sender_1.2.sn.as_ref()).unwrap();
+	let sn_2: Vec<Fq> = ToConstraintField::<Fq>::to_field_elements(sender_2.2.sn.as_ref()).unwrap();
 	let mr: Vec<Fq> = ToConstraintField::<Fq>::to_field_elements(&merkle_root).unwrap();
-	let value_fq = Fq::from(value);
+	let reclaim_value_fq = Fq::from(reclaim_value);
 	inputs = [
 		inputs[..].as_ref(),
-		sn.as_ref(),
+		sn_1.as_ref(),
+		sn_2.as_ref(),
 		mr.as_ref(),
-		[value_fq].as_ref(),
+		&[reclaim_value_fq],
 	]
 	.concat();
-
+	let pvk = param::Groth16PVK::from(pk.vk.clone());
 	assert!(verify_proof(&pvk, &proof, &inputs[..]).unwrap());
 }
 

@@ -1,4 +1,5 @@
 use crate::{coin::*, param::*};
+use super::transfer::*;
 use ark_ed_on_bls12_381::{constraints::FqVar, Fq};
 use ark_r1cs_std::{alloc::AllocVar, prelude::*};
 use ark_relations::r1cs::{ConstraintSynthesizer, ConstraintSystemRef, SynthesisError};
@@ -24,12 +25,21 @@ pub struct ReclaimCircuit {
 	pub hash_param: HashParam,
 
 	// sender
-	pub sender_coin: MantaCoin,
-	pub sender_pub_info: MantaCoinPubInfo,
-	pub sender_priv_info: MantaCoinPrivInfo,
+	pub sender_coin_1: MantaCoin,
+	pub sender_pub_info_1: MantaCoinPubInfo,
+	pub sender_priv_info_1: MantaCoinPrivInfo,
 
-	// amount
-	pub value: u64,
+	pub sender_coin_2: MantaCoin,
+	pub sender_pub_info_2: MantaCoinPubInfo,
+	pub sender_priv_info_2: MantaCoinPrivInfo,
+
+	// receiver
+	pub receiver_coin: MantaCoin,
+	pub receiver_pub_info: MantaCoinPubInfo,
+	pub receiver_value: u64,
+
+	// reclaimed amount 
+	pub reclaim_value: u64,
 
 	// ledger
 	pub list: Vec<[u8; 32]>,
@@ -48,51 +58,131 @@ impl ConstraintSynthesizer<Fq> for ReclaimCircuit {
 			})
 			.unwrap();
 
-		super::transfer::token_well_formed_circuit_helper(
+		token_well_formed_circuit_helper(
 			true,
 			&parameters_var,
-			&self.sender_coin,
-			&self.sender_pub_info,
-			self.sender_priv_info.value,
+			&self.sender_coin_1,
+			&self.sender_pub_info_1,
+			self.sender_priv_info_1.value,
+			cs.clone(),
+		);
+
+		token_well_formed_circuit_helper(
+			true,
+			&parameters_var,
+			&self.sender_coin_2,
+			&self.sender_pub_info_2,
+			self.sender_priv_info_2.value,
+			cs.clone(),
+		);
+
+		token_well_formed_circuit_helper(
+			false,
+			&parameters_var,
+			&self.receiver_coin,
+			&self.receiver_pub_info,
+			self.receiver_value,
 			cs.clone(),
 		);
 
 		// 2. address and the secret key derives public key
 		//  sender.pk = PRF(sender_sk, [0u8;32])
 		//  sender.sn = PRF(sender_sk, rho)
-		super::transfer::prf_circuit_helper(
+		prf_circuit_helper(
 			true,
-			&self.sender_priv_info.sk,
+			&self.sender_priv_info_1.sk,
 			&[0u8; 32],
-			&self.sender_pub_info.pk,
+			&self.sender_pub_info_1.pk,
 			cs.clone(),
 		);
-		super::transfer::prf_circuit_helper(
+		prf_circuit_helper(
 			false,
-			&self.sender_priv_info.sk,
-			&self.sender_pub_info.rho,
-			&self.sender_priv_info.sn,
+			&self.sender_priv_info_1.sk,
+			&self.sender_pub_info_1.rho,
+			&self.sender_priv_info_1.sn,
+			cs.clone(),
+		);
+		prf_circuit_helper(
+			true,
+			&self.sender_priv_info_2.sk,
+			&[0u8; 32],
+			&self.sender_pub_info_2.pk,
+			cs.clone(),
+		);
+		prf_circuit_helper(
+			false,
+			&self.sender_priv_info_2.sk,
+			&self.sender_pub_info_2.rho,
+			&self.sender_priv_info_2.sn,
 			cs.clone(),
 		);
 
-		// // 3. sender's commitment is in List_all
-		// super::transfer::merkle_membership_circuit_proof(
-		// 	&self.hash_param,
-		// 	&self.sender_coin.cm_bytes,
-		// 	&self.list,
-		// 	cs.clone(),
-		// );
+		// 3. sender's commitment is in List_all
+		// Allocate Parameters for CRH
+		let param_var = HashParamVar::new_constant(
+			ark_relations::ns!(cs, "new_parameter"),
+			self.hash_param.clone(),
+		)
+		.unwrap();
 
-		// 4. sender's value is the same as reclaimed value
-		let value_fq = Fq::from(self.value);
-		let value_var =
-			FqVar::new_input(ark_relations::ns!(cs, "sender value"), || Ok(&value_fq)).unwrap();
+		// build the merkle tree
+		let tree = LedgerMerkleTree::new(self.hash_param, &self.list).unwrap();
+		let merkle_root = tree.root();
 
-		let value_fq2 = Fq::from(self.sender_priv_info.value);
-		let value_var2 =
-			FqVar::new_witness(ark_relations::ns!(cs, "sender value"), || Ok(&value_fq2)).unwrap();
+		// Allocate Merkle Tree Root
+		let root_var =
+			HashOutputVar::new_input(ark_relations::ns!(cs, "new_digest"), || Ok(merkle_root))
+				.unwrap();
 
-		value_var.enforce_equal(&value_var2).unwrap();
+		merkle_membership_circuit_proof(
+			&self.sender_coin_1.cm_bytes,
+			&self.list,
+			param_var.clone(),
+			root_var.clone(),
+			&tree,
+			cs.clone(),
+		);
+
+		merkle_membership_circuit_proof(
+			&self.sender_coin_2.cm_bytes,
+			&self.list,
+			param_var.clone(),
+			root_var,
+			&tree,
+			cs.clone(),
+		);
+
+		// 4. sender's and receiver's total value are the same
+		// TODO: do we need to check that the values are all positive?
+		// seems that Rust's type system has already eliminated negative values
+		let sender_value_1_fq = Fq::from(self.sender_priv_info_1.value);
+		let mut sender_value_sum =
+			FqVar::new_witness(ark_relations::ns!(cs, "sender value"), || {
+				Ok(&sender_value_1_fq)
+			})
+			.unwrap();
+		let sender_value_2_fq = Fq::from(self.sender_priv_info_2.value);
+		let sender_value_2_var = FqVar::new_witness(ark_relations::ns!(cs, "sender value"), || {
+			Ok(&sender_value_2_fq)
+		})
+		.unwrap();
+		sender_value_sum += sender_value_2_var;
+
+		let receiver_value_fq = Fq::from(self.receiver_value);
+		let mut receiver_value_sum =
+			FqVar::new_witness(ark_relations::ns!(cs, "receiver value"), || {
+				Ok(&receiver_value_fq)
+			})
+			.unwrap();
+		let reclaim_value_fq = Fq::from(self.reclaim_value);
+		let reclaim_value_var =
+			FqVar::new_input(ark_relations::ns!(cs, "reclaimed value"), || {
+				Ok(&reclaim_value_fq)
+			})
+			.unwrap();
+		receiver_value_sum += reclaim_value_var;
+
+		sender_value_sum.enforce_equal(&receiver_value_sum).unwrap();
 
 		Ok(())
 	}

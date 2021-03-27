@@ -39,12 +39,12 @@ pub struct TransferCircuit {
 	pub sender_priv_info_2: MantaCoinPrivInfo,
 
 	// receiver
-	pub receiver_coin_2: MantaCoin,
-	pub receiver_pub_info_2: MantaCoinPubInfo,
-	pub receiver_value_1: u64,
-
 	pub receiver_coin_1: MantaCoin,
 	pub receiver_pub_info_1: MantaCoinPubInfo,
+	pub receiver_value_1: u64,
+
+	pub receiver_coin_2: MantaCoin,
+	pub receiver_pub_info_2: MantaCoinPubInfo,
 	pub receiver_value_2: u64,
 
 	// ledger
@@ -185,13 +185,13 @@ impl ConstraintSynthesizer<Fq> for TransferCircuit {
 
 		let receiver_value_1_fq = Fq::from(self.receiver_value_1);
 		let mut receiver_value_sum =
-			FqVar::new_witness(ark_relations::ns!(cs, "sender value"), || {
+			FqVar::new_witness(ark_relations::ns!(cs, "receiver value"), || {
 				Ok(&receiver_value_1_fq)
 			})
 			.unwrap();
 		let receiver_value_2_fq = Fq::from(self.receiver_value_2);
 		let receiver_value_2_var =
-			FqVar::new_witness(ark_relations::ns!(cs, "sender value"), || {
+			FqVar::new_witness(ark_relations::ns!(cs, "receiver value"), || {
 				Ok(&receiver_value_2_fq)
 			})
 			.unwrap();
