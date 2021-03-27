@@ -39,8 +39,6 @@ pub struct ReceiverData {
 	pub cipher: [u8; 16],
 }
 
-// pub type Proof = [u8; 192];
-
 /// a MantaCoin is a pair of commitment cm, where
 ///  * cm = com(v||k, s), commits to the value, and
 #[derive(Encode, Debug, Decode, Clone, Default, PartialEq)]
@@ -72,9 +70,6 @@ pub fn make_coin<R: RngCore + CryptoRng>(
 	value: u64,
 	rng: &mut R,
 ) -> (MantaCoin, MantaCoinPubInfo, MantaCoinPrivInfo) {
-	// rebuild the parameters from the inputs
-	// let mut com_rng = ChaCha20Rng::from_seed(*commit_param_seed);
-	// let commit_param = MantaCoinCommitmentScheme::setup(&mut com_rng).unwrap();
 
 	//  sample a random rho
 	let mut rho = [0u8; 32];
