@@ -327,10 +327,8 @@ pub(crate) fn merkle_membership_circuit_proof(
 	root: HashOutput,
 	cs: ConstraintSystemRef<Fq>,
 ) {
-
 	let root_var =
-	HashOutputVar::new_input(ark_relations::ns!(cs, "new_digest"), || Ok(root))
-		.unwrap();
+		HashOutputVar::new_input(ark_relations::ns!(cs, "new_digest"), || Ok(root)).unwrap();
 
 	// Allocate Merkle Tree Path
 	let membership_var =

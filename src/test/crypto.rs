@@ -49,15 +49,14 @@ fn test_transfer_zkp_local() {
 		list.push(cm_rand);
 	}
 
-
 	let tree = param::LedgerMerkleTree::new(hash_param.clone(), &list).unwrap();
 	let merkle_root = tree.root();
 
 	let index_1 = list.iter().position(|x| *x == sender_1.cm_bytes).unwrap();
-	let path_1 =  tree.generate_proof(index_1, &sender_1.cm_bytes).unwrap();
+	let path_1 = tree.generate_proof(index_1, &sender_1.cm_bytes).unwrap();
 
 	let index_2 = list.iter().position(|x| *x == sender_2.cm_bytes).unwrap();
-	let path_2 =  tree.generate_proof(index_2, &sender_2.cm_bytes).unwrap();
+	let path_2 = tree.generate_proof(index_2, &sender_2.cm_bytes).unwrap();
 
 	// build the circuit
 	let circuit = crypto::TransferCircuit {
@@ -216,11 +215,10 @@ fn test_transfer_helper(
 	let merkle_root = tree.root();
 
 	let index_1 = list.iter().position(|x| *x == sender_1.0.cm_bytes).unwrap();
-	let path_1 =  tree.generate_proof(index_1, &sender_1.0.cm_bytes).unwrap();
+	let path_1 = tree.generate_proof(index_1, &sender_1.0.cm_bytes).unwrap();
 
 	let index_2 = list.iter().position(|x| *x == sender_2.0.cm_bytes).unwrap();
-	let path_2 =  tree.generate_proof(index_2, &sender_2.0.cm_bytes).unwrap();
-
+	let path_2 = tree.generate_proof(index_2, &sender_2.0.cm_bytes).unwrap();
 
 	let circuit = crypto::TransferCircuit {
 		commit_param: commit_param.clone(),
@@ -321,16 +319,16 @@ fn test_reclaim_zkp_local() {
 	let merkle_root = tree.root();
 
 	let index_1 = list.iter().position(|x| *x == sender_1.cm_bytes).unwrap();
-	let path_1 =  tree.generate_proof(index_1, &sender_1.cm_bytes).unwrap();
+	let path_1 = tree.generate_proof(index_1, &sender_1.cm_bytes).unwrap();
 
 	let index_2 = list.iter().position(|x| *x == sender_2.cm_bytes).unwrap();
-	let path_2 =  tree.generate_proof(index_2, &sender_2.cm_bytes).unwrap();
+	let path_2 = tree.generate_proof(index_2, &sender_2.cm_bytes).unwrap();
 
 	// build the circuit
 	let circuit = crypto::ReclaimCircuit {
 		commit_param: commit_param.clone(),
 		hash_param: hash_param.clone(),
-	
+
 		sender_coin_1: sender_1.clone(),
 		sender_pub_info_1: sender_pub_info_1.clone(),
 		sender_priv_info_1: sender_priv_info_1.clone(),
@@ -476,10 +474,10 @@ fn test_reclaim_helper(
 	let merkle_root = tree.root();
 
 	let index_1 = list.iter().position(|x| *x == sender_1.0.cm_bytes).unwrap();
-	let path_1 =  tree.generate_proof(index_1, &sender_1.0.cm_bytes).unwrap();
+	let path_1 = tree.generate_proof(index_1, &sender_1.0.cm_bytes).unwrap();
 
 	let index_2 = list.iter().position(|x| *x == sender_2.0.cm_bytes).unwrap();
-	let path_2 =  tree.generate_proof(index_2, &sender_2.0.cm_bytes).unwrap();
+	let path_2 = tree.generate_proof(index_2, &sender_2.0.cm_bytes).unwrap();
 
 	let circuit = crypto::ReclaimCircuit {
 		commit_param: commit_param.clone(),

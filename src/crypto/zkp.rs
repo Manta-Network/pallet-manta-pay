@@ -9,10 +9,11 @@ pub fn manta_verify_transfer_zkp(
 	transfer_key_bytes: Vec<u8>,
 	proof: [u8; 192],
 	sender_data_1: &SenderData,
+	merkle_root_1: [u8; 32],
 	sender_data_2: &SenderData,
+	merkle_root_2: [u8; 32],
 	receiver_data_1: &ReceiverData,
 	receiver_data_2: &ReceiverData,
-	merkle_root: [u8; 32],
 ) -> bool {
 	let vk = Groth16VK::deserialize(transfer_key_bytes.as_ref()).unwrap();
 	let pvk = Groth16PVK::from(vk);
@@ -23,7 +24,8 @@ pub fn manta_verify_transfer_zkp(
 	let k_new_2 = CommitmentOutput::deserialize(receiver_data_2.k.as_ref()).unwrap();
 	let cm_new_1 = CommitmentOutput::deserialize(receiver_data_1.cm.as_ref()).unwrap();
 	let cm_new_2 = CommitmentOutput::deserialize(receiver_data_2.cm.as_ref()).unwrap();
-	let merkle_root = HashOutput::deserialize(merkle_root.as_ref()).unwrap();
+	let merkle_root_1 = HashOutput::deserialize(merkle_root_1.as_ref()).unwrap();
+	let merkle_root_2 = HashOutput::deserialize(merkle_root_2.as_ref()).unwrap();
 
 	let mut inputs = [
 		k_old_1.x, k_old_1.y, // sender coin 1
@@ -37,12 +39,14 @@ pub fn manta_verify_transfer_zkp(
 	let sn_2: Vec<Fq> =
 		ToConstraintField::<Fq>::to_field_elements(sender_data_2.sn.as_ref()).unwrap();
 
-	let mr: Vec<Fq> = ToConstraintField::<Fq>::to_field_elements(&merkle_root).unwrap();
+	let mr_1: Vec<Fq> = ToConstraintField::<Fq>::to_field_elements(&merkle_root_1).unwrap();
+	let mr_2: Vec<Fq> = ToConstraintField::<Fq>::to_field_elements(&merkle_root_2).unwrap();
 	inputs = [
 		inputs[..].as_ref(),
 		sn_1.as_ref(),
 		sn_2.as_ref(),
-		mr.as_ref(),
+		mr_1.as_ref(),
+		mr_2.as_ref(),
 	]
 	.concat();
 

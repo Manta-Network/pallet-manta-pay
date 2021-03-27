@@ -50,11 +50,11 @@ impl Config for MerkleTreeParams {
 }
 pub type LedgerMerkleTree = MerkleTree<MerkleTreeParams>;
 #[allow(dead_code)]
-pub(crate) type LedgerMerkleTreeRoot = Digest<MerkleTreeParams>;
+pub type LedgerMerkleTreeRoot = Digest<MerkleTreeParams>;
 
 // the membership is a path on the merkle tree, including the leaf itself
 #[allow(dead_code)]
-pub(crate) type AccountMembership = Path<MerkleTreeParams>;
+pub type AccountMembership = Path<MerkleTreeParams>;
 
 //=======================
 // Commitments

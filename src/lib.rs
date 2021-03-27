@@ -284,8 +284,9 @@ decl_module! {
 		/// Private Transfer
 		#[weight = 0]
 		fn manta_transfer(origin,
-			merkle_root: [u8; 32],
+			merkle_root_1: [u8; 32],
 			sender_data_1: [u8; 64],
+			merkle_root_2: [u8; 32],
 			sender_data_2: [u8; 64],
 			receiver_data_1: [u8; 80],
 			receiver_data_2: [u8; 80],
@@ -307,7 +308,7 @@ decl_module! {
 			let hash_param_checksum = HashParamChecksum::get();
 			ensure!(
 				hash_param_checksum_local == hash_param_checksum,
-				<Error<T>>::MintFail
+				<Error<T>>::ParamFail
 			);
 			// todo: checksum ZKP verification eky
 
@@ -329,21 +330,25 @@ decl_module! {
 			// and check the validity of the state
 			let mut coin_shards = CoinShards::get();
 			ensure!(
-				coin_shards.check_root(&merkle_root),
+				coin_shards.check_root(&merkle_root_1),
+				<Error<T>>::InvalidLedgerState
+			);
+			ensure!(
+				coin_shards.check_root(&merkle_root_2),
 				<Error<T>>::InvalidLedgerState
 			);
 			// check the commitment are not in the list already
 			ensure!(
 				!coin_shards.exist(&receiver_data_1.cm),
-				<Error<T>>::MantaCoinSpent
+				<Error<T>>::MantaCoinExist
 			);
 			ensure!(
 				!coin_shards.exist(&receiver_data_2.cm),
-				<Error<T>>::MantaCoinSpent
+				<Error<T>>::MantaCoinExist
 			);
 
 			// update coin list
-				// with sharding, there is no point to batch update
+			// with sharding, there is no point to batch update
 			// since the commitments are likely to go to different shards
 			coin_shards.update(&receiver_data_1.cm, hash_param.clone());
 			coin_shards.update(&receiver_data_2.cm, hash_param);
@@ -357,10 +362,11 @@ decl_module! {
 					transfer_vk_bytes,
 					proof,
 					&sender_data_1,
+					merkle_root_1,
 					&sender_data_2,
+					merkle_root_2,
 					&receiver_data_1,
-					&receiver_data_2,
-					merkle_root),
+					&receiver_data_2),
 				<Error<T>>::ZKPFail,
 			);
 
@@ -513,6 +519,8 @@ decl_error! {
 		MintFail,
 		/// MantaCoin exist
 		MantaCoinExist,
+		/// MantaCoin does not exist
+		MantaNotCoinExist,
 		/// MantaCoin already spend
 		MantaCoinSpent,
 		/// ZKP verification failed
@@ -520,7 +528,9 @@ decl_error! {
 		/// invalid ledger state
 		InvalidLedgerState,
 		/// Pool overdrawn
-		PoolOverdrawn
+		PoolOverdrawn,
+		/// Invalid parameters
+		ParamFail,
 	}
 }
 
