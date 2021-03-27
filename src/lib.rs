@@ -284,10 +284,8 @@ decl_module! {
 		/// Private Transfer
 		#[weight = 0]
 		fn manta_transfer(origin,
-			merkle_root_1: [u8; 32],
-			sender_data_1: [u8; 64],
-			merkle_root_2: [u8; 32],
-			sender_data_2: [u8; 64],
+			sender_data_1: [u8; 96],
+			sender_data_2: [u8; 96],
 			receiver_data_1: [u8; 80],
 			receiver_data_2: [u8; 80],
 			proof: [u8; 192],
@@ -330,11 +328,11 @@ decl_module! {
 			// and check the validity of the state
 			let mut coin_shards = CoinShards::get();
 			ensure!(
-				coin_shards.check_root(&merkle_root_1),
+				coin_shards.check_root(&sender_data_1.root),
 				<Error<T>>::InvalidLedgerState
 			);
 			ensure!(
-				coin_shards.check_root(&merkle_root_2),
+				coin_shards.check_root(&sender_data_2.root),
 				<Error<T>>::InvalidLedgerState
 			);
 			// check the commitment are not in the list already
@@ -362,9 +360,7 @@ decl_module! {
 					transfer_vk_bytes,
 					proof,
 					&sender_data_1,
-					merkle_root_1,
 					&sender_data_2,
-					merkle_root_2,
 					&receiver_data_1,
 					&receiver_data_2),
 				<Error<T>>::ZKPFail,
@@ -389,10 +385,8 @@ decl_module! {
 		#[weight = 0]
 		fn reclaim(origin,
 			amount: u64,
-			merkle_root_1: [u8; 32],
-			sender_data_1: [u8; 64],
-			merkle_root_2: [u8; 32],
-			sender_data_2: [u8; 64],
+			sender_data_1: [u8; 96],
+			sender_data_2: [u8; 96],
 			receiver_data: [u8; 80],
 			proof: [u8; 192],
 		) {
@@ -445,11 +439,11 @@ decl_module! {
 			// get the ledger state from the ledger
 			// and check the validity of the state
 			ensure!(
-				coin_shards.check_root(&merkle_root_1),
+				coin_shards.check_root(&sender_data_1.root),
 				<Error<T>>::InvalidLedgerState
 			);
 			ensure!(
-				coin_shards.check_root(&merkle_root_2),
+				coin_shards.check_root(&sender_data_2.root),
 				<Error<T>>::InvalidLedgerState
 			);
 			// check the commitment are not in the list already
@@ -466,9 +460,7 @@ decl_module! {
 					amount,
 					proof,
 					&sender_data_1,
-					merkle_root_1,
 					&sender_data_2,
-					merkle_root_2,
 					&receiver_data),
 				<Error<T>>::ZKPFail,
 			);

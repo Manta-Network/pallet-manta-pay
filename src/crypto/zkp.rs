@@ -9,9 +9,7 @@ pub fn manta_verify_transfer_zkp(
 	transfer_key_bytes: Vec<u8>,
 	proof: [u8; 192],
 	sender_data_1: &SenderData,
-	merkle_root_1: [u8; 32],
 	sender_data_2: &SenderData,
-	merkle_root_2: [u8; 32],
 	receiver_data_1: &ReceiverData,
 	receiver_data_2: &ReceiverData,
 ) -> bool {
@@ -24,8 +22,8 @@ pub fn manta_verify_transfer_zkp(
 	let k_new_2 = CommitmentOutput::deserialize(receiver_data_2.k.as_ref()).unwrap();
 	let cm_new_1 = CommitmentOutput::deserialize(receiver_data_1.cm.as_ref()).unwrap();
 	let cm_new_2 = CommitmentOutput::deserialize(receiver_data_2.cm.as_ref()).unwrap();
-	let merkle_root_1 = HashOutput::deserialize(merkle_root_1.as_ref()).unwrap();
-	let merkle_root_2 = HashOutput::deserialize(merkle_root_2.as_ref()).unwrap();
+	let merkle_root_1 = HashOutput::deserialize(sender_data_1.root.as_ref()).unwrap();
+	let merkle_root_2 = HashOutput::deserialize(sender_data_2.root.as_ref()).unwrap();
 
 	let mut inputs = [
 		k_old_1.x, k_old_1.y, // sender coin 1
@@ -58,9 +56,7 @@ pub fn manta_verify_reclaim_zkp(
 	value: u64,
 	proof: [u8; 192],
 	sender_data_1: &SenderData,
-	merkle_root_1: [u8; 32],
 	sender_data_2: &SenderData,
-	merkle_root_2: [u8; 32],
 	receiver_data: &ReceiverData,
 ) -> bool {
 	let vk = Groth16VK::deserialize(reclaim_key_bytes.as_ref()).unwrap();
@@ -70,8 +66,8 @@ pub fn manta_verify_reclaim_zkp(
 	let k_old_2 = CommitmentOutput::deserialize(sender_data_2.k.as_ref()).unwrap();
 	let k_new = CommitmentOutput::deserialize(receiver_data.k.as_ref()).unwrap();
 	let cm_new = CommitmentOutput::deserialize(receiver_data.cm.as_ref()).unwrap();
-	let merkle_root_1 = HashOutput::deserialize(merkle_root_1.as_ref()).unwrap();
-	let merkle_root_2 = HashOutput::deserialize(merkle_root_2.as_ref()).unwrap();
+	let merkle_root_1 = HashOutput::deserialize(sender_data_1.root.as_ref()).unwrap();
+	let merkle_root_2 = HashOutput::deserialize(sender_data_2.root.as_ref()).unwrap();
 
 	let mut inputs = [
 		k_old_1.x, k_old_1.y, // sender coin 1

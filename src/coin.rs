@@ -29,6 +29,7 @@ impl MintData {
 pub struct SenderData {
 	pub k: [u8; 32],
 	pub sn: [u8; 32],
+	pub root: [u8; 32],
 }
 
 #[derive(Encode, Debug, Decode, Clone, Default, PartialEq)]

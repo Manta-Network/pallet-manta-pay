@@ -397,11 +397,27 @@ fn transfer_test_helper(iter: usize) {
 			crypto::manta_dh_enc(&receiver_pk_bytes_2, receiver_2.2.value, &mut rng);
 
 		// make the transfer inputs
-		let mut sender_data_1 = [0u8; 64];
-		sender_data_1.copy_from_slice([sender_1.1.k, sender_1.2.sn].concat().as_ref());
+		let mut sender_data_1 = [0u8; 96];
+		sender_data_1.copy_from_slice(
+			[
+				sender_1.1.k,
+				sender_1.2.sn,
+				coin_shards.shard[shard_index_1].root,
+			]
+			.concat()
+			.as_ref(),
+		);
 
-		let mut sender_data_2 = [0u8; 64];
-		sender_data_2.copy_from_slice([sender_2.1.k, sender_2.2.sn].concat().as_ref());
+		let mut sender_data_2 = [0u8; 96];
+		sender_data_2.copy_from_slice(
+			[
+				sender_2.1.k,
+				sender_2.2.sn,
+				coin_shards.shard[shard_index_2].root,
+			]
+			.concat()
+			.as_ref(),
+		);
 
 		let mut receiver_data_1 = [0u8; 80];
 		receiver_data_1.copy_from_slice(
@@ -427,9 +443,7 @@ fn transfer_test_helper(iter: usize) {
 		// invoke the transfer event
 		assert_ok!(Assets::manta_transfer(
 			Origin::signed(1),
-			coin_shards.shard[shard_index_1].root,
 			sender_data_1,
-			coin_shards.shard[shard_index_2].root,
 			sender_data_2,
 			receiver_data_1,
 			receiver_data_2,
@@ -564,11 +578,27 @@ fn reclaim_test_helper(iter: usize) {
 			crypto::manta_dh_enc(&receiver_pk_bytes, receiver.2.value, &mut rng);
 
 		// make the reclaim inputs
-		let mut sender_data_1 = [0u8; 64];
-		sender_data_1.copy_from_slice([sender_1.1.k, sender_1.2.sn].concat().as_ref());
+		let mut sender_data_1 = [0u8; 96];
+		sender_data_1.copy_from_slice(
+			[
+				sender_1.1.k,
+				sender_1.2.sn,
+				coin_shards.shard[shard_index_1].root,
+			]
+			.concat()
+			.as_ref(),
+		);
 
-		let mut sender_data_2 = [0u8; 64];
-		sender_data_2.copy_from_slice([sender_2.1.k, sender_2.2.sn].concat().as_ref());
+		let mut sender_data_2 = [0u8; 96];
+		sender_data_2.copy_from_slice(
+			[
+				sender_2.1.k,
+				sender_2.2.sn,
+				coin_shards.shard[shard_index_2].root,
+			]
+			.concat()
+			.as_ref(),
+		);
 
 		let mut receiver_data = [0u8; 80];
 		receiver_data.copy_from_slice(
@@ -584,9 +614,7 @@ fn reclaim_test_helper(iter: usize) {
 		assert_ok!(Assets::reclaim(
 			Origin::signed(1),
 			token_value,
-			coin_shards.shard[shard_index_1].root,
 			sender_data_1,
-			coin_shards.shard[shard_index_2].root,
 			sender_data_2,
 			receiver_data,
 			proof_bytes,
