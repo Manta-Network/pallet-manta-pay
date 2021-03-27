@@ -14,6 +14,8 @@ use x25519_dalek::{PublicKey, StaticSecret};
 fn main() {
 	println!("Hello, Manta!");
 
+	write_zkp_keys();
+
 	let hash_param_seed = [1u8; 32];
 	let commit_param_seed = [2u8; 32];
 
@@ -48,16 +50,6 @@ fn main() {
 	// coin_print_plain(&coin1, &pub_info1, &priv_info1);
 	// coin_print_plain(&coin2, &pub_info2, &priv_info2);
 	// coin_print_plain(&coin3, &pub_info3, &priv_info3);
-
-	let mut transfer_pk_bytes = manta_transfer_zkp_key_gen(&hash_param_seed, &commit_param_seed);
-	let mut file = File::create("transfer_pk.bin").unwrap();
-	file.write_all(transfer_pk_bytes.as_mut()).unwrap();
-	println!("{}", transfer_pk_bytes.len());
-
-	let mut reclaim_pk_bytes = manta_reclaim_zkp_key_gen(&hash_param_seed, &commit_param_seed);
-	let mut file = File::create("reclaim_pk.bin").unwrap();
-	file.write_all(reclaim_pk_bytes.as_mut()).unwrap();
-	println!("{}", reclaim_pk_bytes.len());
 
 	// // ===========================
 	// // testing DH encryption
@@ -313,8 +305,33 @@ fn coin_print_plain(coin: &MantaCoin, pub_info: &MantaCoinPubInfo, priv_info: &M
 	println!("==================\n");
 }
 
-#[allow(dead_code)]
-fn manta_transfer_zkp_key_gen(hash_param_seed: &[u8; 32], commit_param_seed: &[u8; 32]) -> Vec<u8> {
+fn write_zkp_keys() {
+	let hash_param_seed = [1u8; 32];
+	let commit_param_seed = [2u8; 32];
+	let rng_seed: [u8; 32] = [
+		0x74, 0x68, 0x69, 0x73, 0x20, 0x69, 0x73, 0x20, 0x61, 0x20, 0x73, 0x65, 0x65, 0x64, 0x20,
+		0x66, 0x6f, 0x72, 0x20, 0x6d, 0x61, 0x6e, 0x74, 0x61, 0x20, 0x7a, 0x6b, 0x20, 0x74, 0x65,
+		0x73, 0x74,
+	];
+
+	let mut transfer_pk_bytes =
+		manta_transfer_zkp_key_gen(&hash_param_seed, &commit_param_seed, &rng_seed);
+	let mut file = File::create("transfer_pk.bin").unwrap();
+	file.write_all(transfer_pk_bytes.as_mut()).unwrap();
+	println!("transfer circuit pk length: {}", transfer_pk_bytes.len());
+
+	let mut reclaim_pk_bytes =
+		manta_reclaim_zkp_key_gen(&hash_param_seed, &commit_param_seed, &rng_seed);
+	let mut file = File::create("reclaim_pk.bin").unwrap();
+	file.write_all(reclaim_pk_bytes.as_mut()).unwrap();
+	println!("reclaim circuit pk length: {}", reclaim_pk_bytes.len());
+}
+
+fn manta_transfer_zkp_key_gen(
+	hash_param_seed: &[u8; 32],
+	commit_param_seed: &[u8; 32],
+	rng_seed: &[u8; 32],
+) -> Vec<u8> {
 	// rebuild the parameters from the inputs
 	let mut rng = ChaCha20Rng::from_seed(*commit_param_seed);
 	let commit_param = CommitmentScheme::setup(&mut rng).unwrap();
@@ -322,10 +339,7 @@ fn manta_transfer_zkp_key_gen(hash_param_seed: &[u8; 32], commit_param_seed: &[u
 	let mut rng = ChaCha20Rng::from_seed(*hash_param_seed);
 	let hash_param = Hash::setup(&mut rng).unwrap();
 
-	let zkp_seed: [u8; 32] = *b"this is a seed for manta zk test";
-	println!("zkp_seed {:02x?}", zkp_seed);
-
-	let mut rng = ChaCha20Rng::from_seed(zkp_seed);
+	let mut rng = ChaCha20Rng::from_seed(*rng_seed);
 	let mut coins = Vec::new();
 	let mut ledger = Vec::new();
 	let mut sk = [0u8; 32];
@@ -383,7 +397,7 @@ fn manta_transfer_zkp_key_gen(hash_param_seed: &[u8; 32], commit_param_seed: &[u
 	assert!(sanity_cs.is_satisfied().unwrap());
 
 	// transfer pk_bytes
-	let mut rng = ChaCha20Rng::from_seed(zkp_seed);
+	let mut rng = ChaCha20Rng::from_seed(*rng_seed);
 	let pk = generate_random_parameters::<Bls12_381, _, _>(transfer_circuit, &mut rng).unwrap();
 	let mut transfer_pk_bytes: Vec<u8> = Vec::new();
 
@@ -391,7 +405,11 @@ fn manta_transfer_zkp_key_gen(hash_param_seed: &[u8; 32], commit_param_seed: &[u
 	transfer_pk_bytes
 }
 
-fn manta_reclaim_zkp_key_gen(hash_param_seed: &[u8; 32], commit_param_seed: &[u8; 32]) -> Vec<u8> {
+fn manta_reclaim_zkp_key_gen(
+	hash_param_seed: &[u8; 32],
+	commit_param_seed: &[u8; 32],
+	rng_seed: &[u8; 32],
+) -> Vec<u8> {
 	// rebuild the parameters from the inputs
 	let mut rng = ChaCha20Rng::from_seed(*commit_param_seed);
 	let commit_param = CommitmentScheme::setup(&mut rng).unwrap();
@@ -399,53 +417,67 @@ fn manta_reclaim_zkp_key_gen(hash_param_seed: &[u8; 32], commit_param_seed: &[u8
 	let mut rng = ChaCha20Rng::from_seed(*hash_param_seed);
 	let hash_param = Hash::setup(&mut rng).unwrap();
 
-	let zkp_seed: [u8; 32] = *b"this is a seed for manta zk test";
-	let mut rng = ChaCha20Rng::from_seed(zkp_seed);
+	let mut rng = ChaCha20Rng::from_seed(*rng_seed);
 	let mut coins = Vec::new();
-	let mut pub_infos = Vec::new();
-	let mut priv_infos = Vec::new();
 	let mut ledger = Vec::new();
+	let mut sk = [0u8; 32];
 
 	for e in 0..128 {
-		let mut sk = [0u8; 32];
 		rng.fill_bytes(&mut sk);
 
-		let (coin, pub_info, priv_info) = make_coin(&commit_param, sk, e + 100, &mut rng);
-
-		ledger.push(coin.cm_bytes);
-		coins.push(coin);
-		pub_infos.push(pub_info);
-		priv_infos.push(priv_info);
+		let sender = make_coin(&commit_param, sk, e + 100, &mut rng);
+		ledger.push(sender.0.cm_bytes);
+		coins.push(sender);
 	}
 
-	// sender
-	let sender = coins[0].clone();
-	let sender_pub_info = pub_infos[0].clone();
-	let sender_priv_info = priv_infos[0].clone();
+	// sender's total value is 210
+	let sender_1 = coins[0].clone();
+	let sender_2 = coins[10].clone();
 
-	// reclaim circuit
-	let reclaim_circuit = ReclaimCircuit {
+	// receiver's total value is also 210
+	rng.fill_bytes(&mut sk);
+	let receiver = make_coin(&commit_param, sk, 80, &mut rng);
+
+	// transfer circuit
+	let transfer_circuit = ReclaimCircuit {
+		// param
 		commit_param,
 		hash_param,
-		sender_coin: sender,
-		sender_pub_info,
-		sender_priv_info: sender_priv_info.clone(),
-		value: sender_priv_info.value,
+
+		// sender
+		sender_coin_1: sender_1.0,
+		sender_pub_info_1: sender_1.1,
+		sender_priv_info_1: sender_1.2,
+
+		sender_coin_2: sender_2.0,
+		sender_pub_info_2: sender_2.1,
+		sender_priv_info_2: sender_2.2,
+
+		// receiver
+		receiver_coin: receiver.0,
+		receiver_pub_info: receiver.1,
+		receiver_value: receiver.2.value,
+
+		// reclaim value
+		reclaim_value: 130,
+
+		// ledger
 		list: ledger,
 	};
 
 	let sanity_cs = ConstraintSystem::<Fq>::new_ref();
-	reclaim_circuit
+	transfer_circuit
 		.clone()
 		.generate_constraints(sanity_cs.clone())
 		.unwrap();
 	assert!(sanity_cs.is_satisfied().unwrap());
 
 	// transfer pk_bytes
-	let mut rng = ChaCha20Rng::from_seed(zkp_seed);
-	let pk = generate_random_parameters::<Bls12_381, _, _>(reclaim_circuit, &mut rng).unwrap();
-	let mut reclaim_pk_bytes: Vec<u8> = Vec::new();
-	pk.serialize_uncompressed(&mut reclaim_pk_bytes).unwrap();
-	reclaim_pk_bytes
+	let mut rng = ChaCha20Rng::from_seed(*rng_seed);
+	let pk = generate_random_parameters::<Bls12_381, _, _>(transfer_circuit, &mut rng).unwrap();
+	let mut transfer_pk_bytes: Vec<u8> = Vec::new();
+
+	pk.serialize_uncompressed(&mut transfer_pk_bytes).unwrap();
+	transfer_pk_bytes
 }
 // fn main() {}
