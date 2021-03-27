@@ -135,16 +135,16 @@ fn test_transfer_should_work_super_long() {
 	new_test_ext().execute_with(|| transfer_test_helper(1000));
 }
 
-#[test]
-fn test_reclaim_should_work() {
-	new_test_ext().execute_with(|| reclaim_test_helper(10));
-}
+// #[test]
+// fn test_reclaim_should_work() {
+// 	new_test_ext().execute_with(|| reclaim_test_helper(10));
+// }
 
-#[ignore]
-#[test]
-fn test_reclaim_should_work_super_long() {
-	new_test_ext().execute_with(|| reclaim_test_helper(1000));
-}
+// #[ignore]
+// #[test]
+// fn test_reclaim_should_work_super_long() {
+// 	new_test_ext().execute_with(|| reclaim_test_helper(1000));
+// }
 
 #[test]
 fn issuing_asset_units_to_issuer_should_work() {
@@ -306,11 +306,34 @@ fn transfer_test_helper(iter: usize) {
 	let vk = Groth16VK::deserialize(vk_bytes.as_ref()).unwrap();
 	assert_eq!(pk.vk, vk);
 
+	let coin_shards = CoinShards::get();
+
+
 	// generate and verify transactions
 	for i in 0usize..iter {
 		let coin_shards = CoinShards::get();
 		let shard_index_1 = senders[i << 1].0.cm_bytes[0] as usize;
 		let shard_index_2 = senders[i << 1 + 1].0.cm_bytes[0] as usize;
+
+		let list_1 = coin_shards.shard[shard_index_1].list;
+		let tree_1 = param::LedgerMerkleTree::new(hash_param.clone(), &list_1).unwrap();
+		let merkle_root_1 = tree_1.root();
+		assert_eq!(merkle_root_1, coin_shards.shard[shard_index_1].root);
+
+		let index_1 = list_1.iter().position(|x| *x == senders[i << 1].0.cm_bytes).unwrap();
+		let path_1 =  tree_1.generate_proof(index_1, &senders[i << 1].0.cm_bytes).unwrap();
+
+	
+		let list_2 = coin_shards.shard[shard_index_2].list;
+		let tree_2 = param::LedgerMerkleTree::new(hash_param.clone(), &list_2).unwrap();
+		let merkle_root_2 = tree_2.root();
+		assert_eq!(merkle_root_2, coin_shards.shard[shard_index_2].root);
+
+		let index_2 = list_2.iter().position(|x| *x == senders[i << 1 + 1].0.cm_bytes).unwrap();
+		let path_2 =  tree_2.generate_proof(index_2, &senders[i << 1 + 1].0.cm_bytes).unwrap();
+
+
+
 		// generate ZKP
 		let circuit = crypto::TransferCircuit {
 			commit_param: commit_param.clone(),
@@ -332,7 +355,6 @@ fn transfer_test_helper(iter: usize) {
 			receiver_pub_info_2: receivers[i << 1].1.clone(),
 			receiver_value_2: receivers[i << 1].2.value,
 
-			list: coin_shards.shard[shard_index].list.clone(),
 		};
 
 		let proof = create_random_proof(circuit, &pk, &mut rng).unwrap();

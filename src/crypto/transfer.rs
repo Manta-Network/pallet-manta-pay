@@ -29,19 +29,18 @@ pub struct TransferCircuit {
 	pub commit_param: CommitmentParam,
 	pub hash_param: HashParam,
 
-	// ledger
-	pub root: LedgerMerkleTreeRoot,
-
 	// sender
 	pub sender_coin_1: MantaCoin,
 	pub sender_pub_info_1: MantaCoinPubInfo,
 	pub sender_priv_info_1: MantaCoinPrivInfo,
 	pub sender_membership_1: AccountMembership,
+	pub root_1: LedgerMerkleTreeRoot,
 
 	pub sender_coin_2: MantaCoin,
 	pub sender_pub_info_2: MantaCoinPubInfo,
 	pub sender_priv_info_2: MantaCoinPrivInfo,
 	pub sender_membership_2: AccountMembership,
+	pub root_2: LedgerMerkleTreeRoot,
 
 	// receiver
 	pub receiver_coin_1: MantaCoin,
@@ -142,20 +141,11 @@ impl ConstraintSynthesizer<Fq> for TransferCircuit {
 		)
 		.unwrap();
 
-		// build the merkle tree
-		// let tree = LedgerMerkleTree::new(self.hash_param, &self.list).unwrap();
-		// let merkle_root = tree.root();
-
-		// Allocate Merkle Tree Root
-		let root_var =
-			HashOutputVar::new_input(ark_relations::ns!(cs, "new_digest"), || Ok(self.root))
-				.unwrap();
-
 		merkle_membership_circuit_proof(
 			&self.sender_coin_1.cm_bytes,
 			&self.sender_membership_1,
 			param_var.clone(),
-			root_var.clone(),
+			self.root_1,
 			cs.clone(),
 		);
 
@@ -163,7 +153,7 @@ impl ConstraintSynthesizer<Fq> for TransferCircuit {
 			&self.sender_coin_2.cm_bytes,
 			&self.sender_membership_2,
 			param_var,
-			root_var,
+			self.root_2,
 			cs.clone(),
 		);
 
@@ -334,9 +324,14 @@ pub(crate) fn merkle_membership_circuit_proof(
 	cm: &[u8; 32],
 	path: &AccountMembership,
 	param_var: HashParamVar,
-	root_var: HashOutputVar,
+	root: HashOutput,
 	cs: ConstraintSystemRef<Fq>,
 ) {
+
+	let root_var =
+	HashOutputVar::new_input(ark_relations::ns!(cs, "new_digest"), || Ok(root))
+		.unwrap();
+
 	// Allocate Merkle Tree Path
 	let membership_var =
 		PathVar::<_, HashVar, _>::new_witness(ark_relations::ns!(cs, "new_witness"), || Ok(path))

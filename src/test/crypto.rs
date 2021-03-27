@@ -64,17 +64,17 @@ fn test_transfer_zkp_local() {
 		commit_param: commit_param.clone(),
 		hash_param: hash_param.clone(),
 
-		root: merkle_root,
-
 		sender_coin_1: sender_1.clone(),
 		sender_pub_info_1: sender_pub_info_1.clone(),
 		sender_priv_info_1: sender_priv_info_1.clone(),
 		sender_membership_1: path_1,
+		root_1: merkle_root.clone(),
 
 		sender_coin_2: sender_2.clone(),
 		sender_pub_info_2: sender_pub_info_2.clone(),
 		sender_priv_info_2: sender_priv_info_2.clone(),
 		sender_membership_2: path_2,
+		root_2: merkle_root,
 
 		receiver_coin_1: receiver_1.clone(),
 		receiver_pub_info_1: receiver_pub_info_1.clone(),
@@ -226,17 +226,17 @@ fn test_transfer_helper(
 		commit_param: commit_param.clone(),
 		hash_param,
 
-		root: merkle_root, 
-
 		sender_coin_1: sender_1.0.clone(),
 		sender_pub_info_1: sender_1.1.clone(),
 		sender_priv_info_1: sender_1.2.clone(),
 		sender_membership_1: path_1.clone(),
+		root_1: merkle_root.clone(),
 
 		sender_coin_2: sender_2.0.clone(),
 		sender_pub_info_2: sender_2.1.clone(),
 		sender_priv_info_2: sender_2.2.clone(),
 		sender_membership_2: path_2.clone(),
+		root_2: merkle_root,
 
 		receiver_coin_1: receiver_1.0.clone(),
 		receiver_pub_info_1: receiver_1.1.clone(),
@@ -278,6 +278,7 @@ fn test_transfer_helper(
 		inputs[..].as_ref(),
 		sn_1.as_ref(),
 		sn_2.as_ref(),
+		mr.as_ref(),
 		mr.as_ref(),
 	]
 	.concat();
@@ -329,19 +330,18 @@ fn test_reclaim_zkp_local() {
 	let circuit = crypto::ReclaimCircuit {
 		commit_param: commit_param.clone(),
 		hash_param: hash_param.clone(),
-
-		root: merkle_root,
-
+	
 		sender_coin_1: sender_1.clone(),
 		sender_pub_info_1: sender_pub_info_1.clone(),
 		sender_priv_info_1: sender_priv_info_1.clone(),
 		sender_membership_1: path_1,
-
+		root_1: merkle_root.clone(),
 
 		sender_coin_2: sender_2.clone(),
 		sender_pub_info_2: sender_pub_info_2.clone(),
 		sender_priv_info_2: sender_priv_info_2.clone(),
 		sender_membership_2: path_2,
+		root_2: merkle_root,
 
 		receiver_coin: receiver.clone(),
 		receiver_pub_info: receiver_pub_info.clone(),
@@ -485,17 +485,17 @@ fn test_reclaim_helper(
 		commit_param: commit_param.clone(),
 		hash_param,
 
-		root: merkle_root, 
-
 		sender_coin_1: sender_1.0.clone(),
 		sender_pub_info_1: sender_1.1.clone(),
 		sender_priv_info_1: sender_1.2.clone(),
 		sender_membership_1: path_1.clone(),
+		root_1: merkle_root.clone(),
 
 		sender_coin_2: sender_2.0.clone(),
 		sender_pub_info_2: sender_2.1.clone(),
 		sender_priv_info_2: sender_2.2.clone(),
 		sender_membership_2: path_2.clone(),
+		root_2: merkle_root,
 
 		receiver_coin: receiver.0.clone(),
 		receiver_pub_info: receiver.1.clone(),
@@ -533,6 +533,7 @@ fn test_reclaim_helper(
 		inputs[..].as_ref(),
 		sn_1.as_ref(),
 		sn_2.as_ref(),
+		mr.as_ref(),
 		mr.as_ref(),
 		&[reclaim_value_fq],
 	]
