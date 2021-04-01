@@ -4,7 +4,7 @@ use ark_crypto_primitives::{
 	prf::{blake2s::constraints::Blake2sGadget, PRFGadget},
 	CommitmentGadget, PathVar,
 };
-use ark_ed_on_bls12_381::{EdwardsProjective, Fq, Fr};
+use ark_ed_on_bls12_381::{constraints::FqVar, EdwardsProjective, Fq, Fr};
 use ark_r1cs_std::{alloc::AllocVar, prelude::*};
 use ark_relations::r1cs::{ConstraintSynthesizer, ConstraintSystemRef, SynthesisError};
 use ark_serialize::CanonicalDeserialize;
@@ -30,16 +30,26 @@ pub struct TransferCircuit {
 	pub hash_param: HashParam,
 
 	// sender
-	pub sender_coin: MantaCoin,
-	pub sender_pub_info: MantaCoinPubInfo,
-	pub sender_priv_info: MantaCoinPrivInfo,
+	pub sender_coin_1: MantaCoin,
+	pub sender_pub_info_1: MantaCoinPubInfo,
+	pub sender_priv_info_1: MantaCoinPrivInfo,
+	pub sender_membership_1: AccountMembership,
+	pub root_1: LedgerMerkleTreeRoot,
+
+	pub sender_coin_2: MantaCoin,
+	pub sender_pub_info_2: MantaCoinPubInfo,
+	pub sender_priv_info_2: MantaCoinPrivInfo,
+	pub sender_membership_2: AccountMembership,
+	pub root_2: LedgerMerkleTreeRoot,
 
 	// receiver
-	pub receiver_coin: MantaCoin,
-	pub receiver_pub_info: MantaCoinPubInfo,
+	pub receiver_coin_1: MantaCoin,
+	pub receiver_pub_info_1: MantaCoinPubInfo,
+	pub receiver_value_1: u64,
 
-	// ledger
-	pub list: Vec<[u8; 32]>,
+	pub receiver_coin_2: MantaCoin,
+	pub receiver_pub_info_2: MantaCoinPubInfo,
+	pub receiver_value_2: u64,
 }
 
 impl ConstraintSynthesizer<Fq> for TransferCircuit {
@@ -58,18 +68,36 @@ impl ConstraintSynthesizer<Fq> for TransferCircuit {
 		token_well_formed_circuit_helper(
 			true,
 			&parameters_var,
-			&self.sender_coin,
-			&self.sender_pub_info,
-			self.sender_priv_info.value,
+			&self.sender_coin_1,
+			&self.sender_pub_info_1,
+			self.sender_priv_info_1.value,
+			cs.clone(),
+		);
+
+		token_well_formed_circuit_helper(
+			true,
+			&parameters_var,
+			&self.sender_coin_2,
+			&self.sender_pub_info_2,
+			self.sender_priv_info_2.value,
 			cs.clone(),
 		);
 
 		token_well_formed_circuit_helper(
 			false,
 			&parameters_var,
-			&self.receiver_coin,
-			&self.receiver_pub_info,
-			self.sender_priv_info.value,
+			&self.receiver_coin_1,
+			&self.receiver_pub_info_1,
+			self.receiver_value_1,
+			cs.clone(),
+		);
+
+		token_well_formed_circuit_helper(
+			false,
+			&parameters_var,
+			&self.receiver_coin_2,
+			&self.receiver_pub_info_2,
+			self.receiver_value_2,
 			cs.clone(),
 		);
 
@@ -78,30 +106,88 @@ impl ConstraintSynthesizer<Fq> for TransferCircuit {
 		//  sender.sn = PRF(sender_sk, rho)
 		prf_circuit_helper(
 			true,
-			&self.sender_priv_info.sk,
+			&self.sender_priv_info_1.sk,
 			&[0u8; 32],
-			&self.sender_pub_info.pk,
+			&self.sender_pub_info_1.pk,
 			cs.clone(),
 		);
 		prf_circuit_helper(
 			false,
-			&self.sender_priv_info.sk,
-			&self.sender_pub_info.rho,
-			&self.sender_priv_info.sn,
+			&self.sender_priv_info_1.sk,
+			&self.sender_pub_info_1.rho,
+			&self.sender_priv_info_1.sn,
+			cs.clone(),
+		);
+		prf_circuit_helper(
+			true,
+			&self.sender_priv_info_2.sk,
+			&[0u8; 32],
+			&self.sender_pub_info_2.pk,
+			cs.clone(),
+		);
+		prf_circuit_helper(
+			false,
+			&self.sender_priv_info_2.sk,
+			&self.sender_pub_info_2.rho,
+			&self.sender_priv_info_2.sn,
 			cs.clone(),
 		);
 
 		// 3. sender's commitment is in List_all
+		// Allocate Parameters for CRH
+		let param_var = HashParamVar::new_constant(
+			ark_relations::ns!(cs, "new_parameter"),
+			self.hash_param.clone(),
+		)
+		.unwrap();
+
 		merkle_membership_circuit_proof(
-			&self.hash_param,
-			&self.sender_coin.cm_bytes,
-			&self.list,
-			cs,
+			&self.sender_coin_1.cm_bytes,
+			&self.sender_membership_1,
+			param_var.clone(),
+			self.root_1,
+			cs.clone(),
 		);
 
-		// 4. sender's and receiver's value are the same
-		// this is implied since a same value goes to both
-		// sender and receiver token_well_formed circuit
+		merkle_membership_circuit_proof(
+			&self.sender_coin_2.cm_bytes,
+			&self.sender_membership_2,
+			param_var,
+			self.root_2,
+			cs.clone(),
+		);
+
+		// 4. sender's and receiver's total value are the same
+		// TODO: do we need to check that the values are all positive?
+		// seems that Rust's type system has already eliminated negative values
+		let sender_value_1_fq = Fq::from(self.sender_priv_info_1.value);
+		let mut sender_value_sum =
+			FqVar::new_witness(ark_relations::ns!(cs, "sender value"), || {
+				Ok(&sender_value_1_fq)
+			})
+			.unwrap();
+		let sender_value_2_fq = Fq::from(self.sender_priv_info_2.value);
+		let sender_value_2_var = FqVar::new_witness(ark_relations::ns!(cs, "sender value"), || {
+			Ok(&sender_value_2_fq)
+		})
+		.unwrap();
+		sender_value_sum += sender_value_2_var;
+
+		let receiver_value_1_fq = Fq::from(self.receiver_value_1);
+		let mut receiver_value_sum =
+			FqVar::new_witness(ark_relations::ns!(cs, "receiver value"), || {
+				Ok(&receiver_value_1_fq)
+			})
+			.unwrap();
+		let receiver_value_2_fq = Fq::from(self.receiver_value_2);
+		let receiver_value_2_var =
+			FqVar::new_witness(ark_relations::ns!(cs, "receiver value"), || {
+				Ok(&receiver_value_2_fq)
+			})
+			.unwrap();
+		receiver_value_sum += receiver_value_2_var;
+
+		sender_value_sum.enforce_equal(&receiver_value_sum).unwrap();
 
 		Ok(())
 	}
@@ -235,30 +321,18 @@ pub(crate) fn prf_circuit_helper(
 }
 
 pub(crate) fn merkle_membership_circuit_proof(
-	param: &HashParam,
 	cm: &[u8; 32],
-	list: &[[u8; 32]],
+	path: &AccountMembership,
+	param_var: HashParamVar,
+	root: HashOutput,
 	cs: ConstraintSystemRef<Fq>,
 ) {
-	// check if cm is in or not; if cm is not in, panic!
-	let index = list.iter().position(|x| x == cm).unwrap();
-
-	// build the merkle tree
-	let tree = LedgerMerkleTree::new(param.clone(), &list).unwrap();
-	let merkle_root = tree.root();
-	let path = tree.generate_proof(index, &cm).unwrap();
-
-	// Allocate Merkle Tree Root
 	let root_var =
-		HashOutputVar::new_input(ark_relations::ns!(cs, "new_digest"), || Ok(merkle_root)).unwrap();
-
-	// Allocate Parameters for CRH
-	let param_var =
-		HashParamVar::new_constant(ark_relations::ns!(cs, "new_parameter"), param).unwrap();
+		HashOutputVar::new_input(ark_relations::ns!(cs, "new_digest"), || Ok(root)).unwrap();
 
 	// Allocate Merkle Tree Path
 	let membership_var =
-		PathVar::<_, HashVar, _>::new_witness(ark_relations::ns!(cs, "new_witness"), || Ok(&path))
+		PathVar::<_, HashVar, _>::new_witness(ark_relations::ns!(cs, "new_witness"), || Ok(path))
 			.unwrap();
 
 	// Allocate Leaf

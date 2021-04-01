@@ -61,30 +61,56 @@ fn bench_trasnfer_verify(c: &mut Criterion) {
 	let mut transfer_key_bytes: Vec<u8> = vec![];
 	file.read_to_end(&mut transfer_key_bytes).unwrap();
 
-	let pk = Groth16PK::deserialize_uncompressed(transfer_key_bytes.as_ref()).unwrap();
+	let pk = Groth16PK::deserialize_unchecked(transfer_key_bytes.as_ref()).unwrap();
 
 	println!("proving key loaded from disk");
 
 	// sender
 	let mut sk = [0u8; 32];
 	rng.fill_bytes(&mut sk);
-	let (sender, sender_pub_info, sender_priv_info) = make_coin(&commit_param, sk, 100, &mut rng);
+	let sender_1 = make_coin(&commit_param, sk, 100, &mut rng);
+	rng.fill_bytes(&mut sk);
+	let sender_2 = make_coin(&commit_param, sk, 300, &mut rng);
 
 	// receiver
-	let mut sk = [0u8; 32];
 	rng.fill_bytes(&mut sk);
-	let (receiver, receiver_pub_info, _receiver_priv_info) =
-		make_coin(&commit_param, sk, 100, &mut rng);
+	let receiver_1 = make_coin(&commit_param, sk, 150, &mut rng);
+	rng.fill_bytes(&mut sk);
+	let receiver_2 = make_coin(&commit_param, sk, 250, &mut rng);
+
+	// merkle tree
+	let tree = LedgerMerkleTree::new(
+		hash_param.clone(),
+		&[sender_1.0.cm_bytes, sender_2.0.cm_bytes],
+	)
+	.unwrap();
+	let root = tree.root();
+	let path_1 = tree.generate_proof(0, &sender_1.0.cm_bytes).unwrap();
+	let path_2 = tree.generate_proof(1, &sender_2.0.cm_bytes).unwrap();
 
 	let circuit = TransferCircuit {
 		commit_param,
 		hash_param: hash_param.clone(),
-		sender_coin: sender.clone(),
-		sender_pub_info: sender_pub_info.clone(),
-		sender_priv_info: sender_priv_info.clone(),
-		receiver_coin: receiver.clone(),
-		receiver_pub_info: receiver_pub_info.clone(),
-		list: vec![sender.cm_bytes],
+
+		sender_coin_1: sender_1.0.clone(),
+		sender_pub_info_1: sender_1.1.clone(),
+		sender_priv_info_1: sender_1.2.clone(),
+		sender_membership_1: path_1.clone(),
+		root_1: root.clone(),
+
+		sender_coin_2: sender_2.0.clone(),
+		sender_pub_info_2: sender_2.1.clone(),
+		sender_priv_info_2: sender_2.2.clone(),
+		sender_membership_2: path_2.clone(),
+		root_2: root,
+
+		receiver_coin_1: receiver_1.0.clone(),
+		receiver_pub_info_1: receiver_1.1.clone(),
+		receiver_value_1: receiver_1.2.value,
+
+		receiver_coin_2: receiver_2.0.clone(),
+		receiver_pub_info_2: receiver_2.1.clone(),
+		receiver_value_2: receiver_2.2.value,
 	};
 
 	let sanity_cs = ConstraintSystem::<Fq>::new_ref();
@@ -99,17 +125,26 @@ fn bench_trasnfer_verify(c: &mut Criterion) {
 	let mut proof_bytes = [0u8; 192];
 	proof.serialize(proof_bytes.as_mut()).unwrap();
 
-	let tree = LedgerMerkleTree::new(hash_param.clone(), &[sender.cm_bytes]).unwrap();
-	let merkle_root = tree.root();
 	let mut merkle_root_bytes = [0u8; 32];
-	merkle_root.serialize(merkle_root_bytes.as_mut()).unwrap();
-	let sender_data = SenderData {
-		k: sender_pub_info.k,
-		sn: sender_priv_info.sn,
+	root.serialize(merkle_root_bytes.as_mut()).unwrap();
+	let sender_data_1 = SenderData {
+		k: sender_1.1.k,
+		sn: sender_1.2.sn,
+		root: merkle_root_bytes,
 	};
-	let receiver_data = ReceiverData {
-		k: receiver_pub_info.k,
-		cm: receiver.cm_bytes,
+	let sender_data_2 = SenderData {
+		k: sender_2.1.k,
+		sn: sender_2.2.sn,
+		root: merkle_root_bytes,
+	};
+	let receiver_data_1 = ReceiverData {
+		k: receiver_1.1.k,
+		cm: receiver_1.0.cm_bytes,
+		cipher: [0u8; 16],
+	};
+	let receiver_data_2 = ReceiverData {
+		k: receiver_2.1.k,
+		cm: receiver_2.0.cm_bytes,
 		cipher: [0u8; 16],
 	};
 
@@ -120,9 +155,10 @@ fn bench_trasnfer_verify(c: &mut Criterion) {
 			assert!(manta_verify_transfer_zkp(
 				TRANSFERVKBYTES.to_vec(),
 				proof_bytes,
-				&sender_data,
-				&receiver_data,
-				merkle_root_bytes,
+				&sender_data_1,
+				&sender_data_2,
+				&receiver_data_1,
+				&receiver_data_2,
 			))
 		})
 	});
@@ -221,31 +257,57 @@ fn bench_transfer_prove(c: &mut Criterion) {
 	let mut file = File::open("transfer_pk.bin").unwrap();
 	let mut transfer_key_bytes: Vec<u8> = vec![];
 	file.read_to_end(&mut transfer_key_bytes).unwrap();
-	let tmp: &[u8] = transfer_key_bytes.as_ref();
-	let pk = Groth16PK::deserialize_uncompressed(tmp).unwrap();
+
+	let pk = Groth16PK::deserialize_unchecked(transfer_key_bytes.as_ref()).unwrap();
 
 	println!("proving key loaded from disk");
 
 	// sender
 	let mut sk = [0u8; 32];
 	rng.fill_bytes(&mut sk);
-	let (sender, sender_pub_info, sender_priv_info) = make_coin(&commit_param, sk, 100, &mut rng);
+	let sender_1 = make_coin(&commit_param, sk, 100, &mut rng);
+	rng.fill_bytes(&mut sk);
+	let sender_2 = make_coin(&commit_param, sk, 300, &mut rng);
 
 	// receiver
-	let mut sk = [0u8; 32];
 	rng.fill_bytes(&mut sk);
-	let (receiver, receiver_pub_info, _receiver_priv_info) =
-		make_coin(&commit_param, sk, 100, &mut rng);
+	let receiver_1 = make_coin(&commit_param, sk, 150, &mut rng);
+	rng.fill_bytes(&mut sk);
+	let receiver_2 = make_coin(&commit_param, sk, 250, &mut rng);
+
+	// merkle tree
+	let tree = LedgerMerkleTree::new(
+		hash_param.clone(),
+		&[sender_1.0.cm_bytes, sender_2.0.cm_bytes],
+	)
+	.unwrap();
+	let root = tree.root();
+	let path_1 = tree.generate_proof(0, &sender_1.0.cm_bytes).unwrap();
+	let path_2 = tree.generate_proof(1, &sender_2.0.cm_bytes).unwrap();
 
 	let circuit = TransferCircuit {
 		commit_param,
 		hash_param: hash_param.clone(),
-		sender_coin: sender.clone(),
-		sender_pub_info: sender_pub_info.clone(),
-		sender_priv_info: sender_priv_info.clone(),
-		receiver_coin: receiver.clone(),
-		receiver_pub_info: receiver_pub_info.clone(),
-		list: vec![sender.cm_bytes],
+
+		sender_coin_1: sender_1.0.clone(),
+		sender_pub_info_1: sender_1.1.clone(),
+		sender_priv_info_1: sender_1.2.clone(),
+		sender_membership_1: path_1.clone(),
+		root_1: root.clone(),
+
+		sender_coin_2: sender_2.0.clone(),
+		sender_pub_info_2: sender_2.1.clone(),
+		sender_priv_info_2: sender_2.2.clone(),
+		sender_membership_2: path_2.clone(),
+		root_2: root,
+
+		receiver_coin_1: receiver_1.0.clone(),
+		receiver_pub_info_1: receiver_1.1.clone(),
+		receiver_value_1: receiver_1.2.value,
+
+		receiver_coin_2: receiver_2.0.clone(),
+		receiver_pub_info_2: receiver_2.1.clone(),
+		receiver_value_2: receiver_2.2.value,
 	};
 
 	let bench_str = format!("ZKP proof generation");

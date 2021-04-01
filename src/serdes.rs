@@ -111,6 +111,7 @@ impl MantaSerDes for SenderData {
 	fn serialize<W: Write>(&self, mut writer: W) {
 		writer.write_all(&self.k).unwrap();
 		writer.write_all(&self.sn).unwrap();
+		writer.write_all(&self.root).unwrap();
 	}
 
 	/// deserialize an array of 64 bytes into a SenderData
@@ -118,6 +119,7 @@ impl MantaSerDes for SenderData {
 		let mut data = SenderData::default();
 		reader.read_exact(&mut data.k).unwrap();
 		reader.read_exact(&mut data.sn).unwrap();
+		reader.read_exact(&mut data.root).unwrap();
 		data
 	}
 }

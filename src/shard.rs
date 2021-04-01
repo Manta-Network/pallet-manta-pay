@@ -45,7 +45,10 @@ impl LedgerSharding for Shards {
 	}
 
 	fn exist(&self, target: &Self::Commitment) -> bool {
-		// the index of the shard is determined by the first byte of the cm
+		// FIXME: at the moment, the index of the shard is determined by the first 
+		// byte of the cm. this may be potentially risky, since the commitment
+		// is a group element, and the first byte may not be uniformly distributed
+		// between 0 and 255.
 		let shard_index = target[0] as usize;
 
 		for e in self.shard[shard_index].list.iter() {
@@ -59,7 +62,10 @@ impl LedgerSharding for Shards {
 	// this function updates the ledger shards,
 	// this function does not check if target already exists in the list or not
 	fn update(&mut self, target: &Self::Commitment, param: Self::Param) {
-		// the index of the shard is determined by the first byte of the cm
+		// FIXME: at the moment, the index of the shard is determined by the first 
+		// byte of the cm. this may be potentially risky, since the commitment
+		// is a group element, and the first byte may not be uniformly distributed
+		// between 0 and 255.
 		let shard_index = target[0] as usize;
 
 		// update the list, and the root accordingly

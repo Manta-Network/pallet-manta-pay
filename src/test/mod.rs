@@ -1,3 +1,5 @@
 mod crypto;
 mod frame;
-mod frame_hardcode;
+
+// hard coded test are not going to be functional once split/merge is implemented
+// mod frame_hardcode;

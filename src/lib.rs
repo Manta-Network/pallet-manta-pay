@@ -284,14 +284,17 @@ decl_module! {
 		/// Private Transfer
 		#[weight = 0]
 		fn manta_transfer(origin,
-			merkle_root: [u8; 32],
-			sender_data: [u8; 64],
-			receiver_data: [u8; 80],
+			sender_data_1: [u8; 96],
+			sender_data_2: [u8; 96],
+			receiver_data_1: [u8; 80],
+			receiver_data_2: [u8; 80],
 			proof: [u8; 192],
 		) {
 
-			let sender_data = SenderData::deserialize(sender_data.as_ref());
-			let receiver_data = ReceiverData::deserialize(receiver_data.as_ref());
+			let sender_data_1 = SenderData::deserialize(sender_data_1.as_ref());
+			let sender_data_2 = SenderData::deserialize(sender_data_2.as_ref());
+			let receiver_data_1 = ReceiverData::deserialize(receiver_data_1.as_ref());
+			let receiver_data_2 = ReceiverData::deserialize(receiver_data_2.as_ref());
 			ensure!(Self::is_init(), <Error<T>>::BasecoinNotInit);
 			let origin = ensure_signed(origin)?;
 
@@ -303,7 +306,7 @@ decl_module! {
 			let hash_param_checksum = HashParamChecksum::get();
 			ensure!(
 				hash_param_checksum_local == hash_param_checksum,
-				<Error<T>>::MintFail
+				<Error<T>>::ParamFail
 			);
 			// todo: checksum ZKP verification eky
 
@@ -311,21 +314,42 @@ decl_module! {
 			// check if sn_old already spent
 			let mut sn_list = SNList::get();
 			ensure!(
-				!sn_list.contains(&sender_data.sn),
+				!sn_list.contains(&sender_data_1.sn),
 				<Error<T>>::MantaCoinSpent
 			);
-			sn_list.push(sender_data.sn);
+			ensure!(
+				!sn_list.contains(&sender_data_2.sn),
+				<Error<T>>::MantaCoinSpent
+			);
+			sn_list.push(sender_data_1.sn);
+			sn_list.push(sender_data_2.sn);
 
 			// get the ledger state from the ledger
 			// and check the validity of the state
 			let mut coin_shards = CoinShards::get();
 			ensure!(
-				coin_shards.check_root(&merkle_root),
+				coin_shards.check_root(&sender_data_1.root),
 				<Error<T>>::InvalidLedgerState
+			);
+			ensure!(
+				coin_shards.check_root(&sender_data_2.root),
+				<Error<T>>::InvalidLedgerState
+			);
+			// check the commitment are not in the list already
+			ensure!(
+				!coin_shards.exist(&receiver_data_1.cm),
+				<Error<T>>::MantaCoinExist
+			);
+			ensure!(
+				!coin_shards.exist(&receiver_data_2.cm),
+				<Error<T>>::MantaCoinExist
 			);
 
 			// update coin list
-			coin_shards.update(&receiver_data.cm, hash_param);
+			// with sharding, there is no point to batch update
+			// since the commitments are likely to go to different shards
+			coin_shards.update(&receiver_data_1.cm, hash_param.clone());
+			coin_shards.update(&receiver_data_2.cm, hash_param);
 
 			// get the verification key from the ledger
 			let transfer_vk_bytes = TransferZKPKey::get();
@@ -335,9 +359,10 @@ decl_module! {
 				crypto::manta_verify_transfer_zkp(
 					transfer_vk_bytes,
 					proof,
-					&sender_data,
-					&receiver_data,
-					merkle_root),
+					&sender_data_1,
+					&sender_data_2,
+					&receiver_data_1,
+					&receiver_data_2),
 				<Error<T>>::ZKPFail,
 			);
 
@@ -345,7 +370,8 @@ decl_module! {
 
 			// update ledger storage
 			let mut enc_value_list = EncValueList::get();
-			enc_value_list.push(receiver_data.cipher);
+			enc_value_list.push(receiver_data_1.cipher);
+			enc_value_list.push(receiver_data_2.cipher);
 
 			Self::deposit_event(RawEvent::PrivateTransferred(origin));
 			CoinShards::put(coin_shards);
@@ -359,12 +385,15 @@ decl_module! {
 		#[weight = 0]
 		fn reclaim(origin,
 			amount: u64,
-			merkle_root: [u8; 32],
-			sender_data: [u8; 64],
+			sender_data_1: [u8; 96],
+			sender_data_2: [u8; 96],
+			receiver_data: [u8; 80],
 			proof: [u8; 192],
 		) {
 
-			let sender_data = SenderData::deserialize(sender_data.as_ref());
+			let sender_data_1 = SenderData::deserialize(sender_data_1.as_ref());
+			let sender_data_2 = SenderData::deserialize(sender_data_2.as_ref());
+			let receiver_data = ReceiverData::deserialize(receiver_data.as_ref());
 
 			let origin = ensure_signed(origin)?;
 			let origin_account = origin.clone();
@@ -391,13 +420,18 @@ decl_module! {
 			// check if sn_old already spent
 			let mut sn_list = SNList::get();
 			ensure!(
-				!sn_list.contains(&sender_data.sn),
+				!sn_list.contains(&sender_data_1.sn),
 				<Error<T>>::MantaCoinSpent
 			);
-			sn_list.push(sender_data.sn);
+			ensure!(
+				!sn_list.contains(&sender_data_2.sn),
+				<Error<T>>::MantaCoinSpent
+			);
+			sn_list.push(sender_data_1.sn);
+			sn_list.push(sender_data_2.sn);
 
 			// get the coin list
-			let coin_shards = CoinShards::get();
+			let mut coin_shards = CoinShards::get();
 
 			// get the verification key from the ledger
 			let reclaim_vk_bytes = ReclaimZKPKey::get();
@@ -405,9 +439,19 @@ decl_module! {
 			// get the ledger state from the ledger
 			// and check the validity of the state
 			ensure!(
-				coin_shards.check_root(&merkle_root),
+				coin_shards.check_root(&sender_data_1.root),
 				<Error<T>>::InvalidLedgerState
 			);
+			ensure!(
+				coin_shards.check_root(&sender_data_2.root),
+				<Error<T>>::InvalidLedgerState
+			);
+			// check the commitment are not in the list already
+			ensure!(
+				!coin_shards.exist(&receiver_data.cm),
+				<Error<T>>::MantaCoinSpent
+			);
+
 
 			// check validity of zkp
 			ensure!(
@@ -415,17 +459,26 @@ decl_module! {
 					reclaim_vk_bytes,
 					amount,
 					proof,
-					&sender_data,
-					merkle_root),
+					&sender_data_1,
+					&sender_data_2,
+					&receiver_data),
 				<Error<T>>::ZKPFail,
 			);
 
 			// TODO: revisit replay attack here
 
 			// update ledger storage
+			let mut enc_value_list = EncValueList::get();
+			enc_value_list.push(receiver_data.cipher);
+
+
+			coin_shards.update(&receiver_data.cm, hash_param);
+			CoinShards::put(coin_shards);
+
 			Self::deposit_event(RawEvent::PrivateReclaimed(origin));
 			SNList::put(sn_list);
 			PoolBalance::put(pool);
+			EncValueList::put(enc_value_list);
 			<Balances<T>>::insert(origin_account, origin_balance + amount);
 		}
 
@@ -465,6 +518,8 @@ decl_error! {
 		MintFail,
 		/// MantaCoin exist
 		MantaCoinExist,
+		/// MantaCoin does not exist
+		MantaNotCoinExist,
 		/// MantaCoin already spend
 		MantaCoinSpent,
 		/// ZKP verification failed
@@ -472,7 +527,9 @@ decl_error! {
 		/// invalid ledger state
 		InvalidLedgerState,
 		/// Pool overdrawn
-		PoolOverdrawn
+		PoolOverdrawn,
+		/// Invalid parameters
+		ParamFail,
 	}
 }
 
