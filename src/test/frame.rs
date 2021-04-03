@@ -368,11 +368,13 @@ fn transfer_test_helper(iter: usize) {
 			root_2: merkle_root_2,
 
 			receiver_coin_1: receiver_1.0.clone(),
-			receiver_pub_info_1: receiver_1.1.clone(),
+			receiver_k_1: receiver_1.1.k,
+			receiver_s_1: receiver_1.1.s,
 			receiver_value_1: receiver_1.2.value,
 
 			receiver_coin_2: receiver_2.0.clone(),
-			receiver_pub_info_2: receiver_2.1.clone(),
+			receiver_k_2: receiver_2.1.k,
+			receiver_s_2: receiver_2.1.s,
 			receiver_value_2: receiver_2.2.value,
 		};
 
@@ -559,7 +561,8 @@ fn reclaim_test_helper(iter: usize) {
 			root_2: merkle_root_2,
 
 			receiver_coin: receiver.0.clone(),
-			receiver_pub_info: receiver.1.clone(),
+			receiver_k: receiver.1.k,
+			receiver_s: receiver.1.s,
 			receiver_value: receiver.2.value,
 
 			reclaim_value: token_value,

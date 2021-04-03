@@ -76,11 +76,13 @@ fn test_transfer_zkp_local() {
 		root_2: merkle_root,
 
 		receiver_coin_1: receiver_1.clone(),
-		receiver_pub_info_1: receiver_pub_info_1.clone(),
+		receiver_k_1: receiver_pub_info_1.k,
+		receiver_s_1: receiver_pub_info_1.s,
 		receiver_value_1: 240,
 
 		receiver_coin_2: receiver_2.clone(),
-		receiver_pub_info_2: receiver_pub_info_2.clone(),
+		receiver_k_2: receiver_pub_info_2.k,
+		receiver_s_2: receiver_pub_info_2.s,
 		receiver_value_2: 260,
 	};
 
@@ -237,11 +239,13 @@ fn test_transfer_helper(
 		root_2: merkle_root,
 
 		receiver_coin_1: receiver_1.0.clone(),
-		receiver_pub_info_1: receiver_1.1.clone(),
+		receiver_k_1: receiver_1.1.k,
+		receiver_s_1: receiver_1.1.s,
 		receiver_value_1: receiver_1.2.value,
 
 		receiver_coin_2: receiver_2.0.clone(),
-		receiver_pub_info_2: receiver_2.1.clone(),
+		receiver_k_2: receiver_2.1.k,
+		receiver_s_2: receiver_2.1.s,
 		receiver_value_2: receiver_2.2.value,
 	};
 
@@ -340,7 +344,8 @@ fn test_reclaim_zkp_local() {
 		root_2: merkle_root,
 
 		receiver_coin: receiver.clone(),
-		receiver_pub_info: receiver_pub_info.clone(),
+		receiver_k: receiver_pub_info.k,
+		receiver_s: receiver_pub_info.s,
 		receiver_value: 240,
 
 		reclaim_value: 260,
@@ -494,7 +499,8 @@ fn test_reclaim_helper(
 		root_2: merkle_root,
 
 		receiver_coin: receiver.0.clone(),
-		receiver_pub_info: receiver.1.clone(),
+		receiver_k: receiver.1.k,
+		receiver_s: receiver.1.s,
 		receiver_value: receiver.2.value,
 
 		reclaim_value,

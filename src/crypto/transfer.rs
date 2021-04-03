@@ -44,11 +44,13 @@ pub struct TransferCircuit {
 
 	// receiver
 	pub receiver_coin_1: MantaCoin,
-	pub receiver_pub_info_1: MantaCoinPubInfo,
+	pub receiver_k_1: [u8; 32],
+	pub receiver_s_1: [u8; 32],
 	pub receiver_value_1: u64,
 
 	pub receiver_coin_2: MantaCoin,
-	pub receiver_pub_info_2: MantaCoinPubInfo,
+	pub receiver_k_2: [u8; 32],
+	pub receiver_s_2: [u8; 32],
 	pub receiver_value_2: u64,
 }
 
@@ -84,7 +86,8 @@ impl ConstraintSynthesizer<Fq> for TransferCircuit {
 		receiver_token_well_formed_circuit_helper(
 			&parameters_var,
 			&self.receiver_coin_1,
-			&self.receiver_pub_info_1,
+			&self.receiver_k_1,
+			&self.receiver_s_1,
 			self.receiver_value_1,
 			cs.clone(),
 		);
@@ -92,7 +95,8 @@ impl ConstraintSynthesizer<Fq> for TransferCircuit {
 		receiver_token_well_formed_circuit_helper(
 			&parameters_var,
 			&self.receiver_coin_2,
-			&self.receiver_pub_info_2,
+			&self.receiver_k_2,
+			&self.receiver_s_2,
 			self.receiver_value_2,
 			cs.clone(),
 		);
@@ -275,21 +279,22 @@ pub(crate) fn sender_token_well_formed_circuit_helper(
 pub(crate) fn receiver_token_well_formed_circuit_helper(
 	parameters_var: &CommitmentParamVar,
 	coin: &MantaCoin,
-	pub_info: &MantaCoinPubInfo,
+	k: &[u8; 32],
+	s: &[u8; 32],
 	value: u64,
 	cs: ConstraintSystemRef<Fq>,
 ) {
 	// =============================
 	// statement 1: cm = com(v||k, s)
 	// =============================
-	let input: Vec<u8> = [value.to_le_bytes().as_ref(), pub_info.k.as_ref()].concat();
+	let input: Vec<u8> = [value.to_le_bytes().as_ref(), k].concat();
 	let mut input_var = Vec::new();
 	for byte in &input {
 		input_var.push(UInt8::new_witness(cs.clone(), || Ok(*byte)).unwrap());
 	}
 
 	// openning
-	let s = Randomness::<EdwardsProjective>(Fr::deserialize(pub_info.s.as_ref()).unwrap());
+	let s = Randomness::<EdwardsProjective>(Fr::deserialize(s.as_ref()).unwrap());
 	let randomness_var = MantaCoinCommitmentOpenVar::new_witness(
 		ark_relations::ns!(cs, "gadget_randomness"),
 		|| Ok(&s),

@@ -39,7 +39,8 @@ pub struct ReclaimCircuit {
 
 	// receiver
 	pub receiver_coin: MantaCoin,
-	pub receiver_pub_info: MantaCoinPubInfo,
+	pub receiver_k: [u8; 32],
+	pub receiver_s: [u8; 32],
 	pub receiver_value: u64,
 
 	// reclaimed amount
@@ -78,7 +79,8 @@ impl ConstraintSynthesizer<Fq> for ReclaimCircuit {
 		receiver_token_well_formed_circuit_helper(
 			&parameters_var,
 			&self.receiver_coin,
-			&self.receiver_pub_info,
+			&self.receiver_k,
+			&self.receiver_s,
 			self.receiver_value,
 			cs.clone(),
 		);
