@@ -65,8 +65,7 @@ impl ConstraintSynthesizer<Fq> for TransferCircuit {
 			})
 			.unwrap();
 
-		token_well_formed_circuit_helper(
-			true,
+		sender_token_well_formed_circuit_helper(
 			&parameters_var,
 			&self.sender_coin_1,
 			&self.sender_pub_info_1,
@@ -74,8 +73,7 @@ impl ConstraintSynthesizer<Fq> for TransferCircuit {
 			cs.clone(),
 		);
 
-		token_well_formed_circuit_helper(
-			true,
+		sender_token_well_formed_circuit_helper(
 			&parameters_var,
 			&self.sender_coin_2,
 			&self.sender_pub_info_2,
@@ -83,8 +81,7 @@ impl ConstraintSynthesizer<Fq> for TransferCircuit {
 			cs.clone(),
 		);
 
-		token_well_formed_circuit_helper(
-			false,
+		receiver_token_well_formed_circuit_helper(
 			&parameters_var,
 			&self.receiver_coin_1,
 			&self.receiver_pub_info_1,
@@ -92,8 +89,7 @@ impl ConstraintSynthesizer<Fq> for TransferCircuit {
 			cs.clone(),
 		);
 
-		token_well_formed_circuit_helper(
-			false,
+		receiver_token_well_formed_circuit_helper(
 			&parameters_var,
 			&self.receiver_coin_2,
 			&self.receiver_pub_info_2,
@@ -198,10 +194,8 @@ impl ConstraintSynthesizer<Fq> for TransferCircuit {
 // 1. k = com(pk||rho, r)
 // 2. cm = com(v||k, s)
 // for the sender, the cm is hidden and k is public
-// for the receiver, both are public
 // =============================
-pub(crate) fn token_well_formed_circuit_helper(
-	is_sender: bool,
+pub(crate) fn sender_token_well_formed_circuit_helper(
 	parameters_var: &CommitmentParamVar,
 	coin: &MantaCoin,
 	pub_info: &MantaCoinPubInfo,
@@ -264,18 +258,58 @@ pub(crate) fn token_well_formed_circuit_helper(
 	let cm: CommitmentOutput = CommitmentOutput::deserialize(coin.cm_bytes.as_ref()).unwrap();
 	// if the commitment is from the sender, then the commitment is hidden
 	// else, it is public
-	let commitment_var2 = if is_sender {
-		MantaCoinCommitmentOutputVar::new_witness(
-			ark_relations::ns!(cs, "gadget_commitment"),
-			|| Ok(cm),
-		)
-		.unwrap()
-	} else {
-		MantaCoinCommitmentOutputVar::new_input(ark_relations::ns!(cs, "gadget_commitment"), || {
-			Ok(cm)
-		})
-		.unwrap()
-	};
+	let commitment_var2 = MantaCoinCommitmentOutputVar::new_witness(
+		ark_relations::ns!(cs, "gadget_commitment"),
+		|| Ok(cm),
+	)
+	.unwrap();
+
+	// circuit to compare the commited value with supplied value
+	result_var.enforce_equal(&commitment_var2).unwrap();
+}
+
+// =============================
+// circuit for the following statements
+// 1. cm = com(v||k, s)
+// for the receiver, the cm is public
+// =============================
+pub(crate) fn receiver_token_well_formed_circuit_helper(
+	parameters_var: &CommitmentParamVar,
+	coin: &MantaCoin,
+	pub_info: &MantaCoinPubInfo,
+	value: u64,
+	cs: ConstraintSystemRef<Fq>,
+) {
+	// =============================
+	// statement 1: cm = com(v||k, s)
+	// =============================
+	let input: Vec<u8> = [value.to_le_bytes().as_ref(), pub_info.k.as_ref()].concat();
+	let mut input_var = Vec::new();
+	for byte in &input {
+		input_var.push(UInt8::new_witness(cs.clone(), || Ok(*byte)).unwrap());
+	}
+
+	// openning
+	let s = Randomness::<EdwardsProjective>(Fr::deserialize(pub_info.s.as_ref()).unwrap());
+	let randomness_var = MantaCoinCommitmentOpenVar::new_witness(
+		ark_relations::ns!(cs, "gadget_randomness"),
+		|| Ok(&s),
+	)
+	.unwrap();
+
+	// commitment
+	let result_var: MantaCoinCommitmentOutputVar =
+		CommitmentSchemeVar::commit(&parameters_var, &input_var, &randomness_var).unwrap();
+
+	// the other commitment
+	let cm: CommitmentOutput = CommitmentOutput::deserialize(coin.cm_bytes.as_ref()).unwrap();
+	// if the commitment is from the sender, then the commitment is hidden
+	// else, it is public
+	let commitment_var2 = MantaCoinCommitmentOutputVar::new_input(
+		ark_relations::ns!(cs, "gadget_commitment"),
+		|| Ok(cm),
+	)
+	.unwrap();
 
 	// circuit to compare the commited value with supplied value
 	result_var.enforce_equal(&commitment_var2).unwrap();

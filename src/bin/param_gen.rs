@@ -4,9 +4,11 @@ use ark_ed_on_bls12_381::Fq;
 use ark_groth16::generate_random_parameters;
 use ark_relations::r1cs::{ConstraintSynthesizer, ConstraintSystem};
 use ark_serialize::CanonicalSerialize;
+use hkdf::Hkdf;
 use pallet_manta_dap::*;
 use rand::{RngCore, SeedableRng};
 use rand_chacha::ChaCha20Rng;
+use sha2::Sha512Trunc256;
 use std::{fs::File, io::prelude::*};
 
 fn main() {
@@ -17,11 +19,15 @@ fn main() {
 fn write_zkp_keys() {
 	let hash_param_seed = [1u8; 32];
 	let commit_param_seed = [2u8; 32];
-	let rng_seed: [u8; 32] = [
+	let seed = [3u8; 32];
+	let rng_salt: [u8; 32] = [
 		0x74, 0x68, 0x69, 0x73, 0x20, 0x69, 0x73, 0x20, 0x61, 0x20, 0x73, 0x65, 0x65, 0x64, 0x20,
 		0x66, 0x6f, 0x72, 0x20, 0x6d, 0x61, 0x6e, 0x74, 0x61, 0x20, 0x7a, 0x6b, 0x20, 0x74, 0x65,
 		0x73, 0x74,
 	];
+	let mut rng_seed = [0u8; 32];
+	let digest = Hkdf::<Sha512Trunc256>::extract(Some(rng_salt.as_ref()), &seed);
+	rng_seed.copy_from_slice(&digest.0[0..32]);
 
 	let mut transfer_pk_bytes =
 		manta_transfer_zkp_key_gen(&hash_param_seed, &commit_param_seed, &rng_seed);

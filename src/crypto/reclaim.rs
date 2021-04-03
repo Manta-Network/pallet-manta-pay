@@ -59,8 +59,7 @@ impl ConstraintSynthesizer<Fq> for ReclaimCircuit {
 			})
 			.unwrap();
 
-		token_well_formed_circuit_helper(
-			true,
+		sender_token_well_formed_circuit_helper(
 			&parameters_var,
 			&self.sender_coin_1,
 			&self.sender_pub_info_1,
@@ -68,8 +67,7 @@ impl ConstraintSynthesizer<Fq> for ReclaimCircuit {
 			cs.clone(),
 		);
 
-		token_well_formed_circuit_helper(
-			true,
+		sender_token_well_formed_circuit_helper(
 			&parameters_var,
 			&self.sender_coin_2,
 			&self.sender_pub_info_2,
@@ -77,8 +75,7 @@ impl ConstraintSynthesizer<Fq> for ReclaimCircuit {
 			cs.clone(),
 		);
 
-		token_well_formed_circuit_helper(
-			false,
+		receiver_token_well_formed_circuit_helper(
 			&parameters_var,
 			&self.receiver_coin,
 			&self.receiver_pub_info,
