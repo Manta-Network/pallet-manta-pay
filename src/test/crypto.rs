@@ -256,8 +256,6 @@ fn test_transfer_helper(
 
 	let k_old_1 = param::CommitmentOutput::deserialize(sender_1.1.k.as_ref()).unwrap();
 	let k_old_2 = param::CommitmentOutput::deserialize(sender_2.1.k.as_ref()).unwrap();
-	let k_new_1 = param::CommitmentOutput::deserialize(receiver_1.1.k.as_ref()).unwrap();
-	let k_new_2 = param::CommitmentOutput::deserialize(receiver_2.1.k.as_ref()).unwrap();
 	let cm_new_1 = param::CommitmentOutput::deserialize(receiver_1.0.cm_bytes.as_ref()).unwrap();
 	let cm_new_2 = param::CommitmentOutput::deserialize(receiver_2.0.cm_bytes.as_ref()).unwrap();
 
@@ -265,8 +263,8 @@ fn test_transfer_helper(
 	let mut inputs = [
 		k_old_1.x, k_old_1.y, // sender coin 3
 		k_old_2.x, k_old_2.y, // sender coin 4
-		k_new_1.x, k_new_1.y, cm_new_1.x, cm_new_1.y, // receiver coin 1
-		k_new_2.x, k_new_2.y, cm_new_2.x, cm_new_2.y, // receiver coin 2
+		cm_new_1.x, cm_new_1.y, // receiver coin 1
+		cm_new_2.x, cm_new_2.y, // receiver coin 2
 	]
 	.to_vec();
 	let sn_1: Vec<Fq> = ToConstraintField::<Fq>::to_field_elements(sender_1.2.sn.as_ref()).unwrap();
@@ -513,14 +511,13 @@ fn test_reclaim_helper(
 
 	let k_old_1 = param::CommitmentOutput::deserialize(sender_1.1.k.as_ref()).unwrap();
 	let k_old_2 = param::CommitmentOutput::deserialize(sender_2.1.k.as_ref()).unwrap();
-	let k_new = param::CommitmentOutput::deserialize(receiver.1.k.as_ref()).unwrap();
 	let cm_new = param::CommitmentOutput::deserialize(receiver.0.cm_bytes.as_ref()).unwrap();
 
 	// format the input to the verification
 	let mut inputs = [
 		k_old_1.x, k_old_1.y, // sender coin 3
 		k_old_2.x, k_old_2.y, // sender coin 4
-		k_new.x, k_new.y, cm_new.x, cm_new.y, // receiver coin 1
+		cm_new.x, cm_new.y, // receiver coin 1
 	]
 	.to_vec();
 	let sn_1: Vec<Fq> = ToConstraintField::<Fq>::to_field_elements(sender_1.2.sn.as_ref()).unwrap();

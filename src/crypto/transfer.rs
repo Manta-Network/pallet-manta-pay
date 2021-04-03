@@ -256,8 +256,7 @@ pub(crate) fn sender_token_well_formed_circuit_helper(
 
 	// the other commitment
 	let cm: CommitmentOutput = CommitmentOutput::deserialize(coin.cm_bytes.as_ref()).unwrap();
-	// if the commitment is from the sender, then the commitment is hidden
-	// else, it is public
+	// the commitment is from the sender, so it is hidden
 	let commitment_var2 = MantaCoinCommitmentOutputVar::new_witness(
 		ark_relations::ns!(cs, "gadget_commitment"),
 		|| Ok(cm),
@@ -303,8 +302,7 @@ pub(crate) fn receiver_token_well_formed_circuit_helper(
 
 	// the other commitment
 	let cm: CommitmentOutput = CommitmentOutput::deserialize(coin.cm_bytes.as_ref()).unwrap();
-	// if the commitment is from the sender, then the commitment is hidden
-	// else, it is public
+	// the commitment is from the receiver, it is public
 	let commitment_var2 = MantaCoinCommitmentOutputVar::new_input(
 		ark_relations::ns!(cs, "gadget_commitment"),
 		|| Ok(cm),
