@@ -15,7 +15,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-//! # Manta DAP Module
+//! # Manta pay Module
 //!
 //! A simple, secure module for manta anounymous payment
 //!

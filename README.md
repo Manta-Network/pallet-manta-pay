@@ -1,6 +1,6 @@
-# pallet-manta-dap
+# pallet-manta-pay
 
-This is a pallet that enables decentialized anynonymous payment (DAP) protocol.
+This is a pallet that enables decentialized anynonymous payment (pay) protocol.
 The best way to use this repo is to invoke it with a `manta-runtime`,
 available from either [manta-node](https://github.com/Manta-Network/manta-node) or [cumulus](https://github.com/Manta-Network/cumulus).
 
@@ -35,7 +35,7 @@ open target/debug/coverage/index.html
 
 * The report is also available within `coverage` folder. 
 
-![Result](https://github.com/Manta-Network/pallet-manta-dap/blob/master/coverage/coverage.png)
+![Result](https://github.com/Manta-Network/pallet-manta-pay/blob/master/coverage/coverage.png)
 
 ## Benchmark
 * benchmark enviroment
@@ -65,11 +65,11 @@ transfer/ZKP verification
   * with `frame-benchmarking`: within `manta-node` repo, run 
 ```
 cargo +nightly build --release -p manta-node -Z package-features --package manta-runtime --features runtime-benchmarks --wasm-execution compiled
-target/release/manta-node benchmark --pallet pallet_manta_dap --extrinsic init --repeat 100 --execution=wasm --wasm-execution compiled
-target/release/manta-node benchmark --pallet pallet_manta_dap --extrinsic transfer --repeat 100 --execution=wasm --wasm-execution compiled
-target/release/manta-node benchmark --pallet pallet_manta_dap --extrinsic mint --repeat 100 --execution=wasm --wasm-execution compiled
-target/release/manta-node benchmark --pallet pallet_manta_dap --extrinsic manta_transfer --repeat 100 --execution=wasm --wasm-execution compiled
-target/release/manta-node benchmark --pallet pallet_manta_dap --extrinsic reclaim --repeat 100 --execution=wasm --wasm-execution compiled
+target/release/manta-node benchmark --pallet pallet_manta_pay --extrinsic init --repeat 100 --execution=wasm --wasm-execution compiled
+target/release/manta-node benchmark --pallet pallet_manta_pay --extrinsic transfer --repeat 100 --execution=wasm --wasm-execution compiled
+target/release/manta-node benchmark --pallet pallet_manta_pay --extrinsic mint --repeat 100 --execution=wasm --wasm-execution compiled
+target/release/manta-node benchmark --pallet pallet_manta_pay --extrinsic manta_transfer --repeat 100 --execution=wasm --wasm-execution compiled
+target/release/manta-node benchmark --pallet pallet_manta_pay --extrinsic reclaim --repeat 100 --execution=wasm --wasm-execution compiled
 ```
 sample output
 | Function      | init |  trasfer | mint | manta_transfer | reclaim |

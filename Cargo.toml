@@ -1,11 +1,11 @@
 [package]
-name = "pallet-manta-dap"
+name = "pallet-manta-pay"
 version = "3.0.0"
 authors = ["Manta Network <contact@manta.network>"]
 edition = "2018"
 license = "Apache-2.0"
-repository = "https://github.com/Manta-Network/pallet-manta-dap"
-description = "Manta DAP scheme"
+repository = "https://github.com/Manta-Network/pallet-manta-pay"
+description = "Manta pay scheme"
 readme = "README.md"
 
 [package.metadata.docs.rs]

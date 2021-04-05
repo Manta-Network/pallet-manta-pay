@@ -5,7 +5,7 @@
 // use ark_relations::r1cs::{ConstraintSynthesizer, ConstraintSystem};
 // use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
 // use data_encoding::BASE64;
-// use pallet_manta_dap::{
+// use pallet_manta_pay::{
 // 	dh::*, manta_token::*, param::*, priv_coin::*, reclaim::*, serdes::*, shard::*, transfer::*,
 // };
 // use rand::{RngCore, SeedableRng};

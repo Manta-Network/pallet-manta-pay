@@ -1,4 +1,4 @@
-//! manta-dap pallet benchmarking.
+//! manta-pay pallet benchmarking.
 
 #![cfg(feature = "runtime-benchmarks")]
 

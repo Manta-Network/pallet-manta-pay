@@ -1,4 +1,4 @@
-use crate as pallet_manta_dap;
+use crate as pallet_manta_pay;
 use crate::{
 	coin::*,
 	param::{Groth16PK, Groth16VK},
@@ -29,7 +29,7 @@ frame_support::construct_runtime!(
 		UncheckedExtrinsic = UncheckedExtrinsic,
 	{
 		System: frame_system::{Module, Call, Config, Storage, Event<T>},
-		MantaModule: pallet_manta_dap::{Module, Call, Storage, Event<T>},
+		MantaModule: pallet_manta_pay::{Module, Call, Storage, Event<T>},
 	}
 );
 type BlockNumber = u64;

@@ -5,7 +5,7 @@ use ark_groth16::generate_random_parameters;
 use ark_relations::r1cs::{ConstraintSynthesizer, ConstraintSystem};
 use ark_serialize::CanonicalSerialize;
 use hkdf::Hkdf;
-use pallet_manta_dap::*;
+use pallet_manta_pay::*;
 use rand::{RngCore, SeedableRng};
 use rand_chacha::ChaCha20Rng;
 use sha2::Sha512Trunc256;
