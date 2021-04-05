@@ -89,8 +89,8 @@ fn bench_trasnfer_verify(c: &mut Criterion) {
 	let path_2 = tree.generate_proof(1, &sender_2.0.cm_bytes).unwrap();
 
 	let circuit = TransferCircuit {
-		commit_param,
-		hash_param: hash_param.clone(),
+		commit_param: commit_param.clone(),
+		hash_param,
 
 		sender_coin_1: sender_1.0.clone(),
 		sender_pub_info_1: sender_1.1.clone(),
@@ -105,11 +105,13 @@ fn bench_trasnfer_verify(c: &mut Criterion) {
 		root_2: root,
 
 		receiver_coin_1: receiver_1.0.clone(),
-		receiver_pub_info_1: receiver_1.1.clone(),
+		receiver_k_1: receiver_1.1.k,
+		receiver_s_1: receiver_1.1.s,
 		receiver_value_1: receiver_1.2.value,
 
 		receiver_coin_2: receiver_2.0.clone(),
-		receiver_pub_info_2: receiver_2.1.clone(),
+		receiver_k_2: receiver_2.1.k,
+		receiver_s_2: receiver_2.1.s,
 		receiver_value_2: receiver_2.2.value,
 	};
 
@@ -286,8 +288,8 @@ fn bench_transfer_prove(c: &mut Criterion) {
 	let path_2 = tree.generate_proof(1, &sender_2.0.cm_bytes).unwrap();
 
 	let circuit = TransferCircuit {
-		commit_param,
-		hash_param: hash_param.clone(),
+		commit_param: commit_param.clone(),
+		hash_param,
 
 		sender_coin_1: sender_1.0.clone(),
 		sender_pub_info_1: sender_1.1.clone(),
@@ -302,11 +304,13 @@ fn bench_transfer_prove(c: &mut Criterion) {
 		root_2: root,
 
 		receiver_coin_1: receiver_1.0.clone(),
-		receiver_pub_info_1: receiver_1.1.clone(),
+		receiver_k_1: receiver_1.1.k,
+		receiver_s_1: receiver_1.1.s,
 		receiver_value_1: receiver_1.2.value,
 
 		receiver_coin_2: receiver_2.0.clone(),
-		receiver_pub_info_2: receiver_2.1.clone(),
+		receiver_k_2: receiver_2.1.k,
+		receiver_s_2: receiver_2.1.s,
 		receiver_value_2: receiver_2.2.value,
 	};
 

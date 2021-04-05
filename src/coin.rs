@@ -70,7 +70,6 @@ pub fn make_coin<R: RngCore + CryptoRng>(
 	value: u64,
 	rng: &mut R,
 ) -> (MantaCoin, MantaCoinPubInfo, MantaCoinPrivInfo) {
-
 	//  sample a random rho
 	let mut rho = [0u8; 32];
 	rng.fill_bytes(&mut rho);

@@ -76,11 +76,13 @@ fn test_transfer_zkp_local() {
 		root_2: merkle_root,
 
 		receiver_coin_1: receiver_1.clone(),
-		receiver_pub_info_1: receiver_pub_info_1.clone(),
+		receiver_k_1: receiver_pub_info_1.k,
+		receiver_s_1: receiver_pub_info_1.s,
 		receiver_value_1: 240,
 
 		receiver_coin_2: receiver_2.clone(),
-		receiver_pub_info_2: receiver_pub_info_2.clone(),
+		receiver_k_2: receiver_pub_info_2.k,
+		receiver_s_2: receiver_pub_info_2.s,
 		receiver_value_2: 260,
 	};
 
@@ -237,11 +239,13 @@ fn test_transfer_helper(
 		root_2: merkle_root,
 
 		receiver_coin_1: receiver_1.0.clone(),
-		receiver_pub_info_1: receiver_1.1.clone(),
+		receiver_k_1: receiver_1.1.k,
+		receiver_s_1: receiver_1.1.s,
 		receiver_value_1: receiver_1.2.value,
 
 		receiver_coin_2: receiver_2.0.clone(),
-		receiver_pub_info_2: receiver_2.1.clone(),
+		receiver_k_2: receiver_2.1.k,
+		receiver_s_2: receiver_2.1.s,
 		receiver_value_2: receiver_2.2.value,
 	};
 
@@ -256,8 +260,6 @@ fn test_transfer_helper(
 
 	let k_old_1 = param::CommitmentOutput::deserialize(sender_1.1.k.as_ref()).unwrap();
 	let k_old_2 = param::CommitmentOutput::deserialize(sender_2.1.k.as_ref()).unwrap();
-	let k_new_1 = param::CommitmentOutput::deserialize(receiver_1.1.k.as_ref()).unwrap();
-	let k_new_2 = param::CommitmentOutput::deserialize(receiver_2.1.k.as_ref()).unwrap();
 	let cm_new_1 = param::CommitmentOutput::deserialize(receiver_1.0.cm_bytes.as_ref()).unwrap();
 	let cm_new_2 = param::CommitmentOutput::deserialize(receiver_2.0.cm_bytes.as_ref()).unwrap();
 
@@ -265,8 +267,8 @@ fn test_transfer_helper(
 	let mut inputs = [
 		k_old_1.x, k_old_1.y, // sender coin 3
 		k_old_2.x, k_old_2.y, // sender coin 4
-		k_new_1.x, k_new_1.y, cm_new_1.x, cm_new_1.y, // receiver coin 1
-		k_new_2.x, k_new_2.y, cm_new_2.x, cm_new_2.y, // receiver coin 2
+		cm_new_1.x, cm_new_1.y, // receiver coin 1
+		cm_new_2.x, cm_new_2.y, // receiver coin 2
 	]
 	.to_vec();
 	let sn_1: Vec<Fq> = ToConstraintField::<Fq>::to_field_elements(sender_1.2.sn.as_ref()).unwrap();
@@ -342,7 +344,8 @@ fn test_reclaim_zkp_local() {
 		root_2: merkle_root,
 
 		receiver_coin: receiver.clone(),
-		receiver_pub_info: receiver_pub_info.clone(),
+		receiver_k: receiver_pub_info.k,
+		receiver_s: receiver_pub_info.s,
 		receiver_value: 240,
 
 		reclaim_value: 260,
@@ -496,7 +499,8 @@ fn test_reclaim_helper(
 		root_2: merkle_root,
 
 		receiver_coin: receiver.0.clone(),
-		receiver_pub_info: receiver.1.clone(),
+		receiver_k: receiver.1.k,
+		receiver_s: receiver.1.s,
 		receiver_value: receiver.2.value,
 
 		reclaim_value,
@@ -513,14 +517,13 @@ fn test_reclaim_helper(
 
 	let k_old_1 = param::CommitmentOutput::deserialize(sender_1.1.k.as_ref()).unwrap();
 	let k_old_2 = param::CommitmentOutput::deserialize(sender_2.1.k.as_ref()).unwrap();
-	let k_new = param::CommitmentOutput::deserialize(receiver.1.k.as_ref()).unwrap();
 	let cm_new = param::CommitmentOutput::deserialize(receiver.0.cm_bytes.as_ref()).unwrap();
 
 	// format the input to the verification
 	let mut inputs = [
 		k_old_1.x, k_old_1.y, // sender coin 3
 		k_old_2.x, k_old_2.y, // sender coin 4
-		k_new.x, k_new.y, cm_new.x, cm_new.y, // receiver coin 1
+		cm_new.x, cm_new.y, // receiver coin 1
 	]
 	.to_vec();
 	let sn_1: Vec<Fq> = ToConstraintField::<Fq>::to_field_elements(sender_1.2.sn.as_ref()).unwrap();
