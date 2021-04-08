@@ -1,6 +1,6 @@
 #[macro_use]
 extern crate criterion;
-extern crate pallet_manta_dap;
+extern crate pallet_manta_pay;
 
 use ark_crypto_primitives::{
 	commitment::pedersen::Randomness, CommitmentScheme as ArkCommitmentScheme, FixedLengthCRH,
@@ -11,7 +11,7 @@ use ark_relations::r1cs::{ConstraintSynthesizer, ConstraintSystem};
 use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
 use criterion::{Benchmark, Criterion};
 use data_encoding::BASE64;
-use pallet_manta_dap::*;
+use pallet_manta_pay::*;
 use rand::SeedableRng;
 use rand_chacha::ChaCha20Rng;
 use rand_core::RngCore;
@@ -170,7 +170,7 @@ fn bench_trasnfer_verify(c: &mut Criterion) {
 }
 
 fn bench_merkle_tree(c: &mut Criterion) {
-	let hash_param_seed = pallet_manta_dap::HASHPARAMSEED;
+	let hash_param_seed = HASHPARAMSEED;
 	let mut rng = ChaCha20Rng::from_seed(hash_param_seed);
 	let hash_param = Hash::setup(&mut rng).unwrap();
 
