@@ -1,12 +1,18 @@
 # pallet-manta-pay
 
-This is a pallet that enables decentialized anynonymous payment (pay) protocol.
+This is a pallet that enables decentralized anonymous payment (pay) protocol.
 The best way to use this repo is to invoke it with a `manta-runtime`,
 available from either [manta-node](https://github.com/Manta-Network/manta-node) or [cumulus](https://github.com/Manta-Network/cumulus).
 
 __Disclaimer__: This code is a proof-of-concept; is not properly reviewed or audited and is likely to have 
 severe bugs or security pitfalls.
 Use at your own risk!
+
+## Documentations
+
+``` sh
+cargo doc --open
+```
 
 
 ## Pre-computed tokens
@@ -38,7 +44,7 @@ open target/debug/coverage/index.html
 ![Result](https://github.com/Manta-Network/pallet-manta-pay/blob/master/coverage/coverage.png)
 
 ## Benchmark
-* benchmark enviroment
+* benchmark environment
 
 AMD Ryzen 9 5900X 12-Core Processor; Ubuntu 20.04; rustc 1.50.0 (cb75ad5db 2021-02-10)
 
@@ -72,7 +78,7 @@ target/release/manta-node benchmark --pallet pallet_manta_pay --extrinsic manta_
 target/release/manta-node benchmark --pallet pallet_manta_pay --extrinsic reclaim --repeat 100 --execution=wasm --wasm-execution compiled
 ```
 sample output
-| Function      | init |  trasfer | mint | manta_transfer | reclaim |
+| Function      | init |  transfer | mint | manta_transfer | reclaim |
 | ----------- |:-----------:|:-----------:|:-----------:|:-----------:|:-----------:|
 | Rust       |    640 us   |  13 us | 1.9 ms | 10.1 ms | 8.8 ms |
 | Wasm |    2.8 ms    |  111  us | 13.1 ms | 130 ms | 107 ms |
