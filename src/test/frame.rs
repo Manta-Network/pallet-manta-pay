@@ -81,8 +81,8 @@ fn test_constants_should_work() {
 	new_test_ext().execute_with(|| {
 		assert_ok!(Assets::init(Origin::signed(1), 100));
 		assert_eq!(Assets::balance(1), 100);
-		let hash_param = HashParam::deserialize(HASHPARAMBYTES.as_ref());
-		let commit_param = CommitmentParam::deserialize(COMPARAMBYTES.as_ref());
+		let hash_param = HashParam::deserialize(HASH_PARAM_BYTES.as_ref());
+		let commit_param = CommitmentParam::deserialize(COMMIT_PARAM_BYTES.as_ref());
 		let hash_param_checksum_local = hash_param.get_checksum();
 		let commit_param_checksum_local = commit_param.get_checksum();
 		let hash_param_checksum = HashParamChecksum::get();
@@ -98,7 +98,7 @@ fn test_mint_should_work() {
 		assert_ok!(Assets::init(Origin::signed(1), 1000));
 		assert_eq!(Assets::balance(1), 1000);
 		assert_eq!(PoolBalance::get(), 0);
-		let commit_param = CommitmentParam::deserialize(COMPARAMBYTES.as_ref());
+		let commit_param = CommitmentParam::deserialize(COMMIT_PARAM_BYTES.as_ref());
 		let mut rng = ChaCha20Rng::from_seed([3u8; 32]);
 		let mut sk = [0u8; 32];
 		rng.fill_bytes(&mut sk);
@@ -116,7 +116,7 @@ fn test_mint_should_work() {
 		assert_eq!(PoolBalance::get(), 10);
 		let coin_shards = CoinShards::get();
 		assert!(coin_shards.exist(&coin.cm_bytes));
-		let sn_list = SNList::get();
+		let sn_list = VNList::get();
 		assert_eq!(sn_list.len(), 0);
 	});
 }
@@ -237,7 +237,7 @@ fn cannot_init_twice() {
 }
 
 fn mint_tokens(size: usize) -> Vec<(MantaCoin, MantaCoinPubInfo, MantaCoinPrivInfo)> {
-	let commit_param = CommitmentParam::deserialize(COMPARAMBYTES.as_ref());
+	let commit_param = CommitmentParam::deserialize(COMMIT_PARAM_BYTES.as_ref());
 
 	let mut rng = ChaCha20Rng::from_seed([88u8; 32]);
 	let mut pool = 0;
@@ -283,8 +283,8 @@ fn transfer_test_helper(iter: usize) {
 	assert_eq!(Assets::balance(1), 10_000_000);
 	assert_eq!(PoolBalance::get(), 0);
 
-	let hash_param = HashParam::deserialize(HASHPARAMBYTES.as_ref());
-	let commit_param = CommitmentParam::deserialize(COMPARAMBYTES.as_ref());
+	let hash_param = HashParam::deserialize(HASH_PARAM_BYTES.as_ref());
+	let commit_param = CommitmentParam::deserialize(COMMIT_PARAM_BYTES.as_ref());
 
 	// load the ZKP keys
 	let mut file = File::open("transfer_pk.bin").unwrap();
@@ -302,7 +302,7 @@ fn transfer_test_helper(iter: usize) {
 	let senders = mint_tokens(size);
 	let pool = PoolBalance::get();
 
-	let sn_list = SNList::get();
+	let sn_list = VNList::get();
 	assert_eq!(sn_list.len(), 0);
 
 	// build receivers
@@ -472,7 +472,7 @@ fn transfer_test_helper(iter: usize) {
 	// check the resulting status of the ledger storage
 	assert_eq!(TotalSupply::get(), 10_000_000);
 	let coin_shards = CoinShards::get();
-	let sn_list = SNList::get();
+	let sn_list = VNList::get();
 	for i in 0usize..size {
 		assert!(coin_shards.exist(&senders[i].0.cm_bytes));
 		assert!(coin_shards.exist(&receivers[i].0.cm_bytes));
@@ -486,8 +486,8 @@ fn reclaim_test_helper(iter: usize) {
 	assert_eq!(Assets::balance(1), 10_000_000);
 	assert_eq!(PoolBalance::get(), 0);
 
-	let hash_param = HashParam::deserialize(HASHPARAMBYTES.as_ref());
-	let commit_param = CommitmentParam::deserialize(COMPARAMBYTES.as_ref());
+	let hash_param = HashParam::deserialize(HASH_PARAM_BYTES.as_ref());
+	let commit_param = CommitmentParam::deserialize(COMMIT_PARAM_BYTES.as_ref());
 
 	let size = iter << 1;
 	let senders = mint_tokens(size);
@@ -628,7 +628,7 @@ fn reclaim_test_helper(iter: usize) {
 		pool -= token_value;
 		assert_eq!(PoolBalance::get(), pool);
 
-		let sn_list = SNList::get();
+		let sn_list = VNList::get();
 		assert_eq!(sn_list.len(), 2 * (i + 1));
 		assert_eq!(sn_list[i * 2], sender_1.2.sn);
 		assert_eq!(sn_list[i * 2 + 1], sender_2.2.sn);

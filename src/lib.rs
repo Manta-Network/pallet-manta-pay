@@ -17,7 +17,7 @@
 
 //! # Manta pay Module
 //!
-//! A simple, secure module for manta anounymous payment
+//! A simple, secure module for manta anonymous payment
 //!
 //! ## Overview
 //!
@@ -107,7 +107,7 @@ mod shard;
 mod test;
 
 pub use coin::*;
-pub use constants::{COMPARAMBYTES, HASHPARAMBYTES, RECLAIMVKBYTES, TRANSFERVKBYTES};
+pub use constants::{COMMIT_PARAM_BYTES, HASH_PARAM_BYTES, RECLAIM_VKBYTES, TRANSFER_VKBYTES};
 pub use param::*;
 pub use serdes::MantaSerDes;
 
@@ -137,11 +137,11 @@ decl_module! {
 		/// Issue a new class of fungible assets. There are, and will only ever be, `total`
 		/// such assets and they'll all belong to the `origin` initially. It will have an
 		/// identifier `AssetId` instance: this will be specified in the `Issued` event.
-		///
+		/// __TODO__: check the weights is correct
 		/// # <weight>
 		/// - `O(1)`
 		/// - 1 storage mutation (codec `O(1)`).
-		/// - 2 storage writes (condec `O(1)`).
+		/// - 2 storage writes (codec `O(1)`).
 		/// - 1 event.
 		/// # </weight>
 		#[weight = 0]
@@ -154,8 +154,8 @@ decl_module! {
 			//  * hash parameter seed: [1u8; 32]
 			//  * commitment parameter seed: [2u8; 32]
 			// We may want to pass those two in for `init`
-			let hash_param = HashParam::deserialize(HASHPARAMBYTES.as_ref());
-			let commit_param = CommitmentParam::deserialize(COMPARAMBYTES.as_ref());
+			let hash_param = HashParam::deserialize(HASH_PARAM_BYTES.as_ref());
+			let commit_param = CommitmentParam::deserialize(COMMIT_PARAM_BYTES.as_ref());
 			let hash_param_checksum = hash_param.get_checksum();
 			let commit_param_checksum = commit_param.get_checksum();
 
@@ -167,17 +167,17 @@ decl_module! {
 			//
 			// for prototype, we use this function to generate the ZKP verification key
 			// for product we should use a MPC protocol to build the ZKP verification key
-			// and then depoly that vk
+			// and then deploy that vk
 			//
-			TransferZKPKey::put(TRANSFERVKBYTES.to_vec());
-			ReclaimZKPKey::put(RECLAIMVKBYTES.to_vec());
+			TransferZKPKey::put(TRANSFER_VKBYTES.to_vec());
+			ReclaimZKPKey::put(RECLAIM_VKBYTES.to_vec());
 
 			// coin_shards are a 256 lists of commitments
 			let coin_shards = Shards::default();
 			CoinShards::put(coin_shards);
 
 			PoolBalance::put(0);
-			SNList::put(Vec::<[u8; 32]>::new());
+			VNList::put(Vec::<[u8; 32]>::new());
 			EncValueList::put(Vec::<[u8; 16]>::new());
 			<Balances<T>>::insert(&origin, total);
 			<TotalSupply>::put(total);
@@ -188,6 +188,7 @@ decl_module! {
 		}
 
 		/// Move some assets from one holder to another.
+		/// __TODO__: check the weights is correct
 		///
 		/// # <weight>
 		/// - `O(1)`
@@ -213,9 +214,7 @@ decl_module! {
 			<Balances<T>>::mutate(target, |balance| *balance += amount);
 		}
 
-		/// Mint
-		/// TODO: rename arguments
-		/// TODO: do we need to store k and s?
+		/// Given an amount, and relevant data, mint the token to the ledger
 		#[weight = 0]
 		fn mint(origin,
 			amount: u64,
@@ -234,8 +233,8 @@ decl_module! {
 			let origin_balance = <Balances<T>>::get(&origin_account);
 			ensure!(origin_balance >= amount, Error::<T>::BalanceLow);
 
-			let hash_param = HashParam::deserialize(HASHPARAMBYTES.as_ref());
-			let commit_param = CommitmentParam::deserialize(COMPARAMBYTES.as_ref());
+			let hash_param = HashParam::deserialize(HASH_PARAM_BYTES.as_ref());
+			let commit_param = CommitmentParam::deserialize(COMMIT_PARAM_BYTES.as_ref());
 			let hash_param_checksum_local = hash_param.get_checksum();
 			let commit_param_checksum_local = commit_param.get_checksum();
 
@@ -281,7 +280,10 @@ decl_module! {
 		}
 
 
-		/// Private Transfer
+		/// Manta's private transfer function that moves values from two
+		/// sender's private tokens into two receiver tokens. A proof is required to
+		/// make sure that this transaction is valid.
+		/// Neither the values nor the identities is leaked during this process.
 		#[weight = 0]
 		fn manta_transfer(origin,
 			sender_data_1: [u8; 96],
@@ -298,7 +300,7 @@ decl_module! {
 			ensure!(Self::is_init(), <Error<T>>::BasecoinNotInit);
 			let origin = ensure_signed(origin)?;
 
-			let hash_param = HashParam::deserialize(HASHPARAMBYTES.as_ref());
+			let hash_param = HashParam::deserialize(HASH_PARAM_BYTES.as_ref());
 			let hash_param_checksum_local = hash_param.get_checksum();
 
 
@@ -311,8 +313,8 @@ decl_module! {
 			// todo: checksum ZKP verification eky
 
 
-			// check if sn_old already spent
-			let mut sn_list = SNList::get();
+			// check if vn_old already spent
+			let mut sn_list = VNList::get();
 			ensure!(
 				!sn_list.contains(&sender_data_1.sn),
 				<Error<T>>::MantaCoinSpent
@@ -375,13 +377,19 @@ decl_module! {
 
 			Self::deposit_event(RawEvent::PrivateTransferred(origin));
 			CoinShards::put(coin_shards);
-			SNList::put(sn_list);
+			VNList::put(sn_list);
 			EncValueList::put(enc_value_list);
 		}
 
 
-		/// Reclaim
-		// TODO: shall we add a different receive for reclaim function?
+		/// Manta's reclaim function that moves values from two
+		/// sender's private tokens into a receiver public account, and a private token.
+		/// A proof is required to
+		/// make sure that this transaction is valid.
+		/// Neither the values nor the identities is leaked during this process;
+		/// except for the reclaimed amount.
+		/// At the moment, the reclaimed amount goes directly to `origin` account.
+		/// __TODO__: shall we use a different receiver rather than `origin`?
 		#[weight = 0]
 		fn reclaim(origin,
 			amount: u64,
@@ -400,7 +408,7 @@ decl_module! {
 			let origin_balance = <Balances<T>>::get(&origin);
 			ensure!(Self::is_init(), <Error<T>>::BasecoinNotInit);
 
-			let hash_param = HashParam::deserialize(HASHPARAMBYTES.as_ref());
+			let hash_param = HashParam::deserialize(HASH_PARAM_BYTES.as_ref());
 			let hash_param_checksum_local = hash_param.get_checksum();
 
 
@@ -418,7 +426,7 @@ decl_module! {
 			pool -= amount;
 
 			// check if sn_old already spent
-			let mut sn_list = SNList::get();
+			let mut sn_list = VNList::get();
 			ensure!(
 				!sn_list.contains(&sender_data_1.sn),
 				<Error<T>>::MantaCoinSpent
@@ -476,7 +484,7 @@ decl_module! {
 			CoinShards::put(coin_shards);
 
 			Self::deposit_event(RawEvent::PrivateReclaimed(origin));
-			SNList::put(sn_list);
+			VNList::put(sn_list);
 			PoolBalance::put(pool);
 			EncValueList::put(enc_value_list);
 			<Balances<T>>::insert(origin_account, origin_balance + amount);
@@ -497,16 +505,17 @@ decl_event! {
 		Minted(AccountId, u64),
 		/// Private transfer
 		PrivateTransferred(AccountId),
-		/// The assest was reclaimed
+		/// The assets was reclaimed
 		PrivateReclaimed(AccountId),
 	}
 }
 
 decl_error! {
+	/// Error messages.
 	pub enum Error for Module<T: Config> {
 		/// This token has already been initiated
 		AlreadyInitialized,
-		/// Transfer when not nitialized
+		/// Transfer when not initialized
 		BasecoinNotInit,
 		/// Transfer amount should be non-zero
 		AmountZero,
@@ -541,34 +550,40 @@ decl_storage! {
 		/// The total unit supply of the asset.
 		pub TotalSupply get(fn total_supply): u64;
 
-		/// Has this token been initialized (can only initiate once)
+		/// Returns a boolean: is this token already initialized (can only initiate once)
 		pub Init get(fn is_init): bool;
 
-		/// List of sns
-		pub SNList get(fn sn_list): Vec<[u8; 32]>;
+		/// List of _void number_s.
+		/// A void number is also known as a `serial number` in other protocols.
+		/// Each coin has a unique void number, and if this number is revealed,
+		/// the coin is voided.
+		/// The ledger maintains a list of all void numbers.
+		pub VNList get(fn vn_list): Vec<[u8; 32]>;
 
-		/// List of Coins that has ever been created
+		/// List of Coins that has ever been created.
+		/// We employ a sharding system to host all the coins
+		/// for better concurrency.
 		pub CoinShards get(fn coin_shards): Shards;
 
-		/// List of encrypted values
+		/// List of encrypted values.
 		pub EncValueList get(fn enc_value_list): Vec<[u8; 16]>;
 
-		/// the balance of minted coins
+		/// The balance of all minted coins.
 		pub PoolBalance get(fn pool_balance): u64;
 
-		/// the seed of hash parameter
+		/// The checksum of hash parameter.
 		pub HashParamChecksum get(fn hash_param_checksum): [u8; 32];
 
-		/// the seed of commit parameter
+		/// The checksum of commitment parameter.
 		pub CommitParamChecksum get(fn commit_param_checksum): [u8; 32];
 
-		/// verification key for zero-knowledge proof
-		/// at the moment we are storing the whole serialized key
+		/// The verification key for zero-knowledge proof for transfer protocol.
+		/// At the moment we are storing the whole serialized key
 		/// in the blockchain storage.
 		pub TransferZKPKey get(fn transfer_zkp_vk): Vec<u8>;
 
-		/// verification key for zero-knowledge proof
-		/// at the moment we are storing the whole serialized key
+		/// The verification key for zero-knowledge proof for reclaim protocol.
+		/// At the moment we are storing the whole serialized key
 		/// in the blockchain storage.
 		pub ReclaimZKPKey get(fn reclaim_zkp_vk): Vec<u8>;
 	}

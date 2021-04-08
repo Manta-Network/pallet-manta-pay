@@ -6,17 +6,22 @@ use ark_relations::r1cs::{ConstraintSynthesizer, ConstraintSystemRef, SynthesisE
 // use ark_std::vec::Vec;
 
 // =============================
-// circuit for the following statements
-// 1. sender's coin is well-formed
-//  1.1 k = com(pk||rho, r)
-//  1.2 cm = com(v||k, s)
-// where only k is public
-// 2. address and the secret key derives public key
-//  sender.pk = PRF(sender_sk, [0u8;32])
-// 3. sender's commitment is in List_all
-//  NOTE: we de not need to prove that sender's sn is not in List_used
-//        this can be done in the public
-// 4. sender's value matches input value
+/// ZK circuit for the __reclaim__ statements.
+/// # <weight>
+/// 1. sender's coin is well-formed:
+///   * `k = com(pk||rho, r)`
+///   * `cm = com(v||k, s)`
+/// where only k is public.
+/// 2. receiver's coin is well-formed:
+///   * `cm = com(v||k, s)`
+/// where both `k` and `cm` are public.
+/// 3. address and the secret key derives public key:
+///  `sender.pk = PRF(sender_sk, [0u8;32])`
+/// 4. sender's commitment is in CMList.
+///  NOTE: we do not need to prove that sender's vn is not in VNList.
+///        this can be done in the public.
+/// 5. sender's total value == receiver value + reclaim value.
+/// # </weight>
 // =============================
 #[derive(Clone)]
 pub struct ReclaimCircuit {
@@ -48,6 +53,8 @@ pub struct ReclaimCircuit {
 }
 
 impl ConstraintSynthesizer<Fq> for ReclaimCircuit {
+	/// Input a circuit, build the corresponding constraint system, and
+	/// add it to `cs`.
 	fn generate_constraints(self, cs: ConstraintSystemRef<Fq>) -> Result<(), SynthesisError> {
 		// 1. both sender's and receiver's coins are well-formed
 		//  k = com(pk||rho, r)

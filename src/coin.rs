@@ -11,6 +11,7 @@ use ark_std::vec::Vec;
 use frame_support::codec::{Decode, Encode};
 use rand_core::{CryptoRng, RngCore};
 
+/// Input data to a mint function.
 #[derive(Encode, Debug, Decode, Clone, Default, PartialEq)]
 pub struct MintData {
 	pub cm: [u8; 32],
@@ -25,6 +26,7 @@ impl MintData {
 	}
 }
 
+/// Data required for a sender to spend a coin.
 #[derive(Encode, Debug, Decode, Clone, Default, PartialEq)]
 pub struct SenderData {
 	pub k: [u8; 32],
@@ -32,6 +34,7 @@ pub struct SenderData {
 	pub root: [u8; 32],
 }
 
+/// Data required for a receiver to receive a coin.
 #[derive(Encode, Debug, Decode, Clone, Default, PartialEq)]
 pub struct ReceiverData {
 	pub k: [u8; 32],
@@ -39,13 +42,13 @@ pub struct ReceiverData {
 	pub cipher: [u8; 16],
 }
 
-/// a MantaCoin is a pair of commitment cm, where
-///  * cm = com(v||k, s), commits to the value, and
+/// A MantaCoin is a commitment `cm = com(v||k, s)`.
 #[derive(Encode, Debug, Decode, Clone, Default, PartialEq)]
 pub struct MantaCoin {
 	pub cm_bytes: [u8; 32],
 }
 
+/// Information related to a coin that may be revealed.
 #[derive(Encode, Decode, Default, Clone, PartialEq)]
 pub struct MantaCoinPubInfo {
 	pub pk: [u8; 32],
@@ -55,6 +58,8 @@ pub struct MantaCoinPubInfo {
 	pub k: [u8; 32],
 }
 
+/// Information related to a coin that may __not__ be revealed,
+/// unless the coin is spend.
 #[derive(Encode, Decode, Default, Clone, PartialEq)]
 pub struct MantaCoinPrivInfo {
 	pub value: u64,
@@ -62,7 +67,7 @@ pub struct MantaCoinPrivInfo {
 	pub sn: [u8; 32],
 }
 
-/// make a coin from inputs
+/// Make a coin from inputs.
 #[allow(dead_code)]
 pub fn make_coin<R: RngCore + CryptoRng>(
 	commit_param: &CommitmentParam,
