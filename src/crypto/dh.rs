@@ -1,6 +1,6 @@
 //! This file implements Diffie-Hellman Key Agreement for value encryption
 //! TODO: maybe we should simply use ecies crate
-//! https://github.com/phayes/ecies-ed25519/
+//! <https://github.com/phayes/ecies-ed25519/>
 use aes::{
 	cipher::{BlockCipher, NewBlockCipher},
 	Aes256,
@@ -11,14 +11,17 @@ use rand_core::{CryptoRng, RngCore};
 use sha2::Sha512Trunc256;
 use x25519_dalek::{EphemeralSecret, PublicKey, StaticSecret};
 
-/// encrypt the value under receiver's public key
-/// steps:
-///     1. sample a random, ephermal field element: sender_x
-///     2. compute the grouple element sender_pk
+/// Encrypt the value under receiver's public key.
+///
+/// Steps:
+/// # <weight>
+///     1. sample a random, ephemeral field element: sender_x
+///     2. compute the group element sender_pk
 ///     3. compute the shared secret ss = receiver_pk^x
 ///     4. set aes_key = KDF("manta kdf instantiated with Sha512-256 hash function" | ss)
 ///     5. compute c = aes_enc(value.to_le_bytes(), aes_key)
-/// return (sender_pk, c)
+/// 	6. return (sender_pk, c)
+/// # </weight>
 #[allow(dead_code)]
 pub fn manta_dh_enc<R: RngCore + CryptoRng>(
 	receiver_pk_bytes: &[u8; 32],
@@ -45,12 +48,15 @@ pub fn manta_dh_enc<R: RngCore + CryptoRng>(
 	(sender_pk.to_bytes(), res)
 }
 
-/// decrypt the value under receiver's public key
-/// steps:
+/// Decrypt the value under receiver's public key.
+///
+/// # <weight>
+/// Steps:
 ///     1. compute the shared secret ss = sender_pk^receiver_sk
 ///     2. set aes_key = KDF("manta kdf instantiated with Sha512-256 hash function" | ss)
 ///     3. compute m = aes_dec(cipher, aes_key)
-/// return m as u64
+/// 	4. return m as u64
+/// # </weight>
 #[allow(dead_code)]
 pub fn manta_dh_dec(
 	cipher: &[u8; 16],
@@ -78,8 +84,9 @@ pub fn manta_dh_dec(
 }
 
 #[allow(dead_code)]
+// this function is a wrapper of hkdf-sha512: m = hkdf-extract(salt, seed)
+// with a fixed salt
 fn manta_kdf(input: &[u8]) -> [u8; 32] {
-	// now build the hkdf-sha512: m = hkdf-extract(salt, seed)
 	let salt = "manta kdf instantiated with Sha512-256 hash function";
 	let output = Hkdf::<Sha512Trunc256>::extract(Some(salt.as_ref()), input);
 	let mut res = [0u8; 32];

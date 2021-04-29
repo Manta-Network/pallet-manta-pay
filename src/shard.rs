@@ -1,14 +1,14 @@
 use crate::param::*;
 use frame_support::codec::{Decode, Encode};
 
-/// a shard is a list of commitment, and a merkle root of this list
+/// A shard is a list of commitment, and a merkle root of this list.
 #[derive(Encode, Debug, Decode, Clone, Default, PartialEq)]
 pub struct Shard {
 	pub list: Vec<[u8; 32]>,
 	pub root: [u8; 32],
 }
 
-/// a Shards is a list of shard-s
+/// A Shards is a list of Shard-s.
 #[derive(Encode, Debug, Decode, Clone, PartialEq)]
 pub struct Shards {
 	pub shard: [Shard; 256],
@@ -19,7 +19,7 @@ pub trait LedgerSharding {
 	type Root;
 	type Param;
 
-	/// root exists in thie current shards
+	/// root exists in the current shards
 	fn check_root(&self, target: &Self::Root) -> bool;
 
 	/// the commitment exists in the current shards
@@ -34,7 +34,7 @@ impl LedgerSharding for Shards {
 	type Root = [u8; 32];
 	type Param = HashParam;
 
-	// root exists in thie current shards
+	// root exists in the current shards
 	fn check_root(&self, target: &Self::Root) -> bool {
 		for shard in self.shard.iter() {
 			if shard.root == *target {

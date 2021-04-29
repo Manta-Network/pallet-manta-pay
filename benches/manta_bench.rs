@@ -32,14 +32,14 @@ fn bench_param_io(c: &mut Criterion) {
 	let bench_str = format!("hash param");
 	let bench = Benchmark::new(bench_str, move |b| {
 		b.iter(|| {
-			HashParam::deserialize(HASHPARAMBYTES.as_ref());
+			HashParam::deserialize(HASH_PARAM_BYTES.as_ref());
 		})
 	});
 
 	let bench_str = format!("commit param");
 	let bench = bench.with_function(bench_str, move |b| {
 		b.iter(|| {
-			CommitmentParam::deserialize(COMPARAMBYTES.as_ref());
+			CommitmentParam::deserialize(COMMIT_PARAM_BYTES.as_ref());
 		})
 	});
 
@@ -48,8 +48,8 @@ fn bench_param_io(c: &mut Criterion) {
 }
 
 fn bench_trasnfer_verify(c: &mut Criterion) {
-	let hash_param_seed = HASHPARAMSEED;
-	let commit_param_seed = COMMITPARAMSEED;
+	let hash_param_seed = HASH_PARAM_SEED;
+	let commit_param_seed = COMMIT_PARAM_SEED;
 
 	let mut rng = ChaCha20Rng::from_seed(commit_param_seed);
 	let commit_param = CommitmentScheme::setup(&mut rng).unwrap();
@@ -155,7 +155,7 @@ fn bench_trasnfer_verify(c: &mut Criterion) {
 	let bench = Benchmark::new(bench_str, move |b| {
 		b.iter(|| {
 			assert!(manta_verify_transfer_zkp(
-				TRANSFERVKBYTES.to_vec(),
+				TRANSFER_VKBYTES.to_vec(),
 				proof_bytes,
 				&sender_data_1,
 				&sender_data_2,
@@ -170,7 +170,7 @@ fn bench_trasnfer_verify(c: &mut Criterion) {
 }
 
 fn bench_merkle_tree(c: &mut Criterion) {
-	let hash_param_seed = HASHPARAMSEED;
+	let hash_param_seed = HASH_PARAM_SEED;
 	let mut rng = ChaCha20Rng::from_seed(hash_param_seed);
 	let hash_param = Hash::setup(&mut rng).unwrap();
 
@@ -219,7 +219,7 @@ fn bench_merkle_tree(c: &mut Criterion) {
 }
 
 fn bench_pedersen_com(c: &mut Criterion) {
-	let commit_param_seed = COMMITPARAMSEED;
+	let commit_param_seed = COMMIT_PARAM_SEED;
 	let mut rng = ChaCha20Rng::from_seed(commit_param_seed);
 	let param = CommitmentScheme::setup(&mut rng).unwrap();
 	let bench_str = format!("commit open");
@@ -234,7 +234,7 @@ fn bench_pedersen_com(c: &mut Criterion) {
 }
 
 fn bench_pedersen_hash(c: &mut Criterion) {
-	let hash_param_seed = COMMITPARAMSEED;
+	let hash_param_seed = COMMIT_PARAM_SEED;
 	let bench_str = format!("hash param gen");
 	let bench = Benchmark::new(bench_str, move |b| {
 		b.iter(|| {
@@ -247,8 +247,8 @@ fn bench_pedersen_hash(c: &mut Criterion) {
 }
 
 fn bench_transfer_prove(c: &mut Criterion) {
-	let hash_param_seed = HASHPARAMSEED;
-	let commit_param_seed = COMMITPARAMSEED;
+	let hash_param_seed = HASH_PARAM_SEED;
+	let commit_param_seed = COMMIT_PARAM_SEED;
 
 	let mut rng = ChaCha20Rng::from_seed(commit_param_seed);
 	let commit_param = CommitmentScheme::setup(&mut rng).unwrap();

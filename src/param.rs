@@ -12,21 +12,22 @@ use ark_ed_on_bls12_381::{constraints::EdwardsVar, EdwardsParameters, EdwardsPro
 use ark_groth16::Groth16;
 use ark_r1cs_std::{fields::fp::FpVar, groups::curves::twisted_edwards::AffineVar};
 
-pub const ZKPPARAMSEED: [u8; 32] = [3u8; 32];
-pub const HASHPARAMSEED: [u8; 32] = [1u8; 32];
-pub const COMMITPARAMSEED: [u8; 32] = [2u8; 32];
+/// The seed that is used to generate ZKP parameters
+pub const ZK_PPARAM_SEED: [u8; 32] = [3u8; 32];
+/// The seed that is used to generate hash parameters
+pub const HASH_PARAM_SEED: [u8; 32] = [1u8; 32];
+/// The seed that is used to generate commitment parameters
+pub const COMMIT_PARAM_SEED: [u8; 32] = [2u8; 32];
 
 //=======================
-// pedersen hash and related defintions
+// pedersen hash and related definitions
 // the hash function is defined over the JubJub curve
 //=======================
 pub(crate) const PERDERSON_WINDOW_SIZE: usize = 4;
 pub(crate) const PERDERSON_WINDOW_NUM: usize = 256;
 
-// #leaves = 2^{height - 1}
-#[allow(dead_code)]
-const MAX_ACC: usize = 1048576;
-const MAX_ACC_TREE_DEPTH: usize = 21;
+/// The depth of the merkle tree.
+const TREE_DEPTH: usize = 21;
 
 #[derive(Clone)]
 pub struct PedersenWindow;
@@ -40,26 +41,33 @@ pub(crate) type HashOutput = <Hash as FixedLengthCRH>::Output;
 pub type HashParam = <Hash as FixedLengthCRH>::Parameters;
 
 //=======================
-// merkle tree for the ledger, using Perderson hash
+// Merkle tree for the ledger, using Perdersen hash
 //=======================
+/// Manta's parameters for the Merkle tree.
 #[derive(Debug, Clone, Copy)]
 pub struct MerkleTreeParams;
 impl Config for MerkleTreeParams {
-	const HEIGHT: usize = MAX_ACC_TREE_DEPTH;
+	const HEIGHT: usize = TREE_DEPTH;
 	type H = Hash;
 }
+
+/// A merkle tree that is instantiated with Manta parameters.
 pub type LedgerMerkleTree = MerkleTree<MerkleTreeParams>;
-#[allow(dead_code)]
+/// The root of the tree.
 pub type LedgerMerkleTreeRoot = Digest<MerkleTreeParams>;
 
-// the membership is a path on the merkle tree, including the leaf itself
+/// The membership is a path on the merkle tree, including the leaf itself.
+/// It can be used to verify that a leaf is indeed on a tree.
 #[allow(dead_code)]
 pub type AccountMembership = Path<MerkleTreeParams>;
 
 //=======================
 // Commitments
 //=======================
+
+/// Perdersen commitment, instantiated with `ed_on_bls_12_381` curve and a `window` parameter.
 pub type CommitmentScheme = Commitment<EdwardsProjective, PedersenWindow>;
+/// The `window` parameter for the Perdersen commitment scheme.
 pub type CommitmentParam = <CommitmentScheme as ArkCommitmentScheme>::Parameters;
 #[allow(dead_code)]
 pub(crate) type CommitmentOpen = <CommitmentScheme as ArkCommitmentScheme>::Randomness;
@@ -77,12 +85,13 @@ pub(crate) type AccountMembershipVar = PathVar<MerkleTreeParams, HashVar, Fq>;
 //=======================
 // ZK proofs over BLS curve
 //=======================
-#[allow(dead_code)]
+/// Proving key for the ZKP system.
 pub type Groth16PK = <Groth16<Bls12_381> as SNARK<Fq>>::ProvingKey;
-#[allow(dead_code)]
+/// Processed verification key for the ZKP system
 pub type Groth16PVK = <Groth16<Bls12_381> as SNARK<Fq>>::ProcessedVerifyingKey;
-#[allow(dead_code)]
+/// Verification key for the ZKP system
 pub type Groth16VK = <Groth16<Bls12_381> as SNARK<Fq>>::VerifyingKey;
+/// Proofs for the ZKP system
 pub type Groth16Proof = <Groth16<Bls12_381> as SNARK<Fq>>::Proof;
 
 //=======================

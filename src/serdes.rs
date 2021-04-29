@@ -6,20 +6,25 @@ use ark_std::io::{Read, Write};
 use blake2::{Blake2s, Digest};
 use sp_std::vec::Vec;
 
+/// Manta's native (de)serialization trait.
 pub trait MantaSerDes {
+	/// Serialize a struct into a writable blob.
 	fn serialize<W: Write>(&self, writer: W);
+	/// Deserialize a readable data into a struct.
 	fn deserialize<R: Read>(reader: R) -> Self;
 }
 
+/// Manta's native checksum trait.
 pub trait Checksum {
+	/// Generate a unique checksum for a give data struct.
 	fn get_checksum(&self) -> [u8; 32];
 }
 
 impl MantaSerDes for crh::pedersen::Parameters<EdwardsProjective> {
 	/// serialize the hash parameters without compression
 	fn serialize<W: Write>(&self, mut writer: W) {
-		for generaters in self.generators.iter() {
-			for gen in generaters {
+		for generators in self.generators.iter() {
+			for gen in generators {
 				gen.serialize_uncompressed(&mut writer).unwrap()
 			}
 		}
@@ -47,10 +52,10 @@ impl MantaSerDes for crh::pedersen::Parameters<EdwardsProjective> {
 }
 
 impl MantaSerDes for commitment::pedersen::Parameters<EdwardsProjective> {
-	/// serialize the commitment parameters without compression
+	/// Serialize the commitment parameters without data compression.
 	fn serialize<W: Write>(&self, mut writer: W) {
-		for generaters in self.generators.iter() {
-			for gen in generaters {
+		for generators in self.generators.iter() {
+			for gen in generators {
 				gen.serialize_uncompressed(&mut writer).unwrap()
 			}
 		}
@@ -60,8 +65,8 @@ impl MantaSerDes for commitment::pedersen::Parameters<EdwardsProjective> {
 	}
 
 	/// This function deserialize the hash parameters.
-	/// warning: for efficiency reasons, we do not check the validity of deserialized elements
-	/// the caller should check the CheckSum of the parameters to make sure
+	/// __Warning__: for efficiency reasons, we do not check the validity of deserialized elements.
+	/// The caller should check the CheckSum of the parameters to make sure
 	/// they are consistent with the version used by the ledger.
 	fn deserialize<R: Read>(mut reader: R) -> Self {
 		let window = PERDERSON_WINDOW_SIZE;
@@ -89,14 +94,14 @@ impl MantaSerDes for commitment::pedersen::Parameters<EdwardsProjective> {
 }
 
 impl MantaSerDes for MintData {
-	/// serialize the mint data into an array of 96 bytes
+	/// Serialize the mint data into an array of 96 bytes.
 	fn serialize<W: Write>(&self, mut writer: W) {
 		writer.write_all(&self.cm).unwrap();
 		writer.write_all(&self.k).unwrap();
 		writer.write_all(&self.s).unwrap();
 	}
 
-	/// deserialize an array of 96 bytes into a MintData
+	/// Deserialize an array of 96 bytes into a MintData.
 	fn deserialize<R: Read>(mut reader: R) -> Self {
 		let mut data = MintData::default();
 		reader.read_exact(&mut data.cm).unwrap();
@@ -107,14 +112,14 @@ impl MantaSerDes for MintData {
 }
 
 impl MantaSerDes for SenderData {
-	/// serialize the sender data into an array of 64 bytes
+	/// Serialize the sender data into an array of 64 bytes.
 	fn serialize<W: Write>(&self, mut writer: W) {
 		writer.write_all(&self.k).unwrap();
 		writer.write_all(&self.sn).unwrap();
 		writer.write_all(&self.root).unwrap();
 	}
 
-	/// deserialize an array of 64 bytes into a SenderData
+	/// Deserialize an array of 64 bytes into a SenderData.
 	fn deserialize<R: Read>(mut reader: R) -> Self {
 		let mut data = SenderData::default();
 		reader.read_exact(&mut data.k).unwrap();
@@ -125,14 +130,14 @@ impl MantaSerDes for SenderData {
 }
 
 impl MantaSerDes for ReceiverData {
-	/// serialize the receiver data into an array of 80 bytes
+	/// Serialize the receiver data into an array of 80 bytes.
 	fn serialize<W: Write>(&self, mut writer: W) {
 		writer.write_all(&self.k).unwrap();
 		writer.write_all(&self.cm).unwrap();
 		writer.write_all(&self.cipher).unwrap();
 	}
 
-	/// deserialize an array of 80 bytes into a receiver data
+	/// Deserialize an array of 80 bytes into a receiver data.
 	fn deserialize<R: Read>(mut reader: R) -> Self {
 		let mut data = ReceiverData::default();
 		reader.read_exact(&mut data.k).unwrap();

@@ -11,17 +11,22 @@ use ark_serialize::CanonicalDeserialize;
 use ark_std::vec::Vec;
 
 // =============================
-// circuit for the following statements
-// 1. both sender's and receiver's coins are well-formed
-//  1.1 k = com(pk||rho, r)
-//  1.2 cm = com(v||k, s)
-// where both k and cm are public
-// 2. address and the secret key derives public key
-//  sender.pk = PRF(sender_sk, [0u8;32])
-// 3. sender's commitment is in List_all
-//  NOTE: we de not need to prove that sender's sn is not in List_used
-//        this can be done in the public
-// 4. sender's and receiver's value are the same
+/// ZK circuit for the __transfer__ statements.
+/// # <weight>
+/// 1. both sender's coins are well-formed:
+///  * `k = com(pk||rho, r)`
+///  * `cm = com(v||k, s)`
+/// where k is public.
+/// 2. both receiver's coins are well-formed
+///  * `cm = com(v||k, s)`
+/// where k and cm are both public.
+/// 3. address and the secret key derives public key:
+///  `sender.pk = PRF(sender_sk, [0u8;32])`
+/// 4. sender's commitment is in CMList.
+///  NOTE: we de not need to prove that sender's sn is not in VNList
+///        this can be done in the public.
+/// 5. sender's and receiver's combined values are the same.
+/// # </weight>
 // =============================
 #[derive(Clone)]
 pub struct TransferCircuit {
@@ -55,6 +60,8 @@ pub struct TransferCircuit {
 }
 
 impl ConstraintSynthesizer<Fq> for TransferCircuit {
+	/// Input a circuit, build the corresponding constraint system, and
+	/// add it to `cs`.
 	fn generate_constraints(self, cs: ConstraintSystemRef<Fq>) -> Result<(), SynthesisError> {
 		// 1. both sender's and receiver's coins are well-formed
 		//  k = com(pk||rho, r)
@@ -215,7 +222,7 @@ pub(crate) fn sender_token_well_formed_circuit_helper(
 		input_var.push(UInt8::new_witness(cs.clone(), || Ok(*byte)).unwrap());
 	}
 
-	// openning
+	// opening
 	let r = Fr::deserialize(pub_info.r.as_ref()).unwrap();
 	let r = Randomness::<EdwardsProjective>(r);
 	let randomness_var = MantaCoinCommitmentOpenVar::new_witness(
@@ -228,7 +235,7 @@ pub(crate) fn sender_token_well_formed_circuit_helper(
 	let result_var =
 		CommitmentSchemeVar::commit(&parameters_var, &input_var, &randomness_var).unwrap();
 
-	// circuit to compare the commited value with supplied value
+	// circuit to compare the committed value with supplied value
 	let k = CommitmentOutput::deserialize(pub_info.k.as_ref()).unwrap();
 	let commitment_var2 = MantaCoinCommitmentOutputVar::new_input(
 		ark_relations::ns!(cs, "gadget_commitment"),
@@ -246,7 +253,7 @@ pub(crate) fn sender_token_well_formed_circuit_helper(
 		input_var.push(UInt8::new_witness(cs.clone(), || Ok(*byte)).unwrap());
 	}
 
-	// openning
+	// opening
 	let s = Randomness::<EdwardsProjective>(Fr::deserialize(pub_info.s.as_ref()).unwrap());
 	let randomness_var = MantaCoinCommitmentOpenVar::new_witness(
 		ark_relations::ns!(cs, "gadget_randomness"),
@@ -267,7 +274,7 @@ pub(crate) fn sender_token_well_formed_circuit_helper(
 	)
 	.unwrap();
 
-	// circuit to compare the commited value with supplied value
+	// circuit to compare the committed value with supplied value
 	result_var.enforce_equal(&commitment_var2).unwrap();
 }
 
@@ -293,7 +300,7 @@ pub(crate) fn receiver_token_well_formed_circuit_helper(
 		input_var.push(UInt8::new_witness(cs.clone(), || Ok(*byte)).unwrap());
 	}
 
-	// openning
+	// opening
 	let s = Randomness::<EdwardsProjective>(Fr::deserialize(s.as_ref()).unwrap());
 	let randomness_var = MantaCoinCommitmentOpenVar::new_witness(
 		ark_relations::ns!(cs, "gadget_randomness"),
@@ -314,11 +321,11 @@ pub(crate) fn receiver_token_well_formed_circuit_helper(
 	)
 	.unwrap();
 
-	// circuit to compare the commited value with supplied value
+	// circuit to compare the committed value with supplied value
 	result_var.enforce_equal(&commitment_var2).unwrap();
 }
 
-/// a helper function to generate the prf circuit
+/// A helper function to generate the prf circuit
 ///     sender.pk = PRF(sender_sk, [0u8;32])
 ///     sender.sn = PRF(sender_sk, rho)
 /// the output pk is hidden, while sn can be public

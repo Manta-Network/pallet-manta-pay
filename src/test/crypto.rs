@@ -13,8 +13,8 @@ use x25519_dalek::{PublicKey, StaticSecret};
 /// this is a local test on zero knowledge proof generation and verifications
 #[test]
 fn test_transfer_zkp_local() {
-	let hash_param = HashParam::deserialize(HASHPARAMBYTES.as_ref());
-	let commit_param = CommitmentParam::deserialize(COMPARAMBYTES.as_ref());
+	let hash_param = HashParam::deserialize(HASH_PARAM_BYTES.as_ref());
+	let commit_param = CommitmentParam::deserialize(COMMIT_PARAM_BYTES.as_ref());
 
 	let mut rng = ChaCha20Rng::from_seed([3u8; 32]);
 
@@ -289,8 +289,8 @@ fn test_transfer_helper(
 /// this is a local test on zero knowledge proof generation and verifications
 #[test]
 fn test_reclaim_zkp_local() {
-	let hash_param = HashParam::deserialize(HASHPARAMBYTES.as_ref());
-	let commit_param = CommitmentParam::deserialize(COMPARAMBYTES.as_ref());
+	let hash_param = HashParam::deserialize(HASH_PARAM_BYTES.as_ref());
+	let commit_param = CommitmentParam::deserialize(COMMIT_PARAM_BYTES.as_ref());
 
 	let mut rng = ChaCha20Rng::from_seed([3u8; 32]);
 
