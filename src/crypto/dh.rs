@@ -1,13 +1,10 @@
 //! This file implements Diffie-Hellman Key Agreement for value encryption
 //! TODO: maybe we should simply use ecies crate
 //! <https://github.com/phayes/ecies-ed25519/>
-use aes::{
-	cipher::{BlockCipher, NewBlockCipher},
-	Aes256,
-};
+use aes::{cipher::NewBlockCipher, Aes256, BlockDecrypt, BlockEncrypt};
 use generic_array::GenericArray;
 use hkdf::Hkdf;
-use rand_core::{CryptoRng, RngCore};
+use rand::{CryptoRng, RngCore};
 use sha2::Sha512Trunc256;
 use x25519_dalek::{EphemeralSecret, PublicKey, StaticSecret};
 

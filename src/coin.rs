@@ -9,7 +9,7 @@ use ark_ff::UniformRand;
 use ark_serialize::CanonicalSerialize;
 use ark_std::vec::Vec;
 use frame_support::codec::{Decode, Encode};
-use rand_core::{CryptoRng, RngCore};
+use rand::{CryptoRng, RngCore};
 
 /// Input data to a mint function.
 #[derive(Encode, Debug, Decode, Clone, Default, PartialEq)]
