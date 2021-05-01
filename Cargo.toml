@@ -50,8 +50,8 @@ ark-relations = { version = "0.2.0", default-features = false }
 ark-serialize = { version = "0.2.0", default-features = false }
 
 # Additional cryptography dependencies
-rand = { version = "0.7", default-features = false }
-rand_core =  { version = "0.5", default-features = false }
+rand = { version = "0.8", default-features = false }
+# rand_core =  { version = "0.5", default-features = false }
 rand_chacha = { version = "0.2", default-features = false }
 
 hkdf = { version = "0.11", default-features = false }

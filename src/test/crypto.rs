@@ -6,7 +6,7 @@ use ark_ff::ToConstraintField;
 use ark_groth16::{create_random_proof, generate_random_parameters, verify_proof};
 use ark_relations::r1cs::{ConstraintSynthesizer, ConstraintSystem};
 use ark_serialize::CanonicalDeserialize;
-use rand::{RngCore, SeedableRng};
+use ark_std::rand::{RngCore, SeedableRng};
 use rand_chacha::ChaCha20Rng;
 use x25519_dalek::{PublicKey, StaticSecret};
 
@@ -204,7 +204,7 @@ fn test_transfer_zkp_local() {
 fn test_transfer_helper(
 	commit_param: CommitmentParam,
 	hash_param: HashParam,
-	pk: &Groth16PK,
+	pk: &Groth16Pk,
 	sender_1: (MantaCoin, MantaCoinPubInfo, MantaCoinPrivInfo),
 	sender_2: (MantaCoin, MantaCoinPubInfo, MantaCoinPrivInfo),
 	receiver_1: (MantaCoin, MantaCoinPubInfo, MantaCoinPrivInfo),
@@ -282,7 +282,7 @@ fn test_transfer_helper(
 		mr.as_ref(),
 	]
 	.concat();
-	let pvk = param::Groth16PVK::from(pk.vk.clone());
+	let pvk = param::Groth16Pvk::from(pk.vk.clone());
 	assert!(verify_proof(&pvk, &proof, &inputs[..]).unwrap());
 }
 
@@ -464,7 +464,7 @@ fn test_reclaim_zkp_local() {
 fn test_reclaim_helper(
 	commit_param: CommitmentParam,
 	hash_param: HashParam,
-	pk: &Groth16PK,
+	pk: &Groth16Pk,
 	sender_1: (MantaCoin, MantaCoinPubInfo, MantaCoinPrivInfo),
 	sender_2: (MantaCoin, MantaCoinPubInfo, MantaCoinPrivInfo),
 	receiver: (MantaCoin, MantaCoinPubInfo, MantaCoinPrivInfo),
@@ -539,14 +539,15 @@ fn test_reclaim_helper(
 		&[reclaim_value_fq],
 	]
 	.concat();
-	let pvk = param::Groth16PVK::from(pk.vk.clone());
+	let pvk = param::Groth16Pvk::from(pk.vk.clone());
 	assert!(verify_proof(&pvk, &proof, &inputs[..]).unwrap());
 }
 
 #[test]
 fn manta_dh() {
-	let mut rng = rand::thread_rng();
-	let receiver_sk = StaticSecret::new(rng);
+	let seed = [1u8; 32];
+	let mut rng = ChaCha20Rng::from_seed(seed);
+	let receiver_sk = StaticSecret::new(rng.clone());
 	let receiver_pk = PublicKey::from(&receiver_sk);
 	let receiver_pk_bytes = receiver_pk.to_bytes();
 	let receiver_sk_bytes = receiver_sk.to_bytes();

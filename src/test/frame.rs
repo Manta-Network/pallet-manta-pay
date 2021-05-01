@@ -1,14 +1,14 @@
 use crate as pallet_manta_pay;
 use crate::{
 	coin::*,
-	param::{Groth16PK, Groth16VK},
+	param::{Groth16Pk, Groth16Vk},
 	serdes::*,
 	*,
 };
 use ark_groth16::create_random_proof;
 use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
+use ark_std::rand::{RngCore, SeedableRng};
 use frame_support::{assert_noop, assert_ok, parameter_types};
-use rand::{RngCore, SeedableRng};
 use rand_chacha::ChaCha20Rng;
 use sp_core::H256;
 use sp_runtime::{
@@ -290,9 +290,9 @@ fn transfer_test_helper(iter: usize) {
 	let mut file = File::open("transfer_pk.bin").unwrap();
 	let mut transfer_key_bytes: Vec<u8> = vec![];
 	file.read_to_end(&mut transfer_key_bytes).unwrap();
-	let pk = Groth16PK::deserialize_unchecked(transfer_key_bytes.as_ref()).unwrap();
+	let pk = Groth16Pk::deserialize_unchecked(transfer_key_bytes.as_ref()).unwrap();
 	let vk_bytes = TransferZKPKey::get();
-	let vk = Groth16VK::deserialize(vk_bytes.as_ref()).unwrap();
+	let vk = Groth16Vk::deserialize(vk_bytes.as_ref()).unwrap();
 	assert_eq!(pk.vk, vk);
 
 	let mut rng = ChaCha20Rng::from_seed([3u8; 32]);
@@ -500,9 +500,9 @@ fn reclaim_test_helper(iter: usize) {
 	let mut file = File::open("reclaim_pk.bin").unwrap();
 	let mut reclaim_pk_bytes: Vec<u8> = vec![];
 	file.read_to_end(&mut reclaim_pk_bytes).unwrap();
-	let pk = Groth16PK::deserialize_unchecked(reclaim_pk_bytes.as_ref()).unwrap();
+	let pk = Groth16Pk::deserialize_unchecked(reclaim_pk_bytes.as_ref()).unwrap();
 	let vk_bytes = ReclaimZKPKey::get();
-	let vk = Groth16VK::deserialize(vk_bytes.as_ref()).unwrap();
+	let vk = Groth16Vk::deserialize(vk_bytes.as_ref()).unwrap();
 	assert_eq!(pk.vk, vk);
 
 	for i in 0usize..iter {

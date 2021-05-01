@@ -365,7 +365,7 @@ decl_module! {
 					&sender_data_2,
 					&receiver_data_1,
 					&receiver_data_2),
-				<Error<T>>::ZKPFail,
+				<Error<T>>::ZkpFail,
 			);
 
 			// TODO: revisit replay attack here
@@ -470,7 +470,7 @@ decl_module! {
 					&sender_data_1,
 					&sender_data_2,
 					&receiver_data),
-				<Error<T>>::ZKPFail,
+				<Error<T>>::ZkpFail,
 			);
 
 			// TODO: revisit replay attack here
@@ -532,7 +532,7 @@ decl_error! {
 		/// MantaCoin already spend
 		MantaCoinSpent,
 		/// ZKP verification failed
-		ZKPFail,
+		ZkpFail,
 		/// invalid ledger state
 		InvalidLedgerState,
 		/// Pool overdrawn

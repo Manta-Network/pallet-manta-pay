@@ -12,9 +12,8 @@ use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
 use criterion::{Benchmark, Criterion};
 use data_encoding::BASE64;
 use pallet_manta_pay::*;
-use rand::SeedableRng;
+use ark_std::rand::{RngCore, SeedableRng};
 use rand_chacha::ChaCha20Rng;
-use rand_core::RngCore;
 use std::{fs::File, io::prelude::*};
 
 criterion_group!(
@@ -61,7 +60,7 @@ fn bench_trasnfer_verify(c: &mut Criterion) {
 	let mut transfer_key_bytes: Vec<u8> = vec![];
 	file.read_to_end(&mut transfer_key_bytes).unwrap();
 
-	let pk = Groth16PK::deserialize_unchecked(transfer_key_bytes.as_ref()).unwrap();
+	let pk = Groth16Pk::deserialize_unchecked(transfer_key_bytes.as_ref()).unwrap();
 
 	println!("proving key loaded from disk");
 
@@ -260,7 +259,7 @@ fn bench_transfer_prove(c: &mut Criterion) {
 	let mut transfer_key_bytes: Vec<u8> = vec![];
 	file.read_to_end(&mut transfer_key_bytes).unwrap();
 
-	let pk = Groth16PK::deserialize_unchecked(transfer_key_bytes.as_ref()).unwrap();
+	let pk = Groth16Pk::deserialize_unchecked(transfer_key_bytes.as_ref()).unwrap();
 
 	println!("proving key loaded from disk");
 
