@@ -247,7 +247,6 @@ dependencies = [
  "ark-ff",
  "ark-std",
  "tracing",
- "tracing-subscriber",
 ]
 
 [[package]]
@@ -993,6 +992,7 @@ dependencies = [
  "frame-support",
  "impl-trait-for-tuples",
  "parity-scale-codec",
+ "serde",
  "sp-core",
  "sp-io",
  "sp-runtime",
@@ -2537,7 +2537,9 @@ version = "3.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "dbeffa538a13d715d30e01d57a2636ba32845b737a29a3ea32403576588222e7"
 dependencies = [
+ "impl-serde",
  "parity-scale-codec",
+ "serde",
  "sp-runtime",
  "sp-std",
 ]

@@ -82,6 +82,7 @@
 
 // Ensure we're `no_std` when compiling for Wasm.
 #![cfg_attr(not(feature = "std"), no_std)]
+#![no_std]
 
 extern crate ark_crypto_primitives;
 extern crate ark_ed_on_bls12_381;
@@ -105,6 +106,9 @@ mod shard;
 
 #[cfg(test)]
 mod test;
+#[cfg(test)]
+#[macro_use]
+extern crate std;
 
 pub use coin::*;
 pub use constants::{COMMIT_PARAM_BYTES, HASH_PARAM_BYTES, RECLAIM_VKBYTES, TRANSFER_VKBYTES};
