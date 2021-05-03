@@ -1,13 +1,10 @@
 //! This file implements Diffie-Hellman Key Agreement for value encryption
 //! TODO: maybe we should simply use ecies crate
 //! <https://github.com/phayes/ecies-ed25519/>
-use aes::{
-	cipher::{BlockCipher, NewBlockCipher},
-	Aes256,
-};
+use aes::{cipher::NewBlockCipher, Aes256, BlockDecrypt, BlockEncrypt};
+use ark_std::rand::{CryptoRng, RngCore};
 use generic_array::GenericArray;
 use hkdf::Hkdf;
-use rand_core::{CryptoRng, RngCore};
 use sha2::Sha512Trunc256;
 use x25519_dalek::{EphemeralSecret, PublicKey, StaticSecret};
 
@@ -20,7 +17,7 @@ use x25519_dalek::{EphemeralSecret, PublicKey, StaticSecret};
 ///     3. compute the shared secret ss = receiver_pk^x
 ///     4. set aes_key = KDF("manta kdf instantiated with Sha512-256 hash function" | ss)
 ///     5. compute c = aes_enc(value.to_le_bytes(), aes_key)
-/// 	6. return (sender_pk, c)
+///     6. return (sender_pk, c)
 /// # </weight>
 #[allow(dead_code)]
 pub fn manta_dh_enc<R: RngCore + CryptoRng>(

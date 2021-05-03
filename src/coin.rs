@@ -7,9 +7,11 @@ use ark_crypto_primitives::{
 use ark_ed_on_bls12_381::Fr;
 use ark_ff::UniformRand;
 use ark_serialize::CanonicalSerialize;
-use ark_std::vec::Vec;
+use ark_std::{
+	rand::{CryptoRng, RngCore},
+	vec::Vec,
+};
 use frame_support::codec::{Decode, Encode};
-use rand_core::{CryptoRng, RngCore};
 
 /// Input data to a mint function.
 #[derive(Encode, Debug, Decode, Clone, Default, PartialEq)]

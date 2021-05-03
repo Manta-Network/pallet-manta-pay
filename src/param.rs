@@ -86,11 +86,11 @@ pub(crate) type AccountMembershipVar = PathVar<MerkleTreeParams, HashVar, Fq>;
 // ZK proofs over BLS curve
 //=======================
 /// Proving key for the ZKP system.
-pub type Groth16PK = <Groth16<Bls12_381> as SNARK<Fq>>::ProvingKey;
+pub type Groth16Pk = <Groth16<Bls12_381> as SNARK<Fq>>::ProvingKey;
 /// Processed verification key for the ZKP system
-pub type Groth16PVK = <Groth16<Bls12_381> as SNARK<Fq>>::ProcessedVerifyingKey;
+pub type Groth16Pvk = <Groth16<Bls12_381> as SNARK<Fq>>::ProcessedVerifyingKey;
 /// Verification key for the ZKP system
-pub type Groth16VK = <Groth16<Bls12_381> as SNARK<Fq>>::VerifyingKey;
+pub type Groth16Vk = <Groth16<Bls12_381> as SNARK<Fq>>::VerifyingKey;
 /// Proofs for the ZKP system
 pub type Groth16Proof = <Groth16<Bls12_381> as SNARK<Fq>>::Proof;
 

@@ -9,12 +9,11 @@ use ark_ed_on_bls12_381::{Fq, Fr};
 use ark_groth16::create_random_proof;
 use ark_relations::r1cs::{ConstraintSynthesizer, ConstraintSystem};
 use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
+use ark_std::rand::{RngCore, SeedableRng};
 use criterion::{Benchmark, Criterion};
 use data_encoding::BASE64;
 use pallet_manta_pay::*;
-use rand::SeedableRng;
 use rand_chacha::ChaCha20Rng;
-use rand_core::RngCore;
 use std::{fs::File, io::prelude::*};
 
 criterion_group!(
@@ -60,8 +59,8 @@ fn bench_trasnfer_verify(c: &mut Criterion) {
 	let mut file = File::open("transfer_pk.bin").unwrap();
 	let mut transfer_key_bytes: Vec<u8> = vec![];
 	file.read_to_end(&mut transfer_key_bytes).unwrap();
-
-	let pk = Groth16PK::deserialize_unchecked(transfer_key_bytes.as_ref()).unwrap();
+	let buf: &[u8] = transfer_key_bytes.as_ref();
+	let pk = Groth16Pk::deserialize_unchecked(buf).unwrap();
 
 	println!("proving key loaded from disk");
 
@@ -259,8 +258,8 @@ fn bench_transfer_prove(c: &mut Criterion) {
 	let mut file = File::open("transfer_pk.bin").unwrap();
 	let mut transfer_key_bytes: Vec<u8> = vec![];
 	file.read_to_end(&mut transfer_key_bytes).unwrap();
-
-	let pk = Groth16PK::deserialize_unchecked(transfer_key_bytes.as_ref()).unwrap();
+	let buf: &[u8] = transfer_key_bytes.as_ref();
+	let pk = Groth16Pk::deserialize_unchecked(buf).unwrap();
 
 	println!("proving key loaded from disk");
 
