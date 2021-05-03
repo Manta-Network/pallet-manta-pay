@@ -55,6 +55,8 @@ blake2 = { version = "0.9.1", default-features = false }
 # benchmarking 
 bencher = "0.1.5"
 criterion = "0.2"
+
+# testing
 serde = { default-features = false, version = '1' }
 sp-core = { default-features = false, version = '3.0.0' }
 sp-io = { default-features = false, version = '3.0.0' }
@@ -72,5 +74,4 @@ std = [
 	"ark-bls12-381/curve",
 	"sp-runtime/std",
 	"frame-support/std",
-	"frame-system/std",
 ]
