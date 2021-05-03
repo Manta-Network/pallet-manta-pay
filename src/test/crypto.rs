@@ -566,7 +566,8 @@ fn test_param_serdes() {
 	let mut buf: Vec<u8> = vec![];
 
 	hash_param.serialize(&mut buf);
-	let hash_param2 = HashParam::deserialize(buf.as_ref());
+	let buf: &[u8] = buf.as_ref();
+	let hash_param2 = HashParam::deserialize(buf);
 	assert_eq!(hash_param.generators, hash_param2.generators);
 
 	let commit_param_seed = [2u8; 32];
@@ -575,7 +576,8 @@ fn test_param_serdes() {
 	let mut buf: Vec<u8> = vec![];
 
 	commit_param.serialize(&mut buf);
-	let commit_param2 = CommitmentParam::deserialize(buf.as_ref());
+	let buf: &[u8] = buf.as_ref();
+	let commit_param2 = CommitmentParam::deserialize(buf);
 	assert_eq!(commit_param.generators, commit_param2.generators);
 	assert_eq!(
 		commit_param.randomness_generator,

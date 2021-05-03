@@ -1,4 +1,5 @@
 use crate::param::*;
+use ark_std::vec::Vec;
 use frame_support::codec::{Decode, Encode};
 
 /// A shard is a list of commitment, and a merkle root of this list.

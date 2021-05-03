@@ -2,9 +2,11 @@ use crate::{coin::*, param::*};
 use ark_crypto_primitives::{commitment, crh};
 use ark_ed_on_bls12_381::EdwardsProjective;
 use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
-use ark_std::io::{Read, Write};
+use ark_std::{
+	io::{Read, Write},
+	vec::Vec,
+};
 use blake2::{Blake2s, Digest};
-use sp_std::vec::Vec;
 
 /// Manta's native (de)serialization trait.
 pub trait MantaSerDes {

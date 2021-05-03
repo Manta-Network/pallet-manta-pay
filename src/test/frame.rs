@@ -290,9 +290,11 @@ fn transfer_test_helper(iter: usize) {
 	let mut file = File::open("transfer_pk.bin").unwrap();
 	let mut transfer_key_bytes: Vec<u8> = vec![];
 	file.read_to_end(&mut transfer_key_bytes).unwrap();
-	let pk = Groth16Pk::deserialize_unchecked(transfer_key_bytes.as_ref()).unwrap();
+	let buf: &[u8] = transfer_key_bytes.as_ref();
+	let pk = Groth16Pk::deserialize_unchecked(buf).unwrap();
 	let vk_bytes = TransferZKPKey::get();
-	let vk = Groth16Vk::deserialize(vk_bytes.as_ref()).unwrap();
+	let buf: &[u8] = vk_bytes.as_ref();
+	let vk = Groth16Vk::deserialize(buf).unwrap();
 	assert_eq!(pk.vk, vk);
 
 	let mut rng = ChaCha20Rng::from_seed([3u8; 32]);
@@ -500,9 +502,11 @@ fn reclaim_test_helper(iter: usize) {
 	let mut file = File::open("reclaim_pk.bin").unwrap();
 	let mut reclaim_pk_bytes: Vec<u8> = vec![];
 	file.read_to_end(&mut reclaim_pk_bytes).unwrap();
-	let pk = Groth16Pk::deserialize_unchecked(reclaim_pk_bytes.as_ref()).unwrap();
+	let buf: &[u8] = reclaim_pk_bytes.as_ref();
+	let pk = Groth16Pk::deserialize_unchecked(buf).unwrap();
 	let vk_bytes = ReclaimZKPKey::get();
-	let vk = Groth16Vk::deserialize(vk_bytes.as_ref()).unwrap();
+	let buf: &[u8] = vk_bytes.as_ref();
+	let vk = Groth16Vk::deserialize(buf).unwrap();
 	assert_eq!(pk.vk, vk);
 
 	for i in 0usize..iter {
