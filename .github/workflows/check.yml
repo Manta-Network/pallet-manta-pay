@@ -57,5 +57,5 @@ jobs:
           cargo check --release
       - name: Run Tests
         run: |
-        cargo run --release --bin param_gen
-        cargo test --release
+          cargo run --release --bin param_gen
+          cargo test --release
