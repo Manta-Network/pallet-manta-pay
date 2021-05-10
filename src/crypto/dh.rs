@@ -52,7 +52,7 @@ pub fn manta_dh_enc<R: RngCore + CryptoRng>(
 ///     1. compute the shared secret ss = sender_pk^receiver_sk
 ///     2. set aes_key = KDF("manta kdf instantiated with Sha512-256 hash function" | ss)
 ///     3. compute m = aes_dec(cipher, aes_key)
-/// 	4. return m as u64
+///     4. return m as u64
 /// # </weight>
 #[allow(dead_code)]
 pub fn manta_dh_dec(
