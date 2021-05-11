@@ -114,6 +114,7 @@ pub use coin::*;
 pub use constants::{COMMIT_PARAM_BYTES, HASH_PARAM_BYTES, RECLAIM_VKBYTES, TRANSFER_VKBYTES};
 pub use param::*;
 pub use serdes::MantaSerDes;
+pub use shard::{Shard, Shards};
 
 // TODO: this interface is only exposed for benchmarking
 // use a feature gate to control this expose
@@ -124,7 +125,7 @@ use ark_std::vec::Vec;
 use frame_support::{decl_error, decl_event, decl_module, decl_storage, ensure};
 use frame_system::ensure_signed;
 use serdes::Checksum;
-use shard::*;
+use shard::LedgerSharding;
 use sp_runtime::traits::{StaticLookup, Zero};
 
 /// The module configuration trait.
