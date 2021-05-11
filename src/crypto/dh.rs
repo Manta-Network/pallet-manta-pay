@@ -10,8 +10,8 @@ use x25519_dalek::{EphemeralSecret, PublicKey, StaticSecret};
 
 /// Encrypt the value under receiver's public key.
 ///
-/// Steps:
 /// # <weight>
+/// Steps:
 ///     1. sample a random, ephemeral field element: sender_x
 ///     2. compute the group element sender_pk
 ///     3. compute the shared secret ss = receiver_pk^x
