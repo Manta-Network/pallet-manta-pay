@@ -56,10 +56,10 @@
 //!
 //! ### Dispatchable Functions
 //!
-//! * `issue` - Issues the total supply of a new fungible asset to the account of the caller of the function.
-//! * `transfer` - Transfers an `amount` of units of fungible asset `id` from the balance of
+//! * `init_asset` - Issues the total supply of a new fungible asset to the account of the caller of the function.
+//! * `transfer_asset` - Transfers an `amount` of units of fungible asset `id` from the balance of
 //! the function caller's account (`origin`) to a `target` account.
-//! * `mint_asset` - Converting an `amount` of units of fungible asset `id` from the caller to a private UTXO.
+//! * `mint_private_asset` - Converting an `amount` of units of fungible asset `id` from the caller to a private UTXO.
 //! (The caller does not need to be the owner of this UTXO)
 //!	* `private_transfer` - Transfer two input UTXOs into two output UTXOs. Require that 1) the input UTXOs are
 //! already in the ledger and are not spend before 2) the sum of private assets in input UTXOs matches that
