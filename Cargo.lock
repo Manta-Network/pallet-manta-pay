@@ -1030,21 +1030,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "frame-system-benchmarking"
-version = "3.0.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e93602f58cdab9820b6d607b7b50834d9b878efa33405a65c89ebfb5a596b584"
-dependencies = [
- "frame-benchmarking",
- "frame-support",
- "frame-system",
- "parity-scale-codec",
- "sp-core",
- "sp-runtime",
- "sp-std",
-]
-
-[[package]]
 name = "fuchsia-cprng"
 version = "0.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1701,7 +1686,6 @@ dependencies = [
  "frame-benchmarking",
  "frame-support",
  "frame-system",
- "frame-system-benchmarking",
  "generic-array 0.14.4",
  "hkdf",
  "parity-scale-codec",
