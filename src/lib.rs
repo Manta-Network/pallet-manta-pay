@@ -16,7 +16,7 @@
 
 //! # Manta pay Module
 //!
-//! A simple, secure module for manta anonymous payment
+//! A simple, secure module for manta pay: an anonymous transfer protocol
 //!
 //! ## Overview
 //!
@@ -25,9 +25,11 @@
 //!
 //! * Asset Issuance
 //! * Asset Transfer
+//! * Private Asset Mint
+//! * Private Asset Transfer
+//! * Private Asset Reclaim
 //!
-//!
-//! To use it in your runtime, you need to implement the assets [`Trait`](./trait.Trait.html).
+//! To use it in your runtime, you need to implement the assets [`Config`](./config.Config.html).
 //!
 //! The supported dispatchable functions are documented in the [`Call`](./enum.Call.html) enum.
 //!
@@ -35,12 +37,20 @@
 //!
 //! * **Asset issuance:** The creation of the asset (note: this asset can only be created once)
 //! * **Asset transfer:** The action of transferring assets from one account to another.
-//! * **Asset destruction:** The process of an account removing its entire holding of an asset.
+//! * **Private asset mint:** The action of converting certain number of `Asset`s into an UTXO
+//! that holds same number of private assets.
+//! * **Private asset transfer:** The action of transferring certain number of private assets from
+//! two UTXOs to another two UTXOs.
+//! * **Private asset reclaim:** The action of transferring certain number of private assets from
+//!	two UTXOs to another UTXO, and converting the remaining private assets back to public
+//! assets.
 //!
-//! The assets system in Substrate is designed to make the following possible:
+//! The assets system in Manta is designed to make the following possible:
 //!
-//! * Issue a unique asset to its creator's account.
-//! * Move assets between accounts.
+//! * Issue a public asset to its creator's account.
+//! * Move public assets between accounts.
+//! * Converting public assets to private assets, and vice versa.
+//! * Move private assets between accounts (in UTXO model).
 //!
 //! ## Interface
 //!
@@ -49,16 +59,25 @@
 //! * `issue` - Issues the total supply of a new fungible asset to the account of the caller of the function.
 //! * `transfer` - Transfers an `amount` of units of fungible asset `id` from the balance of
 //! the function caller's account (`origin`) to a `target` account.
-//! * `destroy` - Destroys the entire holding of a fungible asset `id` associated with the account
-//! that called the function.
+//! * `mint_asset` - Converting an `amount` of units of fungible asset `id` from the caller to a private UTXO.
+//! (The caller does not need to be the owner of this UTXO)
+//!	* `private_transfer` - Transfer two input UTXOs into two output UTXOs. Require that 1) the input UTXOs are
+//! already in the ledger and are not spend before 2) the sum of private assets in input UTXOs matches that
+//! of the output UTXOs. The requirements are guaranteed via ZK proof.
+//! * `reclaim` - Transfer two input UTXOs into one output UTXOs, and convert the remaining assets to the
+//! public assets. Require that 1) the input UTXOs are already in the ledger and are not spend before; 2) the
+//! sum of private assets in input UTXOs matches that of the output UTXO + the reclaimed amount. The
+//! requirements are guaranteed via ZK proof.
 //!
-//! Please refer to the [`Call`](./enum.Call.html) enum and its associated variants for documentation on each function.
+//! Please refer to the [`Call`](./enum.Call.html) enum and its associated variants for documentation on each
+//! function.
 //!
 //! ### Public Functions
 //! <!-- Original author of descriptions: @gavofyork -->
 //!
 //! * `balance` - Get the asset balance of `who`.
 //! * `total_supply` - Get the total supply of an asset `id`.
+//! * `pool_balance` - Get the total number of private asset.
 //!
 //! Please refer to the [`Module`](./struct.Module.html) struct for details on publicly available functions.
 //!
@@ -69,6 +88,7 @@
 //! * Initiate the fungible asset for a token distribution event (airdrop).
 //! * Query the fungible asset holding balance of an account.
 //! * Query the total supply of a fungible asset that has been issued.
+//! * Query the total number of private fungible asset that has been minted and not reclaimed.
 //!
 //! ### Prerequisites
 //!
@@ -82,18 +102,6 @@
 // Ensure we're `no_std` when compiling for Wasm.
 #![cfg_attr(not(feature = "std"), no_std)]
 #![no_std]
-
-extern crate ark_crypto_primitives;
-extern crate ark_ed_on_bls12_381;
-extern crate ark_groth16;
-extern crate ark_r1cs_std;
-extern crate ark_relations;
-extern crate ark_serialize;
-extern crate ark_std;
-extern crate blake2;
-extern crate generic_array;
-extern crate rand_chacha;
-extern crate x25519_dalek;
 
 mod benchmark;
 mod coin;
