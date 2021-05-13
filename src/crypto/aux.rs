@@ -14,7 +14,8 @@
 // You should have received a copy of the GNU General Public License
 // along with pallet-manta-pay.  If not, see <http://www.gnu.org/licenses/>.
 
-use crate::{ark_serialize::CanonicalSerialize, param::*};
+use ark_serialize::CanonicalSerialize;
+use crate::param::*;
 use ark_crypto_primitives::{
 	commitment::pedersen::Randomness, CommitmentScheme as ArkCommitmentScheme,
 };

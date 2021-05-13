@@ -83,19 +83,7 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 #![no_std]
 
-extern crate ark_crypto_primitives;
-extern crate ark_ed_on_bls12_381;
-extern crate ark_groth16;
-extern crate ark_r1cs_std;
-extern crate ark_relations;
-extern crate ark_serialize;
-extern crate ark_std;
-extern crate blake2;
-extern crate generic_array;
-extern crate rand_chacha;
-extern crate x25519_dalek;
-
-mod benchmark;
+// mod benchmark;
 mod coin;
 mod constants;
 mod crypto;
