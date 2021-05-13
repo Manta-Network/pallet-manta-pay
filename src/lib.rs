@@ -149,7 +149,7 @@ decl_module! {
 		/// - 1 event.
 		/// # </weight>
 		#[weight = 0]
-		fn init(origin, total: u64) {
+		fn init_asset(origin, total: u64) {
 
 			ensure!(!Self::is_init(), <Error<T>>::AlreadyInitialized);
 			let origin = ensure_signed(origin)?;
@@ -201,7 +201,7 @@ decl_module! {
 		/// - 1 event.
 		/// # </weight>
 		#[weight = 0]
-		fn transfer(origin,
+		fn transfer_asset(origin,
 			target: <T::Lookup as StaticLookup>::Source,
 			amount: u64
 		) {
@@ -220,7 +220,7 @@ decl_module! {
 
 		/// Given an amount, and relevant data, mint the token to the ledger
 		#[weight = 0]
-		fn mint(origin,
+		fn mint_private_asset(origin,
 			amount: u64,
 			input_data: [u8; 96]
 		) {
@@ -289,7 +289,7 @@ decl_module! {
 		/// make sure that this transaction is valid.
 		/// Neither the values nor the identities is leaked during this process.
 		#[weight = 0]
-		fn manta_transfer(origin,
+		fn private_transfer(origin,
 			sender_data_1: [u8; 96],
 			sender_data_2: [u8; 96],
 			receiver_data_1: [u8; 80],

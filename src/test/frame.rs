@@ -95,7 +95,7 @@ fn new_test_ext() -> sp_io::TestExternalities {
 #[test]
 fn test_constants_should_work() {
 	new_test_ext().execute_with(|| {
-		assert_ok!(Assets::init(Origin::signed(1), 100));
+		assert_ok!(Assets::init_asset(Origin::signed(1), 100));
 		assert_eq!(Assets::balance(1), 100);
 		let hash_param = HashParam::deserialize(HASH_PARAM_BYTES.as_ref());
 		let commit_param = CommitmentParam::deserialize(COMMIT_PARAM_BYTES.as_ref());
@@ -111,7 +111,7 @@ fn test_constants_should_work() {
 #[test]
 fn test_mint_should_work() {
 	new_test_ext().execute_with(|| {
-		assert_ok!(Assets::init(Origin::signed(1), 1000));
+		assert_ok!(Assets::init_asset(Origin::signed(1), 1000));
 		assert_eq!(Assets::balance(1), 1000);
 		assert_eq!(PoolBalance::get(), 0);
 		let commit_param = CommitmentParam::deserialize(COMMIT_PARAM_BYTES.as_ref());
@@ -126,7 +126,7 @@ fn test_mint_should_work() {
 				.as_ref(),
 		);
 
-		assert_ok!(Assets::mint(Origin::signed(1), 10, mint_data));
+		assert_ok!(Assets::mint_private_asset(Origin::signed(1), 10, mint_data));
 
 		assert_eq!(TotalSupply::get(), 1000);
 		assert_eq!(PoolBalance::get(), 10);
@@ -162,7 +162,7 @@ fn test_reclaim_should_work_super_long() {
 #[test]
 fn issuing_asset_units_to_issuer_should_work() {
 	new_test_ext().execute_with(|| {
-		assert_ok!(Assets::init(Origin::signed(1), 100));
+		assert_ok!(Assets::init_asset(Origin::signed(1), 100));
 		assert_eq!(Assets::balance(1), 100);
 	});
 }
@@ -170,12 +170,12 @@ fn issuing_asset_units_to_issuer_should_work() {
 #[test]
 fn querying_total_supply_should_work() {
 	new_test_ext().execute_with(|| {
-		assert_ok!(Assets::init(Origin::signed(1), 100));
+		assert_ok!(Assets::init_asset(Origin::signed(1), 100));
 		assert_eq!(Assets::balance(1), 100);
-		assert_ok!(Assets::transfer(Origin::signed(1), 2, 50));
+		assert_ok!(Assets::transfer_asset(Origin::signed(1), 2, 50));
 		assert_eq!(Assets::balance(1), 50);
 		assert_eq!(Assets::balance(2), 50);
-		assert_ok!(Assets::transfer(Origin::signed(2), 3, 31));
+		assert_ok!(Assets::transfer_asset(Origin::signed(2), 3, 31));
 		assert_eq!(Assets::balance(1), 50);
 		assert_eq!(Assets::balance(2), 19);
 		assert_eq!(Assets::balance(3), 31);
@@ -186,9 +186,9 @@ fn querying_total_supply_should_work() {
 #[test]
 fn transferring_amount_above_available_balance_should_work() {
 	new_test_ext().execute_with(|| {
-		assert_ok!(Assets::init(Origin::signed(1), 100));
+		assert_ok!(Assets::init_asset(Origin::signed(1), 100));
 		assert_eq!(Assets::balance(1), 100);
-		assert_ok!(Assets::transfer(Origin::signed(1), 2, 50));
+		assert_ok!(Assets::transfer_asset(Origin::signed(1), 2, 50));
 		assert_eq!(Assets::balance(1), 50);
 		assert_eq!(Assets::balance(2), 50);
 	});
@@ -197,13 +197,13 @@ fn transferring_amount_above_available_balance_should_work() {
 #[test]
 fn transferring_amount_more_than_available_balance_should_not_work() {
 	new_test_ext().execute_with(|| {
-		assert_ok!(Assets::init(Origin::signed(1), 100));
+		assert_ok!(Assets::init_asset(Origin::signed(1), 100));
 		assert_eq!(Assets::balance(1), 100);
-		assert_ok!(Assets::transfer(Origin::signed(1), 2, 50));
+		assert_ok!(Assets::transfer_asset(Origin::signed(1), 2, 50));
 		assert_eq!(Assets::balance(1), 50);
 		assert_eq!(Assets::balance(2), 50);
 		assert_noop!(
-			Assets::transfer(Origin::signed(1), 1, 60),
+			Assets::transfer_asset(Origin::signed(1), 1, 60),
 			Error::<Test>::BalanceLow
 		);
 	});
@@ -212,10 +212,10 @@ fn transferring_amount_more_than_available_balance_should_not_work() {
 #[test]
 fn transferring_less_than_one_unit_should_not_work() {
 	new_test_ext().execute_with(|| {
-		assert_ok!(Assets::init(Origin::signed(1), 100));
+		assert_ok!(Assets::init_asset(Origin::signed(1), 100));
 		assert_eq!(Assets::balance(1), 100);
 		assert_noop!(
-			Assets::transfer(Origin::signed(1), 2, 0),
+			Assets::transfer_asset(Origin::signed(1), 2, 0),
 			Error::<Test>::AmountZero
 		);
 	});
@@ -224,10 +224,10 @@ fn transferring_less_than_one_unit_should_not_work() {
 #[test]
 fn transferring_more_units_than_total_supply_should_not_work() {
 	new_test_ext().execute_with(|| {
-		assert_ok!(Assets::init(Origin::signed(1), 100));
+		assert_ok!(Assets::init_asset(Origin::signed(1), 100));
 		assert_eq!(Assets::balance(1), 100);
 		assert_noop!(
-			Assets::transfer(Origin::signed(1), 2, 101),
+			Assets::transfer_asset(Origin::signed(1), 2, 101),
 			Error::<Test>::BalanceLow
 		);
 	});
@@ -236,7 +236,7 @@ fn transferring_more_units_than_total_supply_should_not_work() {
 #[test]
 fn destroying_asset_balance_with_positive_balance_should_work() {
 	new_test_ext().execute_with(|| {
-		assert_ok!(Assets::init(Origin::signed(1), 100));
+		assert_ok!(Assets::init_asset(Origin::signed(1), 100));
 		assert_eq!(Assets::balance(1), 100);
 	});
 }
@@ -244,9 +244,9 @@ fn destroying_asset_balance_with_positive_balance_should_work() {
 #[test]
 fn cannot_init_twice() {
 	new_test_ext().execute_with(|| {
-		assert_ok!(Assets::init(Origin::signed(1), 100));
+		assert_ok!(Assets::init_asset(Origin::signed(1), 100));
 		assert_noop!(
-			Assets::init(Origin::signed(1), 100),
+			Assets::init_asset(Origin::signed(1), 100),
 			Error::<Test>::AlreadyInitialized
 		);
 	});
@@ -280,7 +280,11 @@ fn mint_tokens(size: usize) -> Vec<(MantaCoin, MantaCoinPubInfo, MantaCoinPrivIn
 		);
 
 		// mint a sender token
-		assert_ok!(Assets::mint(Origin::signed(1), token_value, mint_data));
+		assert_ok!(Assets::mint_private_asset(
+			Origin::signed(1),
+			token_value,
+			mint_data
+		));
 
 		pool += token_value;
 
@@ -295,7 +299,7 @@ fn mint_tokens(size: usize) -> Vec<(MantaCoin, MantaCoinPubInfo, MantaCoinPrivIn
 
 fn transfer_test_helper(iter: usize) {
 	// setup
-	assert_ok!(Assets::init(Origin::signed(1), 10_000_000));
+	assert_ok!(Assets::init_asset(Origin::signed(1), 10_000_000));
 	assert_eq!(Assets::balance(1), 10_000_000);
 	assert_eq!(PoolBalance::get(), 0);
 
@@ -461,7 +465,7 @@ fn transfer_test_helper(iter: usize) {
 			.as_ref(),
 		);
 		// invoke the transfer event
-		assert_ok!(Assets::manta_transfer(
+		assert_ok!(Assets::private_transfer(
 			Origin::signed(1),
 			sender_data_1,
 			sender_data_2,
@@ -500,7 +504,7 @@ fn transfer_test_helper(iter: usize) {
 
 fn reclaim_test_helper(iter: usize) {
 	// setup
-	assert_ok!(Assets::init(Origin::signed(1), 10_000_000));
+	assert_ok!(Assets::init_asset(Origin::signed(1), 10_000_000));
 	assert_eq!(Assets::balance(1), 10_000_000);
 	assert_eq!(PoolBalance::get(), 0);
 
