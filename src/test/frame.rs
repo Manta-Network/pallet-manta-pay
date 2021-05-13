@@ -280,7 +280,11 @@ fn mint_tokens(size: usize) -> Vec<(MantaCoin, MantaCoinPubInfo, MantaCoinPrivIn
 		);
 
 		// mint a sender token
-		assert_ok!(Assets::mint_private_asset(Origin::signed(1), token_value, mint_data));
+		assert_ok!(Assets::mint_private_asset(
+			Origin::signed(1),
+			token_value,
+			mint_data
+		));
 
 		pool += token_value;
 
