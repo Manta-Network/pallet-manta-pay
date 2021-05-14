@@ -65,10 +65,8 @@ name = "manta_bench"
 harness = false
 
 [features]
-default = [ "std" ]
 runtime-benchmarks = [
-	'frame-benchmarking/std',	
-	'sp-std/std',
+	'frame-benchmarking',	
 ]
 
 std = [
