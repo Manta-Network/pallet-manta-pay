@@ -14,13 +14,12 @@
 // You should have received a copy of the GNU General Public License
 // along with pallet-manta-pay.  If not, see <http://www.gnu.org/licenses/>.
 
-use ark_serialize::CanonicalSerialize;
 use crate::param::*;
 use ark_crypto_primitives::{
 	commitment::pedersen::Randomness, CommitmentScheme as ArkCommitmentScheme,
 };
 use ark_ed_on_bls12_381::Fr;
-use ark_serialize::CanonicalDeserialize;
+use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
 
 pub(crate) fn comm_open(
 	com_param: &CommitmentParam,

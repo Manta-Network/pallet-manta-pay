@@ -19,17 +19,18 @@
 #![cfg(feature = "runtime-benchmarks")]
 
 use super::*;
-use data_encoding::BASE64;
-use frame_benchmarking::{account, benchmarks, whitelisted_caller};
+// use data_encoding::BASE64;
+use frame_benchmarking::{benchmarks, whitelisted_caller};
 use frame_system::RawOrigin;
-use sp_std::{boxed::Box, vec};
-const SEED: u32 = 0;
+// use sp_std::{boxed::Box, vec};
+// const SEED: u32 = 0;
+// use ark_std::primitive::str;
 
 benchmarks! {
 
 	init {
 		let caller: T::AccountId = whitelisted_caller();
-	}: init (RawOrigin::Signed(caller.clone()), 1000)
+	}: init_asset (RawOrigin::Signed(caller.clone()), 1000)
 	verify {
 		assert_eq!(
 			<TotalSupply>::get(), 1000
