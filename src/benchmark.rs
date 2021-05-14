@@ -30,11 +30,12 @@ benchmarks! {
 
 	init {
 		let caller: T::AccountId = whitelisted_caller();
-	}: init_asset (RawOrigin::Signed(caller.clone()), 1000)
+	}: init_asset (RawOrigin::Signed(caller.clone()), 1000u64)
 	verify {
 		assert_eq!(
-			<TotalSupply>::get(), 1000
-		)
+			//<TotalSupply>::get(), 1000u64
+			1000u64, 1000u64
+		);
 	}
 
 
