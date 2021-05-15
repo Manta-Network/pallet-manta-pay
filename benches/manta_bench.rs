@@ -46,7 +46,6 @@ criterion_main!(manta_bench);
 fn bench_param_io(c: &mut Criterion) {
 	let mut bench_group = c.benchmark_group("param deserialization");
 
-
 	let bench_str = format!("hash param");
 	bench_group.bench_function(bench_str, move |b| {
 		b.iter(|| {
@@ -169,7 +168,6 @@ fn bench_trasnfer_verify(c: &mut Criterion) {
 	println!("start benchmarking proof verification");
 	let mut bench_group = c.benchmark_group("private transfer");
 
-
 	let bench_str = format!("ZKP verification");
 	bench_group.bench_function(bench_str, move |b| {
 		b.iter(|| {
@@ -201,9 +199,7 @@ fn bench_merkle_tree(c: &mut Criterion) {
 	let hash_param_clone = hash_param.clone();
 	let bench_str = format!("with 1 leaf");
 
-
 	let mut bench_group = c.benchmark_group("merkle tree");
-
 
 	bench_group.bench_function(bench_str, move |b| {
 		b.iter(|| {
