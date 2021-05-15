@@ -26,7 +26,7 @@ use ark_groth16::create_random_proof;
 use ark_relations::r1cs::{ConstraintSynthesizer, ConstraintSystem};
 use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
 use ark_std::rand::{RngCore, SeedableRng};
-use criterion::{Benchmark, Criterion};
+use criterion::Criterion;
 use data_encoding::BASE64;
 use pallet_manta_pay::*;
 use rand_chacha::ChaCha20Rng;
@@ -44,22 +44,23 @@ criterion_group!(
 criterion_main!(manta_bench);
 
 fn bench_param_io(c: &mut Criterion) {
+	let mut bench_group = c.benchmark_group("param deserialization");
+
+
 	let bench_str = format!("hash param");
-	let bench = Benchmark::new(bench_str, move |b| {
+	bench_group.bench_function(bench_str, move |b| {
 		b.iter(|| {
 			HashParam::deserialize(HASH_PARAM_BYTES.as_ref());
 		})
 	});
 
 	let bench_str = format!("commit param");
-	let bench = bench.with_function(bench_str, move |b| {
+	bench_group.bench_function(bench_str, move |b| {
 		b.iter(|| {
 			CommitmentParam::deserialize(COMMIT_PARAM_BYTES.as_ref());
 		})
 	});
-
-	// let bench = bench.sample_size(10);
-	c.bench("deserialization", bench);
+	bench_group.finish();
 }
 
 fn bench_trasnfer_verify(c: &mut Criterion) {
@@ -166,8 +167,11 @@ fn bench_trasnfer_verify(c: &mut Criterion) {
 	};
 
 	println!("start benchmarking proof verification");
+	let mut bench_group = c.benchmark_group("private transfer");
+
+
 	let bench_str = format!("ZKP verification");
-	let bench = Benchmark::new(bench_str, move |b| {
+	bench_group.bench_function(bench_str, move |b| {
 		b.iter(|| {
 			assert!(manta_verify_transfer_zkp(
 				TRANSFER_VKBYTES.to_vec(),
@@ -180,8 +184,7 @@ fn bench_trasnfer_verify(c: &mut Criterion) {
 		})
 	});
 
-	// let bench = bench.sample_size(10);
-	c.bench("transfer", bench);
+	bench_group.finish();
 }
 
 fn bench_merkle_tree(c: &mut Criterion) {
@@ -197,7 +200,12 @@ fn bench_merkle_tree(c: &mut Criterion) {
 
 	let hash_param_clone = hash_param.clone();
 	let bench_str = format!("with 1 leaf");
-	let bench = Benchmark::new(bench_str, move |b| {
+
+
+	let mut bench_group = c.benchmark_group("merkle tree");
+
+
+	bench_group.bench_function(bench_str, move |b| {
 		b.iter(|| {
 			merkle_root(hash_param_clone.clone(), &[cm_bytes1]);
 		})
@@ -211,7 +219,7 @@ fn bench_merkle_tree(c: &mut Criterion) {
 
 	let hash_param_clone = hash_param.clone();
 	let bench_str = format!("with 2 leaf");
-	let bench = bench.with_function(bench_str, move |b| {
+	bench_group.bench_function(bench_str, move |b| {
 		b.iter(|| {
 			merkle_root(hash_param_clone.clone(), &[cm_bytes1, cm_bytes2]);
 		})
@@ -224,13 +232,13 @@ fn bench_merkle_tree(c: &mut Criterion) {
 	cm_bytes3.copy_from_slice(cm_vec[0..32].as_ref());
 
 	let bench_str = format!("with 3 leaf");
-	let bench = bench.with_function(bench_str, move |b| {
+	bench_group.bench_function(bench_str, move |b| {
 		b.iter(|| {
 			merkle_root(hash_param.clone(), &[cm_bytes1, cm_bytes2, cm_bytes3]);
 		})
 	});
 
-	c.bench("merkle_tree", bench);
+	bench_group.finish();
 }
 
 fn bench_pedersen_com(c: &mut Criterion) {
@@ -238,27 +246,30 @@ fn bench_pedersen_com(c: &mut Criterion) {
 	let mut rng = ChaCha20Rng::from_seed(commit_param_seed);
 	let param = CommitmentScheme::setup(&mut rng).unwrap();
 	let bench_str = format!("commit open");
-	let bench = Benchmark::new(bench_str, move |b| {
+
+	let mut bench_group = c.benchmark_group("perdersen");
+	bench_group.bench_function(bench_str, move |b| {
 		b.iter(|| {
 			let open = Randomness(Fr::deserialize([0u8; 32].as_ref()).unwrap());
 			CommitmentScheme::commit(&param, [0u8; 32].as_ref(), &open).unwrap()
 		})
 	});
 
-	c.bench("perdersen", bench);
+	bench_group.finish()
 }
 
 fn bench_pedersen_hash(c: &mut Criterion) {
 	let hash_param_seed = COMMIT_PARAM_SEED;
 	let bench_str = format!("hash param gen");
-	let bench = Benchmark::new(bench_str, move |b| {
+	let mut bench_group = c.benchmark_group("perdersen");
+	bench_group.bench_function(bench_str, move |b| {
 		b.iter(|| {
 			let mut rng = ChaCha20Rng::from_seed(hash_param_seed);
 			Hash::setup(&mut rng).unwrap();
 		})
 	});
 
-	c.bench("perdersen", bench);
+	bench_group.finish()
 }
 
 fn bench_transfer_prove(c: &mut Criterion) {
@@ -328,14 +339,14 @@ fn bench_transfer_prove(c: &mut Criterion) {
 		receiver_s_2: receiver_2.1.s,
 		receiver_value_2: receiver_2.2.value,
 	};
-
+	let mut bench_group = c.benchmark_group("private transfer");
+	bench_group.sample_size(10);
 	let bench_str = format!("ZKP proof generation");
-	let bench = Benchmark::new(bench_str, move |b| {
+	bench_group.bench_function(bench_str, move |b| {
 		b.iter(|| {
 			create_random_proof(circuit.clone(), &pk, &mut rng).unwrap();
 		})
 	});
 
-	let bench = bench.sample_size(10);
-	c.bench("transfer", bench);
+	bench_group.finish();
 }
