@@ -106,7 +106,7 @@ benchmarks! {
 	}
 
 
-	manta_transfer {
+	private_transfer {
 		let caller: T::AccountId = whitelisted_caller();
 		let origin: T::Origin = T::Origin::from(RawOrigin::Signed(caller.clone()));
 		<Balances<T>>::insert(&caller, 1000);
@@ -231,14 +231,14 @@ mod tests {
 	#[test]
 	fn mint_asset() {
 		ExtBuilder::default().build().execute_with(|| {
-			assert_ok!(test_benchmark_mint_asset::<Test>());
+			assert_ok!(test_benchmark_mint_private_asset::<Test>());
 		});
 	}
 
 	#[test]
 	fn manta_transfer() {
 		ExtBuilder::default().build().execute_with(|| {
-			assert_ok!(test_benchmark_manta_transfer::<Test>());
+			assert_ok!(test_benchmark_private_transfer::<Test>());
 		});
 	}
 
