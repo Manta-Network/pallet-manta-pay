@@ -11,11 +11,7 @@ readme = "README.md"
 [package.metadata.docs.rs]
 targets = ["x86_64-unknown-linux-gnu"]
 
-[build-dependencies]
-# substrate-wasm-builder = { version = '4.0.0', default-features = false }
-
 [dependencies]
-
 # Substrate dependencies
 frame-support = { default-features = false, version = '3.0.0' }
 frame-system = { default-features = false, version = '3.0.0' }
