@@ -57,7 +57,7 @@ fn benchmark_helper<T: Config>(sender: T::Origin) {
 
 benchmarks! {
 
-	init {
+	init_asset {
 		let caller: T::AccountId = whitelisted_caller();
 	}: init_asset (RawOrigin::Signed(caller.clone()), 1000u64)
 	verify {
@@ -205,5 +205,47 @@ benchmarks! {
 	verify {
 		assert_eq!(TotalSupply::get(), 1000);
 		assert_eq!(PoolBalance::get(), 30);
+	}
+}
+
+#[cfg(test)]
+mod tests {
+	use super::*;
+	use crate::bench_composite::{ExtBuilder, Test};
+	use frame_support::assert_ok;
+
+	#[test]
+	fn init() {
+		ExtBuilder::default().build().execute_with(|| {
+			assert_ok!(test_benchmark_init_asset::<Test>());
+		});
+	}
+
+	#[test]
+	fn transfer_asset() {
+		ExtBuilder::default().build().execute_with(|| {
+			assert_ok!(test_benchmark_transfer_asset::<Test>());
+		});
+	}
+
+	#[test]
+	fn mint_asset() {
+		ExtBuilder::default().build().execute_with(|| {
+			assert_ok!(test_benchmark_mint_asset::<Test>());
+		});
+	}
+
+	#[test]
+	fn manta_transfer() {
+		ExtBuilder::default().build().execute_with(|| {
+			assert_ok!(test_benchmark_manta_transfer::<Test>());
+		});
+	}
+
+	#[test]
+	fn reclaim() {
+		ExtBuilder::default().build().execute_with(|| {
+			assert_ok!(test_benchmark_reclaim::<Test>());
+		});
 	}
 }
