@@ -15,7 +15,6 @@ targets = ["x86_64-unknown-linux-gnu"]
 # substrate-wasm-builder = { version = '4.0.0', default-features = false }
 
 [dependencies]
-serde = { version = "1.0.101", optional = true }
 
 # Substrate dependencies
 frame-support = { default-features = false, version = '3.0.0' }
@@ -74,7 +73,6 @@ runtime-benchmarks = [
 ]
 
 std = [
-	"serde",
 	"codec/std",
 	"sp-std/std",
 	"sp-runtime/std",
