@@ -243,7 +243,7 @@ fn bench_pedersen_com(c: &mut Criterion) {
 	let param = CommitmentScheme::setup(&mut rng).unwrap();
 	let bench_str = format!("commit open");
 
-	let mut bench_group = c.benchmark_group("perdersen");
+	let mut bench_group = c.benchmark_group("bench_pedersen_com");
 	bench_group.bench_function(bench_str, move |b| {
 		b.iter(|| {
 			let open = Randomness(Fr::deserialize([0u8; 32].as_ref()).unwrap());
@@ -257,7 +257,7 @@ fn bench_pedersen_com(c: &mut Criterion) {
 fn bench_pedersen_hash(c: &mut Criterion) {
 	let hash_param_seed = COMMIT_PARAM_SEED;
 	let bench_str = format!("hash param gen");
-	let mut bench_group = c.benchmark_group("perdersen");
+	let mut bench_group = c.benchmark_group("bench_pedersen_hash");
 	bench_group.bench_function(bench_str, move |b| {
 		b.iter(|| {
 			let mut rng = ChaCha20Rng::from_seed(hash_param_seed);
