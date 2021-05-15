@@ -108,6 +108,8 @@ pub use shard::{Shard, Shards};
 #[allow(unused_imports)]
 pub use crypto::*;
 
+use sp_std::prelude::*;
+
 use ark_std::vec::Vec;
 use frame_support::{decl_error, decl_event, decl_module, decl_storage, ensure};
 use frame_system::ensure_signed;

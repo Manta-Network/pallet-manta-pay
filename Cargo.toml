@@ -15,11 +15,13 @@ targets = ["x86_64-unknown-linux-gnu"]
 # substrate-wasm-builder = { version = '4.0.0', default-features = false }
 
 [dependencies]
+serde = { version = "1.0.101", optional = true }
+
 # Substrate dependencies
 frame-support = { default-features = false, version = '3.0.0' }
 frame-system = { default-features = false, version = '3.0.0' }
 sp-runtime = { default-features = false, version = '3.0.0' }
-sp-std = { default-features = false, optional = true, version = '3.0.0' }
+sp-std = { default-features = false, version = '3.0.0' }
 
 frame-benchmarking = { default-features = false, version = '3.0.0', optional = true }
 
@@ -68,10 +70,11 @@ harness = false
 default = [ 'std' ]
 
 runtime-benchmarks = [
-	'frame-benchmarking',	
+	'frame-benchmarking',
 ]
 
 std = [
+	"serde",
 	"codec/std",
 	"sp-std/std",
 	"sp-runtime/std",
