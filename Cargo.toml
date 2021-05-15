@@ -42,7 +42,7 @@ ark-relations = { version = "0.2.0", default-features = false }
 ark-serialize = { version = "0.2.0", default-features = false, features = [ "derive" ] }
 
 # Additional cryptography dependencies
-rand_chacha = { version = "0.2", default-features = false }
+rand_chacha = { version = "0.2.0", default-features = false }
 
 hkdf = { version = "0.11", default-features = false }
 sha2 = { version = "0.9.3", default-features = false }
@@ -55,7 +55,7 @@ blake2 = { version = "0.9.1", default-features = false }
 [dev-dependencies]
 # benchmarking 
 bencher = "0.1.5"
-criterion = "0.2"
+criterion = "0.3.4"
 
 # testing
 serde = { default-features = false, version = '1' }

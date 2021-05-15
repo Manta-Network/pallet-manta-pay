@@ -20,11 +20,10 @@
 
 use super::*;
 // use data_encoding::BASE64;
+use ark_ff::vec;
+use ark_std::{boxed::Box, primitive::str};
 use frame_benchmarking::{benchmarks, whitelisted_caller};
 use frame_system::RawOrigin;
-use ark_ff::vec;
-use ark_std::boxed::Box;
-use ark_std::primitive::str;
 
 // const SEED: u32 = 0;
 
