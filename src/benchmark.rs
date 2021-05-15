@@ -82,7 +82,7 @@ benchmarks! {
 	}
 
 
-	mint_asset {
+	mint_private_asset {
 		let caller: T::AccountId = whitelisted_caller();
 		let origin: T::Origin = T::Origin::from(RawOrigin::Signed(caller.clone()));
 		<Balances<T>>::insert(&caller, 1000);
