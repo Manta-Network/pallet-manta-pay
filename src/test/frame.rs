@@ -17,7 +17,7 @@
 use crate as pallet_manta_pay;
 use crate::{
 	coin::*,
-	param::{Groth16Pk, Groth16Vk},
+	param::{Groth16Pk},
 	serdes::*,
 	*,
 };
@@ -312,10 +312,14 @@ fn transfer_test_helper(iter: usize) {
 	file.read_to_end(&mut transfer_key_bytes).unwrap();
 	let buf: &[u8] = transfer_key_bytes.as_ref();
 	let pk = Groth16Pk::deserialize_unchecked(buf).unwrap();
-	let vk_bytes = TransferZKPKey::get();
-	let buf: &[u8] = vk_bytes.as_ref();
-	let vk = Groth16Vk::deserialize_unchecked(buf).unwrap();
-	assert_eq!(pk.vk, vk);
+	let vk = pk.vk.clone();
+	let mut vk_bytes = Vec::new();
+	vk.serialize_uncompressed(&mut vk_bytes).unwrap();
+	let vk = VerificationKey{
+		data: vk_bytes,
+	};
+	let vk_checksum = TransferZKPKeyChecksum::get();
+	assert_eq!(vk.get_checksum(), vk_checksum);
 
 	let mut rng = ChaCha20Rng::from_seed([3u8; 32]);
 	let mut sk = [0u8; 32];
@@ -524,10 +528,14 @@ fn reclaim_test_helper(iter: usize) {
 	file.read_to_end(&mut reclaim_pk_bytes).unwrap();
 	let buf: &[u8] = reclaim_pk_bytes.as_ref();
 	let pk = Groth16Pk::deserialize_unchecked(buf).unwrap();
-	let vk_bytes = ReclaimZKPKey::get();
-	let buf: &[u8] = vk_bytes.as_ref();
-	let vk = Groth16Vk::deserialize_unchecked(buf).unwrap();
-	assert_eq!(pk.vk, vk);
+	let vk = pk.vk.clone();
+	let mut vk_bytes = Vec::new();
+	vk.serialize_uncompressed(&mut vk_bytes).unwrap();
+	let vk = VerificationKey{
+		data: vk_bytes,
+	};
+	let vk_checksum = ReclaimZKPKeyChecksum::get();
+	assert_eq!(vk.get_checksum(), vk_checksum);
 
 	for i in 0usize..iter {
 		let coin_shards = CoinShards::get();

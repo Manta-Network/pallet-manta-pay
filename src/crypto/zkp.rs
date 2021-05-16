@@ -14,12 +14,30 @@
 // You should have received a copy of the GNU General Public License
 // along with pallet-manta-pay.  If not, see <http://www.gnu.org/licenses/>.
 
-use crate::{coin::*, param::*};
+use crate::{coin::*, param::*, Checksum};
 use ark_ed_on_bls12_381::Fq;
 use ark_ff::ToConstraintField;
 use ark_groth16::verify_proof;
 use ark_serialize::CanonicalDeserialize;
 use ark_std::vec::Vec;
+use blake2::{Blake2s, Digest};
+use frame_support::codec::{Decode, Encode};
+
+#[derive(Encode, Debug, Decode, Clone, Default, PartialEq)]
+pub struct VerificationKey {
+	pub data: Vec<u8>,
+}
+
+impl Checksum for VerificationKey {
+	fn get_checksum(&self) -> [u8; 32] {
+		let mut hasher = Blake2s::new();
+		hasher.update(&self.data);
+		let digest = hasher.finalize();
+		let mut res = [0u8; 32];
+		res.copy_from_slice(digest.as_slice());
+		res
+	}
+}
 
 pub fn manta_verify_transfer_zkp(
 	transfer_key_bytes: Vec<u8>,

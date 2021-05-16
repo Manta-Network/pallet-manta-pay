@@ -110,8 +110,6 @@ pub use shard::{Shard, Shards};
 pub use crypto::*;
 
 use sp_std::prelude::*;
-
-use ark_serialize::CanonicalDeserialize;
 use ark_std::vec::Vec;
 use frame_support::{decl_error, decl_event, decl_module, decl_storage, ensure};
 use frame_system::ensure_signed;
@@ -165,8 +163,15 @@ decl_module! {
 			// for product we should use a MPC protocol to build the ZKP verification key
 			// and then deploy that vk
 			//
-			TransferZKPKey::put(TRANSFER_VKBYTES.to_vec());
-			ReclaimZKPKey::put(RECLAIM_VKBYTES.to_vec());
+			let transfer_key_digest = VerificationKey{
+				data: TRANSFER_VKBYTES.to_vec()
+			}.get_checksum();
+			TransferZKPKeyChecksum::put(transfer_key_digest);
+
+			let reclaim_key_digest = VerificationKey{
+				data: RECLAIM_VKBYTES.to_vec()
+			}.get_checksum();
+			ReclaimZKPKeyChecksum::put(reclaim_key_digest);
 
 			// coin_shards are a 256 lists of commitments
 			let coin_shards = Shards::default();
@@ -350,18 +355,26 @@ decl_module! {
 			coin_shards.update(&receiver_data_2.cm, hash_param);
 
 			// get the verification key from the ledger
-			let transfer_vk_bytes = TransferZKPKey::get();
+			let transfer_vk_checksum = TransferZKPKeyChecksum::get();
+			let transfer_vk = VerificationKey {
+				data: TRANSFER_VKBYTES.to_vec()
+			};
+
+			ensure!(
+				transfer_vk.get_checksum() == transfer_vk_checksum,
+				<Error<T>>::ZkpParamFail,
+			);
 
 			// check validity of zkp
 			ensure!(
 				crypto::manta_verify_transfer_zkp(
-					transfer_vk_bytes,
+					transfer_vk.data,
 					proof,
 					&sender_data_1,
 					&sender_data_2,
 					&receiver_data_1,
 					&receiver_data_2),
-				<Error<T>>::ZkpFail,
+				<Error<T>>::ZkpVerificationFail,
 			);
 
 			// TODO: revisit replay attack here
@@ -438,8 +451,14 @@ decl_module! {
 			let mut coin_shards = CoinShards::get();
 
 			// get the verification key from the ledger
-			let reclaim_vk_bytes = ReclaimZKPKey::get();
-
+			let reclaim_vk_checksum = ReclaimZKPKeyChecksum::get();
+			let reclaim_vk = VerificationKey{
+				data: RECLAIM_VKBYTES.to_vec(),
+			};
+			ensure!(
+				reclaim_vk.get_checksum() == reclaim_vk_checksum,
+				<Error<T>>::ZkpParamFail
+			);
 			// get the ledger state from the ledger
 			// and check the validity of the state
 			ensure!(
@@ -460,13 +479,13 @@ decl_module! {
 			// check validity of zkp
 			ensure!(
 				crypto::manta_verify_reclaim_zkp(
-					reclaim_vk_bytes,
+					reclaim_vk.data,
 					amount,
 					proof,
 					&sender_data_1,
 					&sender_data_2,
 					&receiver_data),
-				<Error<T>>::ZkpFail,
+				<Error<T>>::ZkpVerificationFail,
 			);
 
 			// TODO: revisit replay attack here
@@ -484,49 +503,6 @@ decl_module! {
 			PoolBalance::put(pool);
 			EncValueList::put(enc_value_list);
 			<Balances<T>>::insert(origin_account, origin_balance + amount);
-		}
-
-
-		/// This is a hook to benchmark runtime cost for loading keys
-		/// from the blockchain
-		#[weight = 0]
-		// #[cfg(features = "runtime-benchmarks")]
-		fn load_vk_keys(_origin)
-		{
-			// get the verification key from the ledger
-			let _transfer_vk_bytes = TransferZKPKey::get();
-		}
-
-
-				/// This is a hook to benchmark runtime cost for loading keys
-		/// from the blockchain
-		#[weight = 0]
-		// #[cfg(features = "runtime-benchmarks")]
-		fn load_and_des_vk_keys(_origin)
-		{
-			// get the verification key from the ledger
-			let transfer_vk_bytes = TransferZKPKey::get();
-			let vk = Groth16Vk::deserialize_unchecked(transfer_vk_bytes.as_ref()).unwrap();
-			let _pvk = Groth16Pvk::from(vk);
-		}
-
-
-
-		/// This is a hook to benchmark runtime cost for loading parameters
-		/// from the blockchain
-		#[weight = 0]
-		// #[cfg(features = "runtime-benchmarks")]
-		fn load_hash_param(_origin)
-		{
-			let hash_param = HashParam::deserialize(HASH_PARAM_BYTES.as_ref());
-			let hash_param_checksum_local = hash_param.get_checksum();
-
-			// get the parameter checksum from the ledger
-			let hash_param_checksum = HashParamChecksum::get();
-			ensure!(
-				hash_param_checksum_local == hash_param_checksum,
-				<Error<T>>::ParamFail
-			);
 		}
 	}
 }
@@ -569,8 +545,10 @@ decl_error! {
 		MantaNotCoinExist,
 		/// MantaCoin already spend
 		MantaCoinSpent,
+		/// ZKP parameter failed
+		ZkpParamFail,
 		/// ZKP verification failed
-		ZkpFail,
+		ZkpVerificationFail,
 		/// invalid ledger state
 		InvalidLedgerState,
 		/// Pool overdrawn
@@ -618,12 +596,12 @@ decl_storage! {
 		/// The verification key for zero-knowledge proof for transfer protocol.
 		/// At the moment we are storing the whole serialized key
 		/// in the blockchain storage.
-		pub TransferZKPKey get(fn transfer_zkp_vk): Vec<u8>;
+		pub TransferZKPKeyChecksum get(fn transfer_zkp_vk_checksum): [u8; 32];
 
 		/// The verification key for zero-knowledge proof for reclaim protocol.
 		/// At the moment we are storing the whole serialized key
 		/// in the blockchain storage.
-		pub ReclaimZKPKey get(fn reclaim_zkp_vk): Vec<u8>;
+		pub ReclaimZKPKeyChecksum get(fn reclaim_zkp_vk_checksum): [u8; 32];
 	}
 }
 
