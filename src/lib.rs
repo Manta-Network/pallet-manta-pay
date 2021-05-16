@@ -1,23 +1,22 @@
-// This file is part of Substrate.
-
-// Copyright (C) 2017-2020 Parity Technologies (UK) Ltd.
-// SPDX-License-Identifier: Apache-2.0
-
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
+// Copyright 2019-2021 Manta Network.
+// This file is part of pallet-manta-pay.
 //
-// 	http://www.apache.org/licenses/LICENSE-2.0
+// pallet-manta-pay is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
 //
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+// pallet-manta-pay is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with pallet-manta-pay.  If not, see <http://www.gnu.org/licenses/>.
 
-//! # Manta DAP Module
+//! # Manta pay Module
 //!
-//! A simple, secure module for manta anounymous payment
+//! A simple, secure module for manta anonymous payment
 //!
 //! ## Overview
 //!
@@ -82,41 +81,41 @@
 
 // Ensure we're `no_std` when compiling for Wasm.
 #![cfg_attr(not(feature = "std"), no_std)]
-// #![macro_use]
-// extern crate frame_benchmarking;
-
-extern crate ark_crypto_primitives;
-extern crate ark_ed_on_bls12_381;
-extern crate ark_groth16;
-extern crate ark_r1cs_std;
-extern crate ark_relations;
-extern crate ark_serialize;
-extern crate ark_std;
-extern crate blake2;
-extern crate generic_array;
-extern crate rand_chacha;
-extern crate x25519_dalek;
 
 mod benchmark;
-pub mod dh;
-pub mod forfeit;
-pub mod manta_token;
-pub mod param;
-pub mod priv_coin;
-pub mod serdes;
-pub mod transfer;
+mod coin;
+mod constants;
+mod crypto;
+mod param;
+mod serdes;
+mod shard;
 
 #[cfg(test)]
-pub mod test;
+mod bench_composite;
+#[cfg(test)]
+mod test;
+#[cfg(test)]
+#[macro_use]
+extern crate std;
+
+pub use coin::*;
+pub use constants::{COMMIT_PARAM_BYTES, HASH_PARAM_BYTES, RECLAIM_VKBYTES, TRANSFER_VKBYTES};
+pub use param::*;
+pub use serdes::MantaSerDes;
+pub use shard::{Shard, Shards};
+
+// TODO: this interface is only exposed for benchmarking
+// use a feature gate to control this expose
+#[allow(unused_imports)]
+pub use crypto::*;
+
+use sp_std::prelude::*;
 
 use ark_std::vec::Vec;
 use frame_support::{decl_error, decl_event, decl_module, decl_storage, ensure};
 use frame_system::ensure_signed;
-use manta_token::MantaCoin;
-use param::{COMPARAMBYTES, FORFEITVKBYTES, HASHPARAMBYTES, TRANSFERVKBYTES};
-use serdes::{
-	commit_param_checksum, commit_param_deserialize, hash_param_checksum, hash_param_deserialize,
-};
+use serdes::Checksum;
+use shard::LedgerSharding;
 use sp_runtime::traits::{StaticLookup, Zero};
 
 /// The module configuration trait.
@@ -133,15 +132,15 @@ decl_module! {
 		/// Issue a new class of fungible assets. There are, and will only ever be, `total`
 		/// such assets and they'll all belong to the `origin` initially. It will have an
 		/// identifier `AssetId` instance: this will be specified in the `Issued` event.
-		///
+		/// __TODO__: check the weights is correct
 		/// # <weight>
 		/// - `O(1)`
 		/// - 1 storage mutation (codec `O(1)`).
-		/// - 2 storage writes (condec `O(1)`).
+		/// - 2 storage writes (codec `O(1)`).
 		/// - 1 event.
 		/// # </weight>
 		#[weight = 0]
-		fn init(origin, total: u64) {
+		fn init_asset(origin, total: u64) {
 
 			ensure!(!Self::is_init(), <Error<T>>::AlreadyInitialized);
 			let origin = ensure_signed(origin)?;
@@ -150,10 +149,10 @@ decl_module! {
 			//  * hash parameter seed: [1u8; 32]
 			//  * commitment parameter seed: [2u8; 32]
 			// We may want to pass those two in for `init`
-			let hash_param = hash_param_deserialize(HASHPARAMBYTES.as_ref());
-			let commit_param = commit_param_deserialize(COMPARAMBYTES.as_ref());
-			let hash_param_checksum = hash_param_checksum(&hash_param);
-			let commit_param_checksum = commit_param_checksum(&commit_param);
+			let hash_param = HashParam::deserialize(HASH_PARAM_BYTES.as_ref());
+			let commit_param = CommitmentParam::deserialize(COMMIT_PARAM_BYTES.as_ref());
+			let hash_param_checksum = hash_param.get_checksum();
+			let commit_param_checksum = commit_param.get_checksum();
 
 			// push the ZKP verification key to the ledger storage
 			//
@@ -163,15 +162,17 @@ decl_module! {
 			//
 			// for prototype, we use this function to generate the ZKP verification key
 			// for product we should use a MPC protocol to build the ZKP verification key
-			// and then depoly that vk
+			// and then deploy that vk
 			//
-			TransferZKPKey::put(TRANSFERVKBYTES.to_vec());
-			ForfeitZKPKey::put(FORFEITVKBYTES.to_vec());
+			TransferZKPKey::put(TRANSFER_VKBYTES.to_vec());
+			ReclaimZKPKey::put(RECLAIM_VKBYTES.to_vec());
 
-			CoinList::put(Vec::<MantaCoin>::new());
-			LedgerState::put([4u8; 32]);
+			// coin_shards are a 256 lists of commitments
+			let coin_shards = Shards::default();
+			CoinShards::put(coin_shards);
+
 			PoolBalance::put(0);
-			SNList::put(Vec::<[u8; 32]>::new());
+			VNList::put(Vec::<[u8; 32]>::new());
 			EncValueList::put(Vec::<[u8; 16]>::new());
 			<Balances<T>>::insert(&origin, total);
 			<TotalSupply>::put(total);
@@ -182,6 +183,7 @@ decl_module! {
 		}
 
 		/// Move some assets from one holder to another.
+		/// __TODO__: check the weights is correct
 		///
 		/// # <weight>
 		/// - `O(1)`
@@ -190,7 +192,7 @@ decl_module! {
 		/// - 1 event.
 		/// # </weight>
 		#[weight = 0]
-		fn transfer(origin,
+		fn transfer_asset(origin,
 			target: <T::Lookup as StaticLookup>::Source,
 			amount: u64
 		) {
@@ -207,16 +209,17 @@ decl_module! {
 			<Balances<T>>::mutate(target, |balance| *balance += amount);
 		}
 
-		/// Mint
-		/// TODO: rename arguments
-		/// TODO: do we need to store k and s?
+		/// Given an amount, and relevant data, mint the token to the ledger
 		#[weight = 0]
-		fn mint(origin,
+		fn mint_private_asset(origin,
 			amount: u64,
-			k: [u8; 32],
-			s: [u8; 32],
-			cm: [u8; 32]
+			input_data: [u8; 96]
 		) {
+			// todo: Implement the fix denomination method
+
+			// parse the input_data into input
+			let input = MintData::deserialize(input_data.as_ref());
+
 			// get the original balance
 			ensure!(Self::is_init(), <Error<T>>::BasecoinNotInit);
 			let origin = ensure_signed(origin)?;
@@ -225,10 +228,11 @@ decl_module! {
 			let origin_balance = <Balances<T>>::get(&origin_account);
 			ensure!(origin_balance >= amount, Error::<T>::BalanceLow);
 
-			let hash_param = hash_param_deserialize(HASHPARAMBYTES.as_ref());
-			let commit_param = commit_param_deserialize(COMPARAMBYTES.as_ref());
-			let hash_param_checksum_local = hash_param_checksum(&hash_param);
-			let commit_param_checksum_local = commit_param_checksum(&commit_param);
+			let hash_param = HashParam::deserialize(HASH_PARAM_BYTES.as_ref());
+			let commit_param = CommitmentParam::deserialize(COMMIT_PARAM_BYTES.as_ref());
+			let hash_param_checksum_local = hash_param.get_checksum();
+			let commit_param_checksum_local = commit_param.get_checksum();
+
 
 			// get the parameter checksum from the ledger
 			let hash_param_checksum = HashParamChecksum::get();
@@ -246,125 +250,162 @@ decl_module! {
 
 
 			// check the validity of the commitment
-			let payload = [amount.to_le_bytes().as_ref(), k.as_ref()].concat();
 			ensure!(
-				priv_coin::comm_open(&commit_param, &s, &payload, &cm),
+				input.sanity_check(amount, &commit_param),
 				<Error<T>>::MintFail
 			);
 
-			// check cm is not in coin_list
-			let mut coin_list = CoinList::get();
-			for e in coin_list.iter() {
-				ensure!(
-					e.cm_bytes != cm,
-					Error::<T>::MantaCoinExist
-				)
-			}
+			// check cm is not in the ledger
+			let mut coin_shards = CoinShards::get();
+			ensure!(
+				!coin_shards.exist(&input.cm),
+				Error::<T>::MantaCoinExist
+			);
 
-			// add the new coin to the ledger
-			let coin = MantaCoin {
-				cm_bytes: cm,
-			};
-			coin_list.push(coin);
-
-			// update the merkle root
-			// let t: Vec<MantaCoin> = Vec::new();
-			let new_state = priv_coin::merkle_root(hash_param, &coin_list);
+			// update the shards
+			coin_shards.update(&input.cm, hash_param);
 
 			// write back to ledger storage
 			Self::deposit_event(RawEvent::Minted(origin, amount));
-			CoinList::put(coin_list);
-			// let new_state = [0u8; 32];
-			LedgerState::put(new_state);
+			CoinShards::put(coin_shards);
+
 			let old_pool_balance = PoolBalance::get();
 			PoolBalance::put(old_pool_balance + amount);
 			<Balances<T>>::insert(origin_account, origin_balance - amount);
 		}
 
 
-		/// Private Transfer
+		/// Manta's private transfer function that moves values from two
+		/// sender's private tokens into two receiver tokens. A proof is required to
+		/// make sure that this transaction is valid.
+		/// Neither the values nor the identities is leaked during this process.
 		#[weight = 0]
-		fn manta_transfer(origin,
-			merkle_root: [u8; 32],
-			sn_old: [u8; 32],
-			k_old: [u8; 32],
-			k_new: [u8; 32],
-			cm_new: [u8; 32],
-			enc_amount: [u8; 16],
-			proof: [u8; 192]
+		fn private_transfer(origin,
+			sender_data_1: [u8; 96],
+			sender_data_2: [u8; 96],
+			receiver_data_1: [u8; 80],
+			receiver_data_2: [u8; 80],
+			proof: [u8; 192],
 		) {
 
+			let sender_data_1 = SenderData::deserialize(sender_data_1.as_ref());
+			let sender_data_2 = SenderData::deserialize(sender_data_2.as_ref());
+			let receiver_data_1 = ReceiverData::deserialize(receiver_data_1.as_ref());
+			let receiver_data_2 = ReceiverData::deserialize(receiver_data_2.as_ref());
 			ensure!(Self::is_init(), <Error<T>>::BasecoinNotInit);
 			let origin = ensure_signed(origin)?;
 
-			let hash_param = hash_param_deserialize(HASHPARAMBYTES.as_ref());
-			let hash_param_checksum_local = hash_param_checksum(&hash_param);
+			let hash_param = HashParam::deserialize(HASH_PARAM_BYTES.as_ref());
+			let hash_param_checksum_local = hash_param.get_checksum();
+
 
 			// get the parameter checksum from the ledger
 			let hash_param_checksum = HashParamChecksum::get();
 			ensure!(
 				hash_param_checksum_local == hash_param_checksum,
-				<Error<T>>::MintFail
+				<Error<T>>::ParamFail
 			);
 			// todo: checksum ZKP verification eky
 
 
-			// check if sn_old already spent
-			let mut sn_list = SNList::get();
-			ensure!(!sn_list.contains(&sn_old), <Error<T>>::MantaCoinSpent);
-			sn_list.push(sn_old);
+			// check if vn_old already spent
+			let mut sn_list = VNList::get();
+			ensure!(
+				!sn_list.contains(&sender_data_1.sn),
+				<Error<T>>::MantaCoinSpent
+			);
+			ensure!(
+				!sn_list.contains(&sender_data_2.sn),
+				<Error<T>>::MantaCoinSpent
+			);
+			sn_list.push(sender_data_1.sn);
+			sn_list.push(sender_data_2.sn);
+
+			// get the ledger state from the ledger
+			// and check the validity of the state
+			let mut coin_shards = CoinShards::get();
+			ensure!(
+				coin_shards.check_root(&sender_data_1.root),
+				<Error<T>>::InvalidLedgerState
+			);
+			ensure!(
+				coin_shards.check_root(&sender_data_2.root),
+				<Error<T>>::InvalidLedgerState
+			);
+			// check the commitment are not in the list already
+			ensure!(
+				!coin_shards.exist(&receiver_data_1.cm),
+				<Error<T>>::MantaCoinExist
+			);
+			ensure!(
+				!coin_shards.exist(&receiver_data_2.cm),
+				<Error<T>>::MantaCoinExist
+			);
 
 			// update coin list
-			let mut coin_list = CoinList::get();
-			let coin_new = MantaCoin{
-				cm_bytes: cm_new,
-			};
-			coin_list.push(coin_new);
+			// with sharding, there is no point to batch update
+			// since the commitments are likely to go to different shards
+			coin_shards.update(&receiver_data_1.cm, hash_param.clone());
+			coin_shards.update(&receiver_data_2.cm, hash_param);
 
 			// get the verification key from the ledger
 			let transfer_vk_bytes = TransferZKPKey::get();
 
-			// get the ledger state from the ledger
-			// and check the validity of the state
-			let state = LedgerState::get();
-			ensure!(state == merkle_root, <Error<T>>::InvalidLedgerState);
-			let new_root = priv_coin::merkle_root(hash_param, &coin_list);
-
 			// check validity of zkp
 			ensure!(
-				priv_coin::manta_verify_transfer_zkp(transfer_vk_bytes, proof, sn_old, k_old, k_new, cm_new, merkle_root),
-				<Error<T>>::ZKPFail,
+				crypto::manta_verify_transfer_zkp(
+					transfer_vk_bytes,
+					proof,
+					&sender_data_1,
+					&sender_data_2,
+					&receiver_data_1,
+					&receiver_data_2),
+				<Error<T>>::ZkpFail,
 			);
 
 			// TODO: revisit replay attack here
 
 			// update ledger storage
 			let mut enc_value_list = EncValueList::get();
-			enc_value_list.push(enc_amount);
+			enc_value_list.push(receiver_data_1.cipher);
+			enc_value_list.push(receiver_data_2.cipher);
 
 			Self::deposit_event(RawEvent::PrivateTransferred(origin));
-			CoinList::put(coin_list);
-			SNList::put(sn_list);
+			CoinShards::put(coin_shards);
+			VNList::put(sn_list);
 			EncValueList::put(enc_value_list);
-			LedgerState::put(new_root);
 		}
 
 
-		/// Forfeit
+		/// Manta's reclaim function that moves values from two
+		/// sender's private tokens into a receiver public account, and a private token.
+		/// A proof is required to
+		/// make sure that this transaction is valid.
+		/// Neither the values nor the identities is leaked during this process;
+		/// except for the reclaimed amount.
+		/// At the moment, the reclaimed amount goes directly to `origin` account.
+		/// __TODO__: shall we use a different receiver rather than `origin`?
 		#[weight = 0]
-		fn forfeit(origin,
+		fn reclaim(origin,
 			amount: u64,
-			merkle_root: [u8; 32],
-			sn_old: [u8; 32],
-			k_old: [u8; 32],
-			proof: [u8; 192]
+			sender_data_1: [u8; 96],
+			sender_data_2: [u8; 96],
+			receiver_data: [u8; 80],
+			proof: [u8; 192],
 		) {
 
-			ensure!(Self::is_init(), <Error<T>>::BasecoinNotInit);
-			let origin = ensure_signed(origin)?;
+			let sender_data_1 = SenderData::deserialize(sender_data_1.as_ref());
+			let sender_data_2 = SenderData::deserialize(sender_data_2.as_ref());
+			let receiver_data = ReceiverData::deserialize(receiver_data.as_ref());
 
-			let hash_param = hash_param_deserialize(HASHPARAMBYTES.as_ref());
-			let hash_param_checksum_local = hash_param_checksum(&hash_param);
+			let origin = ensure_signed(origin)?;
+			let origin_account = origin.clone();
+			let origin_balance = <Balances<T>>::get(&origin);
+			ensure!(Self::is_init(), <Error<T>>::BasecoinNotInit);
+
+			let hash_param = HashParam::deserialize(HASH_PARAM_BYTES.as_ref());
+			let hash_param_checksum_local = hash_param.get_checksum();
+
 
 			// get the parameter checksum from the ledger
 			let hash_param_checksum = HashParamChecksum::get();
@@ -380,37 +421,68 @@ decl_module! {
 			pool -= amount;
 
 			// check if sn_old already spent
-			let mut sn_list = SNList::get();
-			ensure!(!sn_list.contains(&sn_old), <Error<T>>::MantaCoinSpent);
-			sn_list.push(sn_old);
+			let mut sn_list = VNList::get();
+			ensure!(
+				!sn_list.contains(&sender_data_1.sn),
+				<Error<T>>::MantaCoinSpent
+			);
+			ensure!(
+				!sn_list.contains(&sender_data_2.sn),
+				<Error<T>>::MantaCoinSpent
+			);
+			sn_list.push(sender_data_1.sn);
+			sn_list.push(sender_data_2.sn);
 
 			// get the coin list
-			let coin_list = CoinList::get();
+			let mut coin_shards = CoinShards::get();
 
 			// get the verification key from the ledger
-			let forfeit_vk_bytes = ForfeitZKPKey::get();
+			let reclaim_vk_bytes = ReclaimZKPKey::get();
 
 			// get the ledger state from the ledger
 			// and check the validity of the state
-			let state = LedgerState::get();
-			ensure!(state == merkle_root, <Error<T>>::InvalidLedgerState);
-			let new_root = priv_coin::merkle_root(hash_param, &coin_list);
+			ensure!(
+				coin_shards.check_root(&sender_data_1.root),
+				<Error<T>>::InvalidLedgerState
+			);
+			ensure!(
+				coin_shards.check_root(&sender_data_2.root),
+				<Error<T>>::InvalidLedgerState
+			);
+			// check the commitment are not in the list already
+			ensure!(
+				!coin_shards.exist(&receiver_data.cm),
+				<Error<T>>::MantaCoinSpent
+			);
+
 
 			// check validity of zkp
 			ensure!(
-				priv_coin::manta_verify_forfeit_zkp(forfeit_vk_bytes, amount, proof, sn_old, k_old, merkle_root),
-				<Error<T>>::ZKPFail,
+				crypto::manta_verify_reclaim_zkp(
+					reclaim_vk_bytes,
+					amount,
+					proof,
+					&sender_data_1,
+					&sender_data_2,
+					&receiver_data),
+				<Error<T>>::ZkpFail,
 			);
 
 			// TODO: revisit replay attack here
 
 			// update ledger storage
-			// FIXME: change RawEvent here
-			Self::deposit_event(RawEvent::PrivateForfeited(origin));
-			CoinList::put(coin_list);
-			SNList::put(sn_list);
-			LedgerState::put(new_root);
+			let mut enc_value_list = EncValueList::get();
+			enc_value_list.push(receiver_data.cipher);
+
+
+			coin_shards.update(&receiver_data.cm, hash_param);
+			CoinShards::put(coin_shards);
+
+			Self::deposit_event(RawEvent::PrivateReclaimed(origin));
+			VNList::put(sn_list);
 			PoolBalance::put(pool);
+			EncValueList::put(enc_value_list);
+			<Balances<T>>::insert(origin_account, origin_balance + amount);
 		}
 
 	}
@@ -428,16 +500,17 @@ decl_event! {
 		Minted(AccountId, u64),
 		/// Private transfer
 		PrivateTransferred(AccountId),
-		/// The assest was forfeited
-		PrivateForfeited(AccountId),
+		/// The assets was reclaimed
+		PrivateReclaimed(AccountId),
 	}
 }
 
 decl_error! {
+	/// Error messages.
 	pub enum Error for Module<T: Config> {
 		/// This token has already been initiated
 		AlreadyInitialized,
-		/// Transfer when not nitialized
+		/// Transfer when not initialized
 		BasecoinNotInit,
 		/// Transfer amount should be non-zero
 		AmountZero,
@@ -449,14 +522,18 @@ decl_error! {
 		MintFail,
 		/// MantaCoin exist
 		MantaCoinExist,
+		/// MantaCoin does not exist
+		MantaNotCoinExist,
 		/// MantaCoin already spend
 		MantaCoinSpent,
 		/// ZKP verification failed
-		ZKPFail,
+		ZkpFail,
 		/// invalid ledger state
 		InvalidLedgerState,
 		/// Pool overdrawn
-		PoolOverdrawn
+		PoolOverdrawn,
+		/// Invalid parameters
+		ParamFail,
 	}
 }
 
@@ -468,39 +545,42 @@ decl_storage! {
 		/// The total unit supply of the asset.
 		pub TotalSupply get(fn total_supply): u64;
 
-		/// Has this token been initialized (can only initiate once)
+		/// Returns a boolean: is this token already initialized (can only initiate once)
 		pub Init get(fn is_init): bool;
 
-		/// List of sns
-		pub SNList get(fn sn_list): Vec<[u8; 32]>;
+		/// List of _void number_s.
+		/// A void number is also known as a `serial number` in other protocols.
+		/// Each coin has a unique void number, and if this number is revealed,
+		/// the coin is voided.
+		/// The ledger maintains a list of all void numbers.
+		pub VNList get(fn vn_list): Vec<[u8; 32]>;
 
-		/// List of Coins that has ever been created
-		pub CoinList get(fn coin_list): Vec<MantaCoin>;
+		/// List of Coins that has ever been created.
+		/// We employ a sharding system to host all the coins
+		/// for better concurrency.
+		pub CoinShards get(fn coin_shards): Shards;
 
-		/// List of encrypted values
+		/// List of encrypted values.
 		pub EncValueList get(fn enc_value_list): Vec<[u8; 16]>;
 
-		/// merkle root of list of commitments
-		pub LedgerState get(fn legder_state): [u8; 32];
-
-		/// the balance of minted coins
+		/// The balance of all minted coins.
 		pub PoolBalance get(fn pool_balance): u64;
 
-		/// the seed of hash parameter
+		/// The checksum of hash parameter.
 		pub HashParamChecksum get(fn hash_param_checksum): [u8; 32];
 
-		/// the seed of commit parameter
+		/// The checksum of commitment parameter.
 		pub CommitParamChecksum get(fn commit_param_checksum): [u8; 32];
 
-		/// verification key for zero-knowledge proof
-		/// at the moment we are storing the whole serialized key
+		/// The verification key for zero-knowledge proof for transfer protocol.
+		/// At the moment we are storing the whole serialized key
 		/// in the blockchain storage.
 		pub TransferZKPKey get(fn transfer_zkp_vk): Vec<u8>;
 
-		/// verification key for zero-knowledge proof
-		/// at the moment we are storing the whole serialized key
+		/// The verification key for zero-knowledge proof for reclaim protocol.
+		/// At the moment we are storing the whole serialized key
 		/// in the blockchain storage.
-		pub ForfeitZKPKey get(fn forfeit_zkp_vk): Vec<u8>;
+		pub ReclaimZKPKey get(fn reclaim_zkp_vk): Vec<u8>;
 	}
 }
 

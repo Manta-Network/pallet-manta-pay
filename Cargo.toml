@@ -1,11 +1,11 @@
 [package]
-name = "pallet-manta-dap"
+name = "pallet-manta-pay"
 version = "3.0.0"
 authors = ["Manta Network <contact@manta.network>"]
 edition = "2018"
 license = "Apache-2.0"
-repository = "https://github.com/Manta-Network/pallet-manta-dap"
-description = "Manta DAP scheme"
+repository = "https://github.com/Manta-Network/pallet-manta-pay"
+description = "Manta pay scheme"
 readme = "README.md"
 
 [package.metadata.docs.rs]
@@ -13,77 +13,66 @@ targets = ["x86_64-unknown-linux-gnu"]
 
 [dependencies]
 # Substrate dependencies
-frame-support = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "rococo-v1" }
-sp-core = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "rococo-v1" }
-sp-inherents = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "rococo-v1" }
-sp-io = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "rococo-v1" }
-sp-std = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "rococo-v1" }
-sp-runtime = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "rococo-v1" }
-sp-version = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "rococo-v1" }
-frame-system = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "rococo-v1" }
-frame-executive = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "rococo-v1" }
-sp-state-machine = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "rococo-v1" }
-sp-trie = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "rococo-v1" }
-sp-externalities = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "rococo-v1" }
-frame-benchmarking = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "rococo-v1", optional = true }
+frame-support = { default-features = false, version = '3.0.0' }
+frame-system = { default-features = false, version = '3.0.0' }
+sp-runtime = { default-features = false, version = '3.0.0' }
+sp-std = { default-features = false, version = '3.0.0' }
+
+frame-benchmarking = { default-features = false, version = '3.0.0', optional = true }
 
 # Other Dependencies
-codec = { package = "parity-scale-codec", version = "2.0.0", default-features = false, features = ["derive"]}
-serde = { version = "1.0.101", optional = true, features = ["derive"] }
-hash-db = { version = "0.15.2", default-features = false }
-memory-db = { version = "0.26.0", default-features = false }
-trie-db = { version = "0.22.0", default-features = false }
+codec = { package = "parity-scale-codec", version = "2.0.0", default-features = false, features = ["derive"] }
+data-encoding = { version = "2.3.2", default-features = false, features = [ "alloc" ] }
 
-rand = { version = "0.7", default-features = false }
-rand_core =  { version = "0.5", default-features = false }
-rand_chacha = { version = "0.2.2", default-features = false }
-ark-ed-on-bls12-381 = { version = "0.1.0", git = "https://github.com/arkworks-rs/curves/", default-features = false, features = [ "r1cs" ] }
-ark-bls12-381 = { version = "0.1.0", git = "https://github.com/arkworks-rs/curves/", default-features = false, features = [ "curve" ] }
-ark-crypto-primitives = { version = "0.1.0", git = "https://github.com/arkworks-rs/crypto-primitives.git", branch = "main", default-features = false, features = [ "r1cs" ] }
-ark-ff = { git = "https://github.com/arkworks-rs/algebra", default-features = false }
-ark-ec = { git = "https://github.com/arkworks-rs/algebra", default-features = false }
-ark-std = { git = "https://github.com/arkworks-rs/utils", default-features = false }
-ark-groth16 = { git = "https://github.com/arkworks-rs/groth16", default-features = false, features = [ "r1cs" ] }
-ark-r1cs-std = { git = "https://github.com/arkworks-rs/r1cs-std", default-features = false }
-ark-relations = { git = "https://github.com/arkworks-rs/snark", default-features = false }
-ark-serialize = { git = "https://github.com/arkworks-rs/algebra", default-features = false, features = [ "derive" ] }
+# Arkworks dependencies
+ark-ed-on-bls12-381 = { version = "0.2.0", default-features = false, features = [ "r1cs" ] }
+ark-bls12-381 = { version = "0.2.0", default-features = false, features = [ "curve" ] }
+ark-crypto-primitives = { version = "0.2.0", default-features = false, features = [ "r1cs" ] }
+ark-ff = { version = "0.2.0", default-features = false }
+ark-ec = { version = "0.2.0", default-features = false }
+ark-std = { version = "0.2.0", default-features = false }
+ark-groth16 = { version = "0.2.0", default-features = false, features = [ "r1cs" ] }
+ark-r1cs-std = { version = "0.2.0", default-features = false }
+ark-relations = { version = "0.2.0", default-features = false }
+ark-serialize = { version = "0.2.0", default-features = false, features = [ "derive" ] }
 
-hkdf = { version = "0.10", default-features = false }
+# Additional cryptography dependencies
+rand_chacha = { version = "0.2.0", default-features = false }
+
+hkdf = { version = "0.11", default-features = false }
 sha2 = { version = "0.9.3", default-features = false }
-aes = { version = "0.6.0", default-features = false }
-x25519-dalek = { version = "1.1.0", default-features = false, features = [ "u64_backend" ]}
+aes = { version = "0.7.0", default-features = false }
+x25519-dalek = { version = "1.1.0", default-features = false, features = [ "u64_backend" ] }
 generic-array = { version = "0.14.0", default-features = false }
 blake2 = { version = "0.9.1", default-features = false }
 
-data-encoding = { version = "2.3.2", default-features = false, features = [ "alloc" ] }
-
-[build-dependencies]
-substrate-wasm-builder = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "rococo-v1" }
 
 [dev-dependencies]
-
-
-
 # benchmarking 
 bencher = "0.1.5"
-criterion = "0.2.11"
+criterion = "0.3.4"
+
+# testing
+serde = { default-features = false, version = '1' }
+sp-core = { default-features = false, version = '3.0.0' }
+sp-io = { default-features = false, version = '3.0.0' }
 
 [[bench]]
 name = "manta_bench"
 harness = false
 
 [features]
-default = ["std"]
+default = [ 'std' ]
+
 runtime-benchmarks = [
-	"frame-benchmarking",
-	"frame-system/runtime-benchmarks"
-	]
+	'frame-benchmarking',
+]
+
 std = [
-	"serde",
 	"codec/std",
-	"sp-core/std",
+	"sp-std/std",
 	"sp-runtime/std",
+	"frame-benchmarking/std",
 	"frame-support/std",
 	"frame-system/std",
-	"frame-benchmarking/std",
 ]

@@ -1,24 +1,35 @@
+// Copyright 2019-2021 Manta Network.
+// This file is part of pallet-manta-pay.
+//
+// pallet-manta-pay is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// pallet-manta-pay is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with pallet-manta-pay.  If not, see <http://www.gnu.org/licenses/>.
+
 #[macro_use]
 extern crate criterion;
-extern crate pallet_manta_dap;
+extern crate pallet_manta_pay;
 
-use ark_crypto_primitives::{commitment::pedersen::Randomness, CommitmentScheme, FixedLengthCRH};
+use ark_crypto_primitives::{
+	commitment::pedersen::Randomness, CommitmentScheme as ArkCommitmentScheme, FixedLengthCRH,
+};
 use ark_ed_on_bls12_381::{Fq, Fr};
 use ark_groth16::create_random_proof;
 use ark_relations::r1cs::{ConstraintSynthesizer, ConstraintSystem};
 use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
-use criterion::{Benchmark, Criterion};
+use ark_std::rand::{RngCore, SeedableRng};
+use criterion::Criterion;
 use data_encoding::BASE64;
-use pallet_manta_dap::{
-	manta_token::*,
-	param::*,
-	priv_coin::*,
-	serdes::{commit_param_deserialize, hash_param_deserialize},
-	transfer::*,
-};
-use rand::SeedableRng;
+use pallet_manta_pay::*;
 use rand_chacha::ChaCha20Rng;
-use rand_core::RngCore;
 use std::{fs::File, io::prelude::*};
 
 criterion_group!(
@@ -27,35 +38,36 @@ criterion_group!(
 	bench_pedersen_hash,
 	bench_pedersen_com,
 	bench_merkle_tree,
+	bench_transfer_prove,
 	bench_trasnfer_verify,
 );
 criterion_main!(manta_bench);
 
 fn bench_param_io(c: &mut Criterion) {
+	let mut bench_group = c.benchmark_group("param deserialization");
+
 	let bench_str = format!("hash param");
-	let bench = Benchmark::new(bench_str, move |b| {
+	bench_group.bench_function(bench_str, move |b| {
 		b.iter(|| {
-			hash_param_deserialize(HASHPARAMBYTES.as_ref());
+			HashParam::deserialize(HASH_PARAM_BYTES.as_ref());
 		})
 	});
 
 	let bench_str = format!("commit param");
-	let bench = bench.with_function(bench_str, move |b| {
+	bench_group.bench_function(bench_str, move |b| {
 		b.iter(|| {
-			commit_param_deserialize(COMPARAMBYTES.as_ref());
+			CommitmentParam::deserialize(COMMIT_PARAM_BYTES.as_ref());
 		})
 	});
-
-	// let bench = bench.sample_size(10);
-	c.bench("deserialization", bench);
+	bench_group.finish();
 }
 
 fn bench_trasnfer_verify(c: &mut Criterion) {
-	let hash_param_seed = pallet_manta_dap::param::HASHPARAMSEED;
-	let commit_param_seed = pallet_manta_dap::param::COMMITPARAMSEED;
+	let hash_param_seed = HASH_PARAM_SEED;
+	let commit_param_seed = COMMIT_PARAM_SEED;
 
 	let mut rng = ChaCha20Rng::from_seed(commit_param_seed);
-	let commit_param = MantaCoinCommitmentScheme::setup(&mut rng).unwrap();
+	let commit_param = CommitmentScheme::setup(&mut rng).unwrap();
 
 	let mut rng = ChaCha20Rng::from_seed(hash_param_seed);
 	let hash_param = Hash::setup(&mut rng).unwrap();
@@ -63,31 +75,59 @@ fn bench_trasnfer_verify(c: &mut Criterion) {
 	let mut file = File::open("transfer_pk.bin").unwrap();
 	let mut transfer_key_bytes: Vec<u8> = vec![];
 	file.read_to_end(&mut transfer_key_bytes).unwrap();
-
-	let pk = Groth16PK::deserialize_uncompressed(transfer_key_bytes.as_ref()).unwrap();
+	let buf: &[u8] = transfer_key_bytes.as_ref();
+	let pk = Groth16Pk::deserialize_unchecked(buf).unwrap();
 
 	println!("proving key loaded from disk");
 
 	// sender
 	let mut sk = [0u8; 32];
 	rng.fill_bytes(&mut sk);
-	let (sender, sender_pub_info, sender_priv_info) = make_coin(&commit_param, sk, 100, &mut rng);
+	let sender_1 = make_coin(&commit_param, sk, 100, &mut rng);
+	rng.fill_bytes(&mut sk);
+	let sender_2 = make_coin(&commit_param, sk, 300, &mut rng);
 
 	// receiver
-	let mut sk = [0u8; 32];
 	rng.fill_bytes(&mut sk);
-	let (receiver, receiver_pub_info, _receiver_priv_info) =
-		make_coin(&commit_param, sk, 100, &mut rng);
+	let receiver_1 = make_coin(&commit_param, sk, 150, &mut rng);
+	rng.fill_bytes(&mut sk);
+	let receiver_2 = make_coin(&commit_param, sk, 250, &mut rng);
+
+	// merkle tree
+	let tree = LedgerMerkleTree::new(
+		hash_param.clone(),
+		&[sender_1.0.cm_bytes, sender_2.0.cm_bytes],
+	)
+	.unwrap();
+	let root = tree.root();
+	let path_1 = tree.generate_proof(0, &sender_1.0.cm_bytes).unwrap();
+	let path_2 = tree.generate_proof(1, &sender_2.0.cm_bytes).unwrap();
 
 	let circuit = TransferCircuit {
-		commit_param,
-		hash_param: hash_param.clone(),
-		sender_coin: sender.clone(),
-		sender_pub_info: sender_pub_info.clone(),
-		sender_priv_info: sender_priv_info.clone(),
-		receiver_coin: receiver.clone(),
-		receiver_pub_info: receiver_pub_info.clone(),
-		list: vec![sender.cm_bytes],
+		commit_param: commit_param.clone(),
+		hash_param,
+
+		sender_coin_1: sender_1.0.clone(),
+		sender_pub_info_1: sender_1.1.clone(),
+		sender_priv_info_1: sender_1.2.clone(),
+		sender_membership_1: path_1.clone(),
+		root_1: root.clone(),
+
+		sender_coin_2: sender_2.0.clone(),
+		sender_pub_info_2: sender_2.1.clone(),
+		sender_priv_info_2: sender_2.2.clone(),
+		sender_membership_2: path_2.clone(),
+		root_2: root,
+
+		receiver_coin_1: receiver_1.0.clone(),
+		receiver_k_1: receiver_1.1.k,
+		receiver_s_1: receiver_1.1.s,
+		receiver_value_1: receiver_1.2.value,
+
+		receiver_coin_2: receiver_2.0.clone(),
+		receiver_k_2: receiver_2.1.k,
+		receiver_s_2: receiver_2.1.s,
+		receiver_value_2: receiver_2.2.value,
 	};
 
 	let sanity_cs = ConstraintSystem::<Fq>::new_ref();
@@ -102,118 +142,207 @@ fn bench_trasnfer_verify(c: &mut Criterion) {
 	let mut proof_bytes = [0u8; 192];
 	proof.serialize(proof_bytes.as_mut()).unwrap();
 
-	let tree = LedgerMerkleTree::new(hash_param.clone(), &[sender.cm_bytes]).unwrap();
-	let merkle_root = tree.root();
 	let mut merkle_root_bytes = [0u8; 32];
-	merkle_root.serialize(merkle_root_bytes.as_mut()).unwrap();
+	root.serialize(merkle_root_bytes.as_mut()).unwrap();
+	let sender_data_1 = SenderData {
+		k: sender_1.1.k,
+		sn: sender_1.2.sn,
+		root: merkle_root_bytes,
+	};
+	let sender_data_2 = SenderData {
+		k: sender_2.1.k,
+		sn: sender_2.2.sn,
+		root: merkle_root_bytes,
+	};
+	let receiver_data_1 = ReceiverData {
+		k: receiver_1.1.k,
+		cm: receiver_1.0.cm_bytes,
+		cipher: [0u8; 16],
+	};
+	let receiver_data_2 = ReceiverData {
+		k: receiver_2.1.k,
+		cm: receiver_2.0.cm_bytes,
+		cipher: [0u8; 16],
+	};
 
 	println!("start benchmarking proof verification");
+	let mut bench_group = c.benchmark_group("private transfer");
+
 	let bench_str = format!("ZKP verification");
-	let bench = Benchmark::new(bench_str, move |b| {
+	bench_group.bench_function(bench_str, move |b| {
 		b.iter(|| {
 			assert!(manta_verify_transfer_zkp(
-				pallet_manta_dap::param::TRANSFERVKBYTES.to_vec(),
+				TRANSFER_VKBYTES.to_vec(),
 				proof_bytes,
-				sender_priv_info.sn,
-				sender_pub_info.k,
-				receiver_pub_info.k,
-				receiver.cm_bytes,
-				merkle_root_bytes,
+				&sender_data_1,
+				&sender_data_2,
+				&receiver_data_1,
+				&receiver_data_2,
 			))
 		})
 	});
 
-	// let bench = bench.sample_size(10);
-	c.bench("transfer", bench);
+	bench_group.finish();
 }
 
 fn bench_merkle_tree(c: &mut Criterion) {
-	let hash_param_seed = pallet_manta_dap::param::HASHPARAMSEED;
+	let hash_param_seed = HASH_PARAM_SEED;
 	let mut rng = ChaCha20Rng::from_seed(hash_param_seed);
 	let hash_param = Hash::setup(&mut rng).unwrap();
 
-	let mut cm_bytes = [0u8; 32];
+	let mut cm_bytes1 = [0u8; 32];
 	let cm_vec = BASE64
 		.decode(b"XzoWOzhp6rXjQ/HDEN6jSLsLs64hKXWUNuFVtCUq0AA=")
 		.unwrap();
-	cm_bytes.copy_from_slice(cm_vec[0..32].as_ref());
+	cm_bytes1.copy_from_slice(cm_vec[0..32].as_ref());
 
-	let coin1 = MantaCoin { cm_bytes: cm_bytes };
-	let coin1_clone = coin1.clone();
 	let hash_param_clone = hash_param.clone();
 	let bench_str = format!("with 1 leaf");
-	let bench = Benchmark::new(bench_str, move |b| {
+
+	let mut bench_group = c.benchmark_group("merkle tree");
+
+	bench_group.bench_function(bench_str, move |b| {
 		b.iter(|| {
-			merkle_root(hash_param_clone.clone(), &[coin1_clone.clone()]);
+			merkle_root(hash_param_clone.clone(), &[cm_bytes1]);
 		})
 	});
 
-	let mut cm_bytes = [0u8; 32];
+	let mut cm_bytes2 = [0u8; 32];
 	let cm_vec = BASE64
 		.decode(b"3Oye4AqhzdysdWdCzMcoImTnYNGd21OmF8ztph4dRqI=")
 		.unwrap();
-	cm_bytes.copy_from_slice(cm_vec[0..32].as_ref());
+	cm_bytes2.copy_from_slice(cm_vec[0..32].as_ref());
 
-	let coin2 = MantaCoin { cm_bytes: cm_bytes };
-
-	let coin1_clone = coin1.clone();
-	let coin2_clone = coin2.clone();
 	let hash_param_clone = hash_param.clone();
 	let bench_str = format!("with 2 leaf");
-	let bench = bench.with_function(bench_str, move |b| {
+	bench_group.bench_function(bench_str, move |b| {
 		b.iter(|| {
-			merkle_root(
-				hash_param_clone.clone(),
-				&[coin1_clone.clone(), coin2_clone.clone()],
-			);
+			merkle_root(hash_param_clone.clone(), &[cm_bytes1, cm_bytes2]);
 		})
 	});
 
-	let mut cm_bytes = [0u8; 32];
+	let mut cm_bytes3 = [0u8; 32];
 	let cm_vec = BASE64
 		.decode(b"1zuOv92V7e1qX1bP7+QNsV+gW5E3xUsghte/lZ7h5pg=")
 		.unwrap();
-	cm_bytes.copy_from_slice(cm_vec[0..32].as_ref());
-
-	let coin3 = MantaCoin { cm_bytes: cm_bytes };
+	cm_bytes3.copy_from_slice(cm_vec[0..32].as_ref());
 
 	let bench_str = format!("with 3 leaf");
-	let bench = bench.with_function(bench_str, move |b| {
+	bench_group.bench_function(bench_str, move |b| {
 		b.iter(|| {
-			merkle_root(
-				hash_param.clone(),
-				&[coin1.clone(), coin2.clone(), coin3.clone()],
-			);
+			merkle_root(hash_param.clone(), &[cm_bytes1, cm_bytes2, cm_bytes3]);
 		})
 	});
 
-	c.bench("merkle_tree", bench);
+	bench_group.finish();
 }
 
 fn bench_pedersen_com(c: &mut Criterion) {
-	let commit_param_seed = pallet_manta_dap::param::COMMITPARAMSEED;
+	let commit_param_seed = COMMIT_PARAM_SEED;
 	let mut rng = ChaCha20Rng::from_seed(commit_param_seed);
-	let param = MantaCoinCommitmentScheme::setup(&mut rng).unwrap();
+	let param = CommitmentScheme::setup(&mut rng).unwrap();
 	let bench_str = format!("commit open");
-	let bench = Benchmark::new(bench_str, move |b| {
+
+	let mut bench_group = c.benchmark_group("bench_pedersen_com");
+	bench_group.bench_function(bench_str, move |b| {
 		b.iter(|| {
 			let open = Randomness(Fr::deserialize([0u8; 32].as_ref()).unwrap());
-			MantaCoinCommitmentScheme::commit(&param, [0u8; 32].as_ref(), &open).unwrap()
+			CommitmentScheme::commit(&param, [0u8; 32].as_ref(), &open).unwrap()
 		})
 	});
 
-	c.bench("perdersen", bench);
+	bench_group.finish()
 }
 
 fn bench_pedersen_hash(c: &mut Criterion) {
-	let hash_param_seed = pallet_manta_dap::param::COMMITPARAMSEED;
+	let hash_param_seed = COMMIT_PARAM_SEED;
 	let bench_str = format!("hash param gen");
-	let bench = Benchmark::new(bench_str, move |b| {
+	let mut bench_group = c.benchmark_group("bench_pedersen_hash");
+	bench_group.bench_function(bench_str, move |b| {
 		b.iter(|| {
 			let mut rng = ChaCha20Rng::from_seed(hash_param_seed);
 			Hash::setup(&mut rng).unwrap();
 		})
 	});
 
-	c.bench("perdersen", bench);
+	bench_group.finish()
+}
+
+fn bench_transfer_prove(c: &mut Criterion) {
+	let hash_param_seed = HASH_PARAM_SEED;
+	let commit_param_seed = COMMIT_PARAM_SEED;
+
+	let mut rng = ChaCha20Rng::from_seed(commit_param_seed);
+	let commit_param = CommitmentScheme::setup(&mut rng).unwrap();
+
+	let mut rng = ChaCha20Rng::from_seed(hash_param_seed);
+	let hash_param = Hash::setup(&mut rng).unwrap();
+
+	let mut file = File::open("transfer_pk.bin").unwrap();
+	let mut transfer_key_bytes: Vec<u8> = vec![];
+	file.read_to_end(&mut transfer_key_bytes).unwrap();
+	let buf: &[u8] = transfer_key_bytes.as_ref();
+	let pk = Groth16Pk::deserialize_unchecked(buf).unwrap();
+
+	println!("proving key loaded from disk");
+
+	// sender
+	let mut sk = [0u8; 32];
+	rng.fill_bytes(&mut sk);
+	let sender_1 = make_coin(&commit_param, sk, 100, &mut rng);
+	rng.fill_bytes(&mut sk);
+	let sender_2 = make_coin(&commit_param, sk, 300, &mut rng);
+
+	// receiver
+	rng.fill_bytes(&mut sk);
+	let receiver_1 = make_coin(&commit_param, sk, 150, &mut rng);
+	rng.fill_bytes(&mut sk);
+	let receiver_2 = make_coin(&commit_param, sk, 250, &mut rng);
+
+	// merkle tree
+	let tree = LedgerMerkleTree::new(
+		hash_param.clone(),
+		&[sender_1.0.cm_bytes, sender_2.0.cm_bytes],
+	)
+	.unwrap();
+	let root = tree.root();
+	let path_1 = tree.generate_proof(0, &sender_1.0.cm_bytes).unwrap();
+	let path_2 = tree.generate_proof(1, &sender_2.0.cm_bytes).unwrap();
+
+	let circuit = TransferCircuit {
+		commit_param: commit_param.clone(),
+		hash_param,
+
+		sender_coin_1: sender_1.0.clone(),
+		sender_pub_info_1: sender_1.1.clone(),
+		sender_priv_info_1: sender_1.2.clone(),
+		sender_membership_1: path_1.clone(),
+		root_1: root.clone(),
+
+		sender_coin_2: sender_2.0.clone(),
+		sender_pub_info_2: sender_2.1.clone(),
+		sender_priv_info_2: sender_2.2.clone(),
+		sender_membership_2: path_2.clone(),
+		root_2: root,
+
+		receiver_coin_1: receiver_1.0.clone(),
+		receiver_k_1: receiver_1.1.k,
+		receiver_s_1: receiver_1.1.s,
+		receiver_value_1: receiver_1.2.value,
+
+		receiver_coin_2: receiver_2.0.clone(),
+		receiver_k_2: receiver_2.1.k,
+		receiver_s_2: receiver_2.1.s,
+		receiver_value_2: receiver_2.2.value,
+	};
+	let mut bench_group = c.benchmark_group("private transfer");
+	bench_group.sample_size(10);
+	let bench_str = format!("ZKP proof generation");
+	bench_group.bench_function(bench_str, move |b| {
+		b.iter(|| {
+			create_random_proof(circuit.clone(), &pk, &mut rng).unwrap();
+		})
+	});
+
+	bench_group.finish();
 }

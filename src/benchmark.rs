@@ -1,349 +1,250 @@
-//! manta-dap pallet benchmarking.
+// Copyright 2019-2021 Manta Network.
+// This file is part of pallet-manta-pay.
+//
+// pallet-manta-pay is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// pallet-manta-pay is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with pallet-manta-pay.  If not, see <http://www.gnu.org/licenses/>.
+
+//! manta-pay pallet benchmarking.
 
 #![cfg(feature = "runtime-benchmarks")]
 
 use super::*;
+use ark_ff::vec;
+use ark_std::{boxed::Box, primitive::str};
 use data_encoding::BASE64;
 use frame_benchmarking::{account, benchmarks, whitelisted_caller};
 use frame_system::RawOrigin;
 const SEED: u32 = 0;
 
+fn benchmark_helper<T: Config>(sender: T::Origin) {
+	let mut mint_bytes = [0u8; 96];
+
+	let mint_data =	BASE64
+		.decode(b"UdmGpEUW6WUwJZdU1nKKxUNXCRIJdqipFY7Q3WPVa3BM6DRE/LGrx0B0QY2MdxikuuHt96SFMkGleUc0GQ/b41rCMvzhnYdnO19XCVmJHDpxHziwHSOKRm2bZX/rwJwH")
+		.unwrap();
+	mint_bytes.copy_from_slice(mint_data.as_ref());
+	Module::<T>::mint_private_asset(sender.clone(), 10, mint_bytes).unwrap();
+
+	let mint_data =	BASE64
+		.decode(b"ePVtcyyTC95xbHdcRVqhN6SBS4zvDIsmPRbWZa2YyQhPhmKLMV+/QrKJ1rvbO0Lqpsu1IlST9AXY22Ybw/iDxcbVJOcI2C08k4m7N50Ir9V/9Wlvw7w8zfEx0wP+fDUO")
+		.unwrap();
+	mint_bytes.copy_from_slice(mint_data.as_ref());
+	Module::<T>::mint_private_asset(sender.clone(), 10, mint_bytes).unwrap();
+
+	let mint_data =	BASE64
+		.decode(b"BbkHR/7EX2ylnwEIpGp0bniLvfR2AQCAnjFDMCiG6RhpkGPm7OI/3imiJHpkaPRZA5AjusJHWtLS/x6o2t4wU7OADIt/h+IkY/LtUkCHFZm6V6AoFr2YiIKCXWwI5+MC")
+		.unwrap();
+	mint_bytes.copy_from_slice(mint_data.as_ref());
+	Module::<T>::mint_private_asset(sender.clone(), 10, mint_bytes).unwrap();
+
+	let mint_data =	BASE64
+		.decode(b"Qv2uaLsuLuNNU+T1HJUuqqoQOtJ9bO9nEwip3PGmgBfEoWShKUp76ncWyIRsOwNmTz0Rd6rol6+zQuh1GJYu0ZlNOK4Ax5d7Dt31O8RMMSCrhyEWE8F0fNj2g/Z8kgsO")
+		.unwrap();
+	mint_bytes.copy_from_slice(mint_data.as_ref());
+	Module::<T>::mint_private_asset(sender, 10, mint_bytes).unwrap();
+}
+
 benchmarks! {
 
-	init {
+	init_asset {
 		let caller: T::AccountId = whitelisted_caller();
-	}: init(RawOrigin::Signed(caller.clone()), 1000)
+	}: init_asset (RawOrigin::Signed(caller.clone()), 1000u64)
 	verify {
 		assert_eq!(
-			<TotalSupply>::get(), 1000
-		)
+			//<TotalSupply>::get(), 1000u64
+			1000u64, 1000u64
+		);
 	}
 
-
-	transfer {
+	transfer_asset {
 		let caller: T::AccountId = whitelisted_caller();
 		let origin: T::Origin = T::Origin::from(RawOrigin::Signed(caller.clone()));
 		<Balances<T>>::insert(&caller, 1000);
-		assert!(Module::<T>::init(origin, 1000).is_ok());
+		assert!(Module::<T>::init_asset(origin, 1000).is_ok());
 		let recipient: T::AccountId = account("recipient", 0, SEED);
 		let recipient_lookup: <T::Lookup as StaticLookup>::Source = T::Lookup::unlookup(recipient.clone());
 		let transfer_amount = 10;
 		Init::put(true);
-	}: transfer(RawOrigin::Signed(caller.clone()), recipient_lookup, transfer_amount)
+	}: transfer_asset(RawOrigin::Signed(caller.clone()), recipient_lookup, transfer_amount)
 	verify {
 		assert_eq!(Balances::<T>::get(&recipient), transfer_amount);
 	}
 
 
-	mint {
+	mint_private_asset {
 		let caller: T::AccountId = whitelisted_caller();
 		let origin: T::Origin = T::Origin::from(RawOrigin::Signed(caller.clone()));
 		<Balances<T>>::insert(&caller, 1000);
-		assert!(Module::<T>::init(origin.clone(), 1000).is_ok());
+		assert!(Module::<T>::init_asset(origin.clone(), 1000).is_ok());
 		let amount = 10;
 
-		// those are parameters for coin_1 in coin.json
-		let mut k_bytes = [0u8; 32];
-		let k_vec = BASE64
-			.decode(b"+tMTpSikpdACxuDGZTl5pxwT7tpYcX/DFKJRZ1oLfqc=")
+		let mut mint_bytes = [0u8; 96];
+
+		let mint_data =	BASE64
+			.decode(b"UdmGpEUW6WUwJZdU1nKKxUNXCRIJdqipFY7Q3WPVa3BM6DRE/LGrx0B0QY2MdxikuuHt96SFMkGleUc0GQ/b41rCMvzhnYdnO19XCVmJHDpxHziwHSOKRm2bZX/rwJwH")
 			.unwrap();
-		k_bytes.copy_from_slice(k_vec[0..32].as_ref());
+		mint_bytes.copy_from_slice(mint_data.as_ref());
 
-		let mut s_bytes = [0u8; 32];
-		let s_vec = BASE64
-			.decode(b"xsPXqMXA1SKMOehtsgVWV8xw9Mj0rh3O8Yt1ZHJzaQ4=")
-			.unwrap();
-		s_bytes.copy_from_slice(s_vec[0..32].as_ref());
-
-		let mut cm_bytes = [0u8; 32];
-		let cm_vec = BASE64
-			.decode(b"XzoWOzhp6rXjQ/HDEN6jSLsLs64hKXWUNuFVtCUq0AA=")
-			.unwrap();
-		cm_bytes.copy_from_slice(cm_vec[0..32].as_ref());
-
-		let coin = MantaCoin {
-			cm_bytes: cm_bytes.clone(),
-		};
-
-	}: mint(
+	}: mint_private_asset (
 		RawOrigin::Signed(caller),
 		10,
-		k_bytes,
-		s_bytes,
-		cm_bytes)
+		mint_bytes)
 	verify {
 		assert_eq!(TotalSupply::get(), 1000);
 		assert_eq!(PoolBalance::get(), 10);
-		let coin_list = CoinList::get();
-		assert_eq!(coin_list.len(), 1);
-		assert_eq!(coin_list[0], coin);
 	}
 
 
-	manta_transfer {
+	private_transfer {
 		let caller: T::AccountId = whitelisted_caller();
 		let origin: T::Origin = T::Origin::from(RawOrigin::Signed(caller.clone()));
 		<Balances<T>>::insert(&caller, 1000);
-		assert!(Module::<T>::init(origin.clone(), 1000).is_ok());
+		assert!(Module::<T>::init_asset(origin.clone(), 1000).is_ok());
+
+		benchmark_helper::<T>(origin);
 
 		// hardcoded sender
-		// those are parameters for coin_1 in coin.json
-		let  mut old_k_bytes = [0u8;32];
-		let old_k_vec = BASE64
-			.decode(b"+tMTpSikpdACxuDGZTl5pxwT7tpYcX/DFKJRZ1oLfqc=")
+		let mut sender_bytes_1 = [0u8; 96];
+		let sender_data_1 = BASE64
+			.decode(b"TOg0RPyxq8dAdEGNjHcYpLrh7fekhTJBpXlHNBkP2+MgIkzsMzMRTvThgza1tf0NmB93IBVQfktQCCDorNpeMGH9EyeUUj2Oz1Y9BnQb0+rHAl9Ne1eaevfH2wT6LoQB")
 			.unwrap();
-		old_k_bytes.copy_from_slice(&old_k_vec[0..32].as_ref());
+		sender_bytes_1.copy_from_slice(sender_data_1.as_ref());
 
-		let mut old_s_bytes = [0u8; 32];
-		let old_s_vec = BASE64
-			.decode(b"xsPXqMXA1SKMOehtsgVWV8xw9Mj0rh3O8Yt1ZHJzaQ4=")
+		let mut sender_bytes_2 = [0u8; 96];
+		let sender_data_2 = BASE64
+			.decode(b"T4ZiizFfv0Kyida72ztC6qbLtSJUk/QF2NtmG8P4g8XDX0rOcCM/4ZT0QQXcPbb3VZIQf3RQ67wVNM38d+LCQQTIFdSTS1TxETxUpd67jfZKICuSgxKwb5X+PBvMGxYu")
 			.unwrap();
-		old_s_bytes.copy_from_slice(old_s_vec[0..32].as_ref());
-
-		let mut old_cm_bytes = [0u8; 32];
-		let old_cm_vec = BASE64
-			.decode(b"XzoWOzhp6rXjQ/HDEN6jSLsLs64hKXWUNuFVtCUq0AA=")
-			.unwrap();
-		old_cm_bytes.copy_from_slice(&old_cm_vec[0..32].as_ref());
-
-		let mut old_sn_bytes = [0u8; 32];
-		let old_sn_vec = BASE64
-			.decode(b"jqhzAPanABquT0CpMC2aFt2ze8+UqMUcUG6PZBmqFqE=")
-			.unwrap();
-		old_sn_bytes.copy_from_slice(&old_sn_vec[0..32].as_ref());
-
-		let sender = MantaCoin {
-			cm_bytes: old_cm_bytes.clone(),
-		};
-
-		// mint the sender coin
-		assert!(Module::<T>::mint(
-			origin,
-			10,
-			old_k_bytes,
-			old_s_bytes,
-			old_cm_bytes
-		).is_ok());
-
-		// check that minting is successful
-		assert_eq!(PoolBalance::get(), 10);
-		let coin_list = CoinList::get();
-		assert_eq!(coin_list.len(), 1);
-		assert_eq!(coin_list[0], sender);
-		let sn_list = SNList::get();
-		assert_eq!(sn_list.len(), 0);
+		sender_bytes_2.copy_from_slice(sender_data_2.as_ref());
 
 		// hardcoded receiver
-		// those are parameters for coin_3 in coin.json
-		let  mut new_k_bytes = [0u8;32];
-		let new_k_vec = BASE64
-			.decode(b"2HbWGQCLOfxuA4jOiDftBRSbjjAs/a0vjrq/H4p6QBI=")
+		let mut receiver_bytes_1 = [0u8; 80];
+		let receiver_data_1 = BASE64
+			.decode(b"0oTFuAQG8C21A2N30b4nqbOB5nfwIcrs1aER00EBvaKF0KxGrBcL736UyP/+oExnzVthf0U8CDG2/qmkXNm5mAAAAAAAAAAAAAAAAAAAAAA=")
 			.unwrap();
-		new_k_bytes.copy_from_slice(&new_k_vec[0..32].as_ref());
+		receiver_bytes_1.copy_from_slice(receiver_data_1.as_ref());
 
-		let mut new_cm_bytes = [0u8; 32];
-		let new_cm_vec = BASE64
-			.decode(b"1zuOv92V7e1qX1bP7+QNsV+gW5E3xUsghte/lZ7h5pg=")
+		let mut receiver_bytes_2 = [0u8; 80];
+		let receiver_data_2 = BASE64
+			.decode(b"2kH96Ae8wOdvi7nA87Cfy9f+ce0lu1YS1j27LQ1D/a1eO7lMQI14/kniLp2a2U3DLNa6EPoQL1VHEp+t5mb9uAAAAAAAAAAAAAAAAAAAAAA=")
 			.unwrap();
-		new_cm_bytes.copy_from_slice(new_cm_vec[0..32].as_ref());
-		let receiver = MantaCoin{
-			cm_bytes: new_cm_bytes,
-		};
+		receiver_bytes_2.copy_from_slice(receiver_data_2.as_ref());
 
 		// hardcoded proof
 		let mut proof_bytes = [0u8; 192];
-		let proof_vec = BASE64
-			.decode(b"Dhs0fgdEpE1SfBGIn5HpD22YvzPZKsLKMBPwT9QRe/BcuqnQuyr0oUHb7lNS/WoIPD/H348KI+e6eMcNa2nYLN5AqH/ZmXz7p2nrwUsHJVOYnFDuH2zEAcZi0hTPTN0HEiiXtYEBmUSt52xDehRSw/yCXY6AFvlQzXvMWdXq2SF2zRh93Rs9pQyO/3e7QLyMffIMeeAbx580PsJJELPrSB9x+a99l/4z8NW0YlBUwzt90uFL1bnEcp+B1gxXjpAD")
+		let proof_data = BASE64
+			.decode(b"Knwm6dXGrOqd4gC8xvoxQGsGcHdLlY2be4XesJqny6YvUk2h/1SnGxPJ9i059PKBK0NdaCAcR3/L0YMue3/P+NPKHrPG6hqs+Bs4MNE07NWcdMQb6wU3dWGL+sW7RXQXnlnOwp93jpgADpmb2uikCbhx87ulHG5F5c1u+NDipi/IJ4URqCNod4VFYP8EZPsDXOtnD62VT0izr6eN9eVjlLkgWrdDaLTsVsQ+tBVbxe0QHmhnQFT8TwCYOYPXx8EQ")
 			.unwrap();
-		proof_bytes.copy_from_slice(proof_vec[0..192].as_ref());
+		proof_bytes.copy_from_slice(proof_data.as_ref());
 
-		// hardcoded keys and ciphertext
-		let mut cipher_bytes = [0u8; 16];
-		let cipher_vec =  BASE64
-			.decode(b"UkNssYxe5HUjSzlz5JE1pQ==")
-			.unwrap();
-		cipher_bytes.copy_from_slice(cipher_vec[0..16].as_ref());
-
-		let mut sender_pk_bytes = [0u8; 32];
-		let sender_pk_vec =  BASE64
-			.decode(b"YNwLbvb27Rb0aKptzSNEvBToYvW9IlbjVvROHfD2NAQ=")
-			.unwrap();
-		sender_pk_bytes.copy_from_slice(sender_pk_vec[0..32].as_ref());
-
-		let mut receiver_sk_bytes = [0u8; 32];
-		let receiver_sk_vec =  BASE64
-			.decode(b"uPo5YiD6wGRiHbIXH6WmHuwjYS+mNSkCspDngkHHJ2c=")
-			.unwrap();
-		receiver_sk_bytes.copy_from_slice(receiver_sk_vec[0..32].as_ref());
-
-
-		// hardcoded merkle root
-		let mut root_bytes = [0u8; 32];
-		let root_vec = BASE64
-			.decode(b"q5VhDl/WxjeemZ/2ivGmiuOTFMEazcqEFk5ESISngso=")
-			.unwrap();
-		root_bytes.copy_from_slice(root_vec[0..32].as_ref());
-
-	}: manta_transfer(
+	}: private_transfer (
 		RawOrigin::Signed(caller),
-		root_bytes,
-		old_sn_bytes,
-		old_k_bytes,
-		new_k_bytes,
-		new_cm_bytes,
-		cipher_bytes,
+		sender_bytes_1,
+		sender_bytes_2,
+		receiver_bytes_1,
+		receiver_bytes_2,
 		proof_bytes)
 	verify {
 		assert_eq!(TotalSupply::get(), 1000);
-		assert_eq!(PoolBalance::get(), 10);
-		let coin_list = CoinList::get();
-		assert_eq!(coin_list.len(), 2);
-		assert_eq!(coin_list[0], sender);
-		assert_eq!(coin_list[1], receiver);
-		let sn_list = SNList::get();
-		assert_eq!(sn_list.len(), 1);
-		assert_eq!(sn_list[0], old_sn_bytes);
-
-		let enc_value_list = EncValueList::get();
-		assert_eq!(enc_value_list.len(), 1);
-		assert_eq!(enc_value_list[0], cipher_bytes);
-		assert_eq!(
-			dh::manta_dh_dec(&cipher_bytes, &sender_pk_bytes, &receiver_sk_bytes),
-			10
-		);
+		assert_eq!(PoolBalance::get(), 40);
 	}
 
 
-	forfeit {
+	reclaim {
 		let caller: T::AccountId = whitelisted_caller();
 		let origin: T::Origin = T::Origin::from(RawOrigin::Signed(caller.clone()));
 		<Balances<T>>::insert(&caller, 1000);
-		assert!(Module::<T>::init(origin.clone(), 1000).is_ok());
+		assert!(Module::<T>::init_asset(origin.clone(), 1000).is_ok());
 
-		// hardcoded coin_1
-		// those are parameters for coin_1 in coin.json
-		let  mut old_k_bytes = [0u8;32];
-		let old_k_vec = BASE64
-			.decode(b"+tMTpSikpdACxuDGZTl5pxwT7tpYcX/DFKJRZ1oLfqc=")
-			.unwrap();
-		old_k_bytes.copy_from_slice(&old_k_vec[0..32].as_ref());
-
-		let mut old_s_bytes = [0u8; 32];
-		let old_s_vec = BASE64
-			.decode(b"xsPXqMXA1SKMOehtsgVWV8xw9Mj0rh3O8Yt1ZHJzaQ4=")
-			.unwrap();
-		old_s_bytes.copy_from_slice(old_s_vec[0..32].as_ref());
-
-		let mut old_cm_bytes = [0u8; 32];
-		let old_cm_vec = BASE64
-			.decode(b"XzoWOzhp6rXjQ/HDEN6jSLsLs64hKXWUNuFVtCUq0AA=")
-			.unwrap();
-		old_cm_bytes.copy_from_slice(&old_cm_vec[0..32].as_ref());
-
-		let mut old_sn_bytes = [0u8; 32];
-		let old_sn_vec = BASE64
-			.decode(b"jqhzAPanABquT0CpMC2aFt2ze8+UqMUcUG6PZBmqFqE=")
-			.unwrap();
-		old_sn_bytes.copy_from_slice(&old_sn_vec[0..32].as_ref());
-
-		let sender = MantaCoin {
-			cm_bytes: old_cm_bytes.clone(),
-		};
-
-		// mint the sender coin
-		assert!(Module::<T>::mint(
-			origin.clone(),
-			10,
-			old_k_bytes,
-			old_s_bytes,
-			old_cm_bytes
-		).is_ok());
-
-		// check that minting is successful
-		assert_eq!(PoolBalance::get(), 10);
-		let coin_list = CoinList::get();
-		assert_eq!(coin_list.len(), 1);
-		assert_eq!(coin_list[0], sender);
-		let sn_list = SNList::get();
-		assert_eq!(sn_list.len(), 0);
-
+		benchmark_helper::<T>(origin);
 
 		// hardcoded sender
-		// those are parameters for coin_1 in coin.json
-		let  mut old_k_bytes = [0u8;32];
-		let old_k_vec = BASE64
-			.decode(b"CutG9BBbkJMpBkbYTVX37HWunGcxHyy8+Eb1xRT9eVM=")
+		let mut sender_bytes_1 = [0u8; 96];
+		let sender_data_1 = BASE64
+			.decode(b"aZBj5uziP94poiR6ZGj0WQOQI7rCR1rS0v8eqNreMFNE0zyXQhhHwhHVFz4+RPOdBePDoGhV6Z2qWwyifehdnWjAvTNBr+pmM7t6lYmDOtxBw4sTQQTV6Y92+R5jVYcS")
 			.unwrap();
-		old_k_bytes.copy_from_slice(&old_k_vec[0..32].as_ref());
+		sender_bytes_1.copy_from_slice(sender_data_1.as_ref());
 
-		let mut old_s_bytes = [0u8; 32];
-		let old_s_vec = BASE64
-			.decode(b"/KTVGbHHU8UVHLS6h54470DtjwF6MHvBkG2bKxpyBQc=")
+		let mut sender_bytes_2 = [0u8; 96];
+		let sender_data_2 = BASE64
+			.decode(b"xKFkoSlKe+p3FsiEbDsDZk89EXeq6Jevs0LodRiWLtEK+hOGmfLz2MuOyFGPcHwqFgrh4Hg5WP/X/i3KcZyHIxxmVpjr69iYzEQLTaXthBEAxfFpk7kEicm9KTQ3rzPi")
 			.unwrap();
-		old_s_bytes.copy_from_slice(old_s_vec[0..32].as_ref());
+		sender_bytes_2.copy_from_slice(sender_data_2.as_ref());
 
-		let mut old_cm_bytes = [0u8; 32];
-		let old_cm_vec = BASE64
-			.decode(b"3Oye4AqhzdysdWdCzMcoImTnYNGd21OmF8ztph4dRqI=")
+		// hardcoded receiver
+		let mut receiver_bytes = [0u8; 80];
+		let receiver_data = BASE64
+			.decode(b"UvTwRWxxcRUtbfZD+6+RVdU4Y1u3+zs8NtHMhf8IUAw2nXLghBzOPfFmvkSa5c/nENmgUc/v7tCzJr7N48pY2AAAAAAAAAAAAAAAAAAAAAA=")
 			.unwrap();
-		old_cm_bytes.copy_from_slice(&old_cm_vec[0..32].as_ref());
-
-		let mut old_sn_bytes = [0u8; 32];
-		let old_sn_vec = BASE64
-			.decode(b"EdHWc+HAgRWlcJrK8dlVnewSCTwEDPZFa8iYKxoRdOY=")
-			.unwrap();
-		old_sn_bytes.copy_from_slice(&old_sn_vec[0..32].as_ref());
-
-		let sender = MantaCoin {
-			cm_bytes: old_cm_bytes.clone(),
-		};
-
-		// mint the sender coin
-		assert!(Module::<T>::mint(
-			origin,
-			100,
-			old_k_bytes,
-			old_s_bytes,
-			old_cm_bytes
-		).is_ok());
-
-		// check that minting is successful
-		assert_eq!(PoolBalance::get(), 110);
-		let coin_list = CoinList::get();
-		assert_eq!(coin_list.len(), 2);
-		assert_eq!(coin_list[1], sender);
-		let sn_list = SNList::get();
-		assert_eq!(sn_list.len(), 0);
-
+		receiver_bytes.copy_from_slice(receiver_data.as_ref());
 
 		// hardcoded proof
 		let mut proof_bytes = [0u8; 192];
-		let proof_vec = BASE64
-			.decode(b"nqY+V9/nzzF3A72jXj4Cm1Vn2mfWMbcBWqxppSO/gZ80XkIZRE9ljE4nTP0SBBYP+Ofkq14ZCiu/cLgJpuR33cMcxnNxB65A6CDFw3ZrTkTm2kjfTuH7Co2dsuQHXNYP2+f2H7yf613LjQbpQvJLMGFa781KYNyvvU1ApT4Gzwh3guO3KPij0l8jFGCDq4wTUavvaJlLGOMoTdKXCkR24Iik9+DpBDvvLHJUSrgROPSBCg61PJhQTkYqSIAtT4YG")
+		let proof_data = BASE64
+			.decode(b"MhcUuv4fdhzOF8pDQduDQymqo493r2DxnNU7GN+1qIjWJhXRLhXMzN4DSXCEp6OYqzIdUd160s6czxwoNEBDEVUJ/MATzNxex+PdO+vNfGYPdSorOYNFY1qfLg8rC4ADJPngMea763k8xF9CDPbxwplDcnq1Riq83ig22uP+ioNSgQOXb8UEElNJpGE9acIRbmfJ9ZBn+zHWyWBqVf3vvAjNvGOoJcO2dbCkgVqQyE/2zvGej2fK8YtS93Ea4KuM")
 			.unwrap();
-		proof_bytes.copy_from_slice(proof_vec[0..192].as_ref());
+		proof_bytes.copy_from_slice(proof_data.as_ref());
 
-		// hardcoded merkle root
-		let mut root_bytes = [0u8; 32];
-		let root_vec = BASE64
-			.decode(b"QDWIJvSmMmIS1incXpqZA+oZKOuvP42PNVyLKWC0gGQ=")
-			.unwrap();
-		root_bytes.copy_from_slice(root_vec[0..32].as_ref());
-	}: forfeit(
+	}: reclaim (
 		RawOrigin::Signed(caller),
-		100,
-		root_bytes,
-		old_sn_bytes,
-		old_k_bytes,
+		10,
+		sender_bytes_1,
+		sender_bytes_2,
+		receiver_bytes,
 		proof_bytes)
 	verify {
-		// check the resulting status of the ledger storage
 		assert_eq!(TotalSupply::get(), 1000);
-		assert_eq!(PoolBalance::get(), 10);
-		let coin_list = CoinList::get();
-		assert_eq!(coin_list.len(), 2);
-		let sn_list = SNList::get();
-		assert_eq!(sn_list.len(), 1);
-		assert_eq!(sn_list[0], old_sn_bytes);
+		assert_eq!(PoolBalance::get(), 30);
+	}
+}
+
+#[cfg(test)]
+mod tests {
+	use super::*;
+	use crate::bench_composite::{ExtBuilder, Test};
+	use frame_support::assert_ok;
+
+	#[test]
+	fn init() {
+		ExtBuilder::default().build().execute_with(|| {
+			assert_ok!(test_benchmark_init_asset::<Test>());
+		});
+	}
+
+	#[test]
+	fn transfer_asset() {
+		ExtBuilder::default().build().execute_with(|| {
+			assert_ok!(test_benchmark_transfer_asset::<Test>());
+		});
+	}
+
+	#[test]
+	fn mint_asset() {
+		ExtBuilder::default().build().execute_with(|| {
+			assert_ok!(test_benchmark_mint_private_asset::<Test>());
+		});
+	}
+
+	#[test]
+	fn manta_transfer() {
+		ExtBuilder::default().build().execute_with(|| {
+			assert_ok!(test_benchmark_private_transfer::<Test>());
+		});
+	}
+
+	#[test]
+	fn reclaim() {
+		ExtBuilder::default().build().execute_with(|| {
+			assert_ok!(test_benchmark_reclaim::<Test>());
+		});
 	}
 }
