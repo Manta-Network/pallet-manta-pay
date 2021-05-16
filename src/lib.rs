@@ -494,11 +494,22 @@ decl_module! {
 		fn load_vk_keys(_origin) 
 		{
 			// get the verification key from the ledger
+			let _transfer_vk_bytes = TransferZKPKey::get();
+		}
+
+
+				/// This is a hook to benchmark runtime cost for loading keys
+		/// from the blockchain
+		#[weight = 0]
+		// #[cfg(features = "runtime-benchmarks")]
+		fn load_and_des_vk_keys(_origin) 
+		{
+			// get the verification key from the ledger
 			let transfer_vk_bytes = TransferZKPKey::get();
 			let vk = Groth16Vk::deserialize(transfer_vk_bytes.as_ref()).unwrap();
 			let _pvk = Groth16Pvk::from(vk);
-
 		}
+
 
 
 		/// This is a hook to benchmark runtime cost for loading parameters
