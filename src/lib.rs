@@ -111,6 +111,7 @@ pub use crypto::*;
 
 use sp_std::prelude::*;
 
+use ark_serialize::CanonicalDeserialize;
 use ark_std::vec::Vec;
 use frame_support::{decl_error, decl_event, decl_module, decl_storage, ensure};
 use frame_system::ensure_signed;
@@ -485,6 +486,37 @@ decl_module! {
 			<Balances<T>>::insert(origin_account, origin_balance + amount);
 		}
 
+
+		/// This is a hook to benchmark runtime cost for loading keys
+		/// from the blockchain
+		#[weight = 0]
+		// #[cfg(features = "runtime-benchmarks")]
+		fn load_vk_keys(_origin) 
+		{
+			// get the verification key from the ledger
+			let transfer_vk_bytes = TransferZKPKey::get();
+			let vk = Groth16Vk::deserialize(transfer_vk_bytes.as_ref()).unwrap();
+			let _pvk = Groth16Pvk::from(vk);
+
+		}
+
+
+		/// This is a hook to benchmark runtime cost for loading parameters
+		/// from the blockchain
+		#[weight = 0]
+		// #[cfg(features = "runtime-benchmarks")]
+		fn load_hash_param(_origin)
+		{
+			let hash_param = HashParam::deserialize(HASH_PARAM_BYTES.as_ref());
+			let hash_param_checksum_local = hash_param.get_checksum();
+
+			// get the parameter checksum from the ledger
+			let hash_param_checksum = HashParamChecksum::get();
+			ensure!(
+				hash_param_checksum_local == hash_param_checksum,
+				<Error<T>>::ParamFail
+			);
+		}
 	}
 }
 
