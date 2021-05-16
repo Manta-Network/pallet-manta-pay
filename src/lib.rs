@@ -91,6 +91,8 @@ mod serdes;
 mod shard;
 
 #[cfg(test)]
+mod bench_composite;
+#[cfg(test)]
 mod test;
 #[cfg(test)]
 #[macro_use]
