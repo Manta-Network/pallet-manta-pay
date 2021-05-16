@@ -314,7 +314,7 @@ fn transfer_test_helper(iter: usize) {
 	let pk = Groth16Pk::deserialize_unchecked(buf).unwrap();
 	let vk_bytes = TransferZKPKey::get();
 	let buf: &[u8] = vk_bytes.as_ref();
-	let vk = Groth16Vk::deserialize(buf).unwrap();
+	let vk = Groth16Vk::deserialize_unchecked(buf).unwrap();
 	assert_eq!(pk.vk, vk);
 
 	let mut rng = ChaCha20Rng::from_seed([3u8; 32]);
@@ -526,7 +526,7 @@ fn reclaim_test_helper(iter: usize) {
 	let pk = Groth16Pk::deserialize_unchecked(buf).unwrap();
 	let vk_bytes = ReclaimZKPKey::get();
 	let buf: &[u8] = vk_bytes.as_ref();
-	let vk = Groth16Vk::deserialize(buf).unwrap();
+	let vk = Groth16Vk::deserialize_unchecked(buf).unwrap();
 	assert_eq!(pk.vk, vk);
 
 	for i in 0usize..iter {

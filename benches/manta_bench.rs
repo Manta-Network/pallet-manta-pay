@@ -38,8 +38,8 @@ criterion_group!(
 	bench_pedersen_hash,
 	bench_pedersen_com,
 	bench_merkle_tree,
+	bench_transfer_verify,
 	bench_transfer_prove,
-	bench_trasnfer_verify,
 );
 criterion_main!(manta_bench);
 
@@ -62,7 +62,7 @@ fn bench_param_io(c: &mut Criterion) {
 	bench_group.finish();
 }
 
-fn bench_trasnfer_verify(c: &mut Criterion) {
+fn bench_transfer_verify(c: &mut Criterion) {
 	let hash_param_seed = HASH_PARAM_SEED;
 	let commit_param_seed = COMMIT_PARAM_SEED;
 

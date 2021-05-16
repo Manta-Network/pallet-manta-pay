@@ -30,7 +30,7 @@ pub fn manta_verify_transfer_zkp(
 	receiver_data_2: &ReceiverData,
 ) -> bool {
 	let buf: &[u8] = transfer_key_bytes.as_ref();
-	let vk = Groth16Vk::deserialize(buf).unwrap();
+	let vk = Groth16Vk::deserialize_unchecked(buf).unwrap();
 	let pvk = Groth16Pvk::from(vk);
 	let proof = Groth16Proof::deserialize(proof.as_ref()).unwrap();
 	let k_old_1 = CommitmentOutput::deserialize(sender_data_1.k.as_ref()).unwrap();
@@ -75,7 +75,7 @@ pub fn manta_verify_reclaim_zkp(
 	receiver_data: &ReceiverData,
 ) -> bool {
 	let buf: &[u8] = reclaim_key_bytes.as_ref();
-	let vk = Groth16Vk::deserialize(buf).unwrap();
+	let vk = Groth16Vk::deserialize_unchecked(buf).unwrap();
 	let pvk = Groth16Pvk::from(vk);
 	let proof = Groth16Proof::deserialize(proof.as_ref()).unwrap();
 	let k_old_1 = CommitmentOutput::deserialize(sender_data_1.k.as_ref()).unwrap();

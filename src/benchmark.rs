@@ -208,7 +208,7 @@ benchmarks! {
 
 
 	load_hash_param {
-		
+
 		let caller: T::AccountId = whitelisted_caller();
 		let origin: T::Origin = T::Origin::from(RawOrigin::Signed(caller.clone()));
 		<Balances<T>>::insert(&caller, 1000);
@@ -220,7 +220,7 @@ benchmarks! {
 	}
 
 	load_vk_keys {
-		
+
 		let caller: T::AccountId = whitelisted_caller();
 		let origin: T::Origin = T::Origin::from(RawOrigin::Signed(caller.clone()));
 		<Balances<T>>::insert(&caller, 1000);
@@ -234,7 +234,7 @@ benchmarks! {
 
 
 	load_and_des_vk_keys {
-		
+
 		let caller: T::AccountId = whitelisted_caller();
 		let origin: T::Origin = T::Origin::from(RawOrigin::Signed(caller.clone()));
 		<Balances<T>>::insert(&caller, 1000);
@@ -287,7 +287,6 @@ mod tests {
 		});
 	}
 
-
 	#[test]
 	fn load_vk_keys() {
 		ExtBuilder::default().build().execute_with(|| {
@@ -301,7 +300,6 @@ mod tests {
 			assert_ok!(test_benchmark_load_hash_param::<Test>());
 		});
 	}
-
 
 	#[test]
 	fn load_and_des_vk_keys() {

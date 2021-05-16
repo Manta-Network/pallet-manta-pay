@@ -491,7 +491,7 @@ decl_module! {
 		/// from the blockchain
 		#[weight = 0]
 		// #[cfg(features = "runtime-benchmarks")]
-		fn load_vk_keys(_origin) 
+		fn load_vk_keys(_origin)
 		{
 			// get the verification key from the ledger
 			let _transfer_vk_bytes = TransferZKPKey::get();
@@ -502,11 +502,11 @@ decl_module! {
 		/// from the blockchain
 		#[weight = 0]
 		// #[cfg(features = "runtime-benchmarks")]
-		fn load_and_des_vk_keys(_origin) 
+		fn load_and_des_vk_keys(_origin)
 		{
 			// get the verification key from the ledger
 			let transfer_vk_bytes = TransferZKPKey::get();
-			let vk = Groth16Vk::deserialize(transfer_vk_bytes.as_ref()).unwrap();
+			let vk = Groth16Vk::deserialize_unchecked(transfer_vk_bytes.as_ref()).unwrap();
 			let _pvk = Groth16Pvk::from(vk);
 		}
 
