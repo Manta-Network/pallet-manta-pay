@@ -21,11 +21,11 @@ use ark_groth16::verify_proof;
 use ark_serialize::CanonicalDeserialize;
 use ark_std::vec::Vec;
 use blake2::{Blake2s, Digest};
-use frame_support::codec::{Decode, Encode};
+// use frame_support::codec::{Decode, Encode};
 
-#[derive(Encode, Debug, Decode, Clone, Default, PartialEq)]
+#[derive(Debug, Clone, Default, PartialEq)]
 pub struct VerificationKey {
-	pub data: Vec<u8>,
+	pub data: &'static [u8],
 }
 
 impl Checksum for VerificationKey {
@@ -40,14 +40,14 @@ impl Checksum for VerificationKey {
 }
 
 pub fn manta_verify_transfer_zkp(
-	transfer_key_bytes: Vec<u8>,
+	transfer_key_bytes: &VerificationKey,
 	proof: [u8; 192],
 	sender_data_1: &SenderData,
 	sender_data_2: &SenderData,
 	receiver_data_1: &ReceiverData,
 	receiver_data_2: &ReceiverData,
 ) -> bool {
-	let buf: &[u8] = transfer_key_bytes.as_ref();
+	let buf: &[u8] = transfer_key_bytes.data;
 	let vk = Groth16Vk::deserialize_unchecked(buf).unwrap();
 	let pvk = Groth16Pvk::from(vk);
 	let proof = Groth16Proof::deserialize(proof.as_ref()).unwrap();
@@ -85,14 +85,14 @@ pub fn manta_verify_transfer_zkp(
 }
 
 pub fn manta_verify_reclaim_zkp(
-	reclaim_key_bytes: Vec<u8>,
+	reclaim_key_bytes: &VerificationKey,
 	value: u64,
 	proof: [u8; 192],
 	sender_data_1: &SenderData,
 	sender_data_2: &SenderData,
 	receiver_data: &ReceiverData,
 ) -> bool {
-	let buf: &[u8] = reclaim_key_bytes.as_ref();
+	let buf: &[u8] = reclaim_key_bytes.data;
 	let vk = Groth16Vk::deserialize_unchecked(buf).unwrap();
 	let pvk = Groth16Pvk::from(vk);
 	let proof = Groth16Proof::deserialize(proof.as_ref()).unwrap();

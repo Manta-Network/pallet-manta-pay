@@ -172,7 +172,7 @@ fn bench_transfer_verify(c: &mut Criterion) {
 	bench_group.bench_function(bench_str, move |b| {
 		b.iter(|| {
 			assert!(manta_verify_transfer_zkp(
-				TRANSFER_VKBYTES.to_vec(),
+				&TRANSFER_PK,
 				proof_bytes,
 				&sender_data_1,
 				&sender_data_2,

@@ -99,7 +99,7 @@ mod test;
 extern crate std;
 
 pub use coin::*;
-pub use constants::{COMMIT_PARAM_BYTES, HASH_PARAM_BYTES, RECLAIM_VKBYTES, TRANSFER_VKBYTES};
+pub use constants::{COMMIT_PARAM_BYTES, HASH_PARAM_BYTES, TRANSFER_PK, RECLAIM_PK};
 pub use param::*;
 pub use serdes::MantaSerDes;
 pub use shard::{Shard, Shards};
@@ -163,14 +163,10 @@ decl_module! {
 			// for product we should use a MPC protocol to build the ZKP verification key
 			// and then deploy that vk
 			//
-			let transfer_key_digest = VerificationKey{
-				data: TRANSFER_VKBYTES.to_vec()
-			}.get_checksum();
+			let transfer_key_digest = TRANSFER_PK.get_checksum();
 			TransferZKPKeyChecksum::put(transfer_key_digest);
 
-			let reclaim_key_digest = VerificationKey{
-				data: RECLAIM_VKBYTES.to_vec()
-			}.get_checksum();
+			let reclaim_key_digest = RECLAIM_PK.get_checksum();
 			ReclaimZKPKeyChecksum::put(reclaim_key_digest);
 
 			// coin_shards are a 256 lists of commitments
@@ -251,9 +247,6 @@ decl_module! {
 				commit_param_checksum_local == commit_param_checksum,
 				<Error<T>>::MintFail
 			);
-			// todo: checksum ZKP verification eky
-
-
 
 			// check the validity of the commitment
 			ensure!(
@@ -311,8 +304,6 @@ decl_module! {
 				hash_param_checksum_local == hash_param_checksum,
 				<Error<T>>::ParamFail
 			);
-			// todo: checksum ZKP verification eky
-
 
 			// check if vn_old already spent
 			let mut sn_list = VNList::get();
@@ -320,11 +311,11 @@ decl_module! {
 				!sn_list.contains(&sender_data_1.sn),
 				<Error<T>>::MantaCoinSpent
 			);
+			sn_list.push(sender_data_1.sn);
 			ensure!(
 				!sn_list.contains(&sender_data_2.sn),
 				<Error<T>>::MantaCoinSpent
 			);
-			sn_list.push(sender_data_1.sn);
 			sn_list.push(sender_data_2.sn);
 
 			// get the ledger state from the ledger
@@ -338,27 +329,25 @@ decl_module! {
 				coin_shards.check_root(&sender_data_2.root),
 				<Error<T>>::InvalidLedgerState
 			);
+
 			// check the commitment are not in the list already
+			// and update coin list
+			// with sharding, there is no point to batch update
+			// since the commitments are likely to go to different shards
 			ensure!(
 				!coin_shards.exist(&receiver_data_1.cm),
 				<Error<T>>::MantaCoinExist
 			);
+			coin_shards.update(&receiver_data_1.cm, hash_param.clone());
 			ensure!(
 				!coin_shards.exist(&receiver_data_2.cm),
 				<Error<T>>::MantaCoinExist
 			);
-
-			// update coin list
-			// with sharding, there is no point to batch update
-			// since the commitments are likely to go to different shards
-			coin_shards.update(&receiver_data_1.cm, hash_param.clone());
 			coin_shards.update(&receiver_data_2.cm, hash_param);
 
 			// get the verification key from the ledger
 			let transfer_vk_checksum = TransferZKPKeyChecksum::get();
-			let transfer_vk = VerificationKey {
-				data: TRANSFER_VKBYTES.to_vec()
-			};
+			let transfer_vk = TRANSFER_PK;
 
 			ensure!(
 				transfer_vk.get_checksum() == transfer_vk_checksum,
@@ -368,7 +357,7 @@ decl_module! {
 			// check validity of zkp
 			ensure!(
 				crypto::manta_verify_transfer_zkp(
-					transfer_vk.data,
+					&transfer_vk,
 					proof,
 					&sender_data_1,
 					&sender_data_2,
@@ -452,9 +441,7 @@ decl_module! {
 
 			// get the verification key from the ledger
 			let reclaim_vk_checksum = ReclaimZKPKeyChecksum::get();
-			let reclaim_vk = VerificationKey{
-				data: RECLAIM_VKBYTES.to_vec(),
-			};
+			let reclaim_vk = RECLAIM_PK;
 			ensure!(
 				reclaim_vk.get_checksum() == reclaim_vk_checksum,
 				<Error<T>>::ZkpParamFail
@@ -479,7 +466,7 @@ decl_module! {
 			// check validity of zkp
 			ensure!(
 				crypto::manta_verify_reclaim_zkp(
-					reclaim_vk.data,
+					&reclaim_vk,
 					amount,
 					proof,
 					&sender_data_1,

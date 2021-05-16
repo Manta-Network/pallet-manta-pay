@@ -315,9 +315,7 @@ fn transfer_test_helper(iter: usize) {
 	let vk = pk.vk.clone();
 	let mut vk_bytes = Vec::new();
 	vk.serialize_uncompressed(&mut vk_bytes).unwrap();
-	let vk = VerificationKey{
-		data: vk_bytes,
-	};
+	let vk = TRANSFER_PK;
 	let vk_checksum = TransferZKPKeyChecksum::get();
 	assert_eq!(vk.get_checksum(), vk_checksum);
 
@@ -531,9 +529,7 @@ fn reclaim_test_helper(iter: usize) {
 	let vk = pk.vk.clone();
 	let mut vk_bytes = Vec::new();
 	vk.serialize_uncompressed(&mut vk_bytes).unwrap();
-	let vk = VerificationKey{
-		data: vk_bytes,
-	};
+	let vk = RECLAIM_PK;
 	let vk_checksum = ReclaimZKPKeyChecksum::get();
 	assert_eq!(vk.get_checksum(), vk_checksum);
 
