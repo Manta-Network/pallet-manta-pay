@@ -14,34 +14,16 @@
 // You should have received a copy of the GNU General Public License
 // along with pallet-manta-pay.  If not, see <http://www.gnu.org/licenses/>.
 
-use crate::{coin::*, param::*, Checksum};
+use crate::{coin::*, param::*};
 use ark_ed_on_bls12_381::Fq;
 use ark_ff::ToConstraintField;
 use ark_groth16::verify_proof;
 use ark_serialize::CanonicalDeserialize;
 use ark_std::vec::Vec;
-use blake2::{Blake2s, Digest};
-// use frame_support::codec::{Decode, Encode};
-
-#[derive(Debug, Clone, Default, PartialEq)]
-pub struct VerificationKey {
-	pub data: &'static [u8],
-}
-
-impl Checksum for VerificationKey {
-	fn get_checksum(&self) -> [u8; 32] {
-		let mut hasher = Blake2s::new();
-		hasher.update(&self.data);
-		let digest = hasher.finalize();
-		let mut res = [0u8; 32];
-		res.copy_from_slice(digest.as_slice());
-		res
-	}
-}
 
 pub fn manta_verify_transfer_zkp(
 	transfer_key_bytes: &VerificationKey,
-	proof: [u8; 192],
+	proof: &[u8; 192],
 	sender_data_1: &SenderData,
 	sender_data_2: &SenderData,
 	receiver_data_1: &ReceiverData,
@@ -87,7 +69,7 @@ pub fn manta_verify_transfer_zkp(
 pub fn manta_verify_reclaim_zkp(
 	reclaim_key_bytes: &VerificationKey,
 	value: u64,
-	proof: [u8; 192],
+	proof: &[u8; 192],
 	sender_data_1: &SenderData,
 	sender_data_2: &SenderData,
 	receiver_data: &ReceiverData,

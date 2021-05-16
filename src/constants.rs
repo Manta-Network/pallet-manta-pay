@@ -15,11 +15,32 @@
 // along with pallet-manta-pay.  If not, see <http://www.gnu.org/licenses/>.
 
 use crate::VerificationKey;
+use crate::Parameter;
+
+
+pub const TRANSFER_PK: VerificationKey = VerificationKey {
+	data: &TRANSFER_VKBYTES
+};
+
+pub const RECLAIM_PK: VerificationKey = VerificationKey {
+	data: &RECLAIM_VKBYTES
+};
+
+
+
+pub const HASH_PARAM: Parameter = Parameter {
+	data: &HASH_PARAM_BYTES
+};
+
+pub const COMMIT_PARAM: Parameter = Parameter {
+	data: &COMMIT_PARAM_BYTES
+};
+
 
 
 /// Pre-computed,
 /// serialized verification key transfer proof.
-pub const TRANSFER_VKBYTES: [u8; 2312] = [
+const TRANSFER_VKBYTES: [u8; 2312] = [
 	235, 53, 181, 140, 33, 225, 93, 94, 112, 108, 149, 110, 173, 80, 36, 124, 99, 113, 4, 251, 191,
 	234, 245, 178, 48, 38, 237, 44, 14, 238, 20, 140, 222, 192, 225, 59, 179, 14, 135, 68, 121, 26,
 	216, 223, 154, 197, 222, 24, 123, 223, 192, 56, 109, 201, 61, 22, 107, 35, 13, 69, 62, 216,
@@ -136,7 +157,7 @@ pub const TRANSFER_VKBYTES: [u8; 2312] = [
 
 /// Pre-computed,
 /// serialized verification key reclaim proof.
-pub const RECLAIM_VKBYTES: [u8; 2216] = [
+const RECLAIM_VKBYTES: [u8; 2216] = [
 	235, 53, 181, 140, 33, 225, 93, 94, 112, 108, 149, 110, 173, 80, 36, 124, 99, 113, 4, 251, 191,
 	234, 245, 178, 48, 38, 237, 44, 14, 238, 20, 140, 222, 192, 225, 59, 179, 14, 135, 68, 121, 26,
 	216, 223, 154, 197, 222, 24, 123, 223, 192, 56, 109, 201, 61, 22, 107, 35, 13, 69, 62, 216,
@@ -247,7 +268,7 @@ pub const RECLAIM_VKBYTES: [u8; 2216] = [
 ];
 
 /// Serialized hash parameters.
-pub const HASH_PARAM_BYTES: [u8; 65536] = [
+const HASH_PARAM_BYTES: [u8; 65536] = [
 	113, 64, 187, 9, 75, 213, 154, 114, 84, 155, 230, 147, 209, 20, 128, 134, 176, 28, 209, 93,
 	141, 160, 94, 25, 95, 167, 100, 223, 167, 70, 95, 9, 23, 149, 64, 153, 89, 127, 45, 183, 185,
 	243, 29, 182, 11, 95, 228, 0, 49, 95, 54, 198, 55, 84, 12, 121, 142, 228, 38, 108, 130, 83,
@@ -3417,7 +3438,7 @@ pub const HASH_PARAM_BYTES: [u8; 65536] = [
 ];
 
 /// Serialized commitment parameters.
-pub const COMMIT_PARAM_BYTES: [u8; 81664] = [
+const COMMIT_PARAM_BYTES: [u8; 81664] = [
 	239, 80, 151, 37, 213, 198, 103, 157, 25, 36, 68, 111, 176, 1, 254, 77, 60, 181, 51, 228, 160,
 	255, 172, 119, 19, 22, 154, 148, 196, 167, 90, 27, 163, 250, 162, 144, 58, 103, 43, 75, 17, 26,
 	150, 249, 219, 75, 225, 165, 174, 137, 210, 98, 238, 15, 38, 29, 204, 102, 122, 118, 183, 180,
@@ -7370,11 +7391,3 @@ pub const COMMIT_PARAM_BYTES: [u8; 81664] = [
 	16, 125, 155, 187, 149, 53, 230, 142, 9, 35, 235, 127, 116, 65, 130, 64, 130, 49, 28,
 ];
 
-
-pub const TRANSFER_PK: VerificationKey = VerificationKey {
-	data: &TRANSFER_VKBYTES
-};
-
-pub const RECLAIM_PK: VerificationKey = VerificationKey {
-	data: &RECLAIM_VKBYTES
-};

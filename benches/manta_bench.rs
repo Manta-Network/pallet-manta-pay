@@ -49,14 +49,14 @@ fn bench_param_io(c: &mut Criterion) {
 	let bench_str = format!("hash param");
 	bench_group.bench_function(bench_str, move |b| {
 		b.iter(|| {
-			HashParam::deserialize(HASH_PARAM_BYTES.as_ref());
+			HashParam::deserialize(HASH_PARAM.data);
 		})
 	});
 
 	let bench_str = format!("commit param");
 	bench_group.bench_function(bench_str, move |b| {
 		b.iter(|| {
-			CommitmentParam::deserialize(COMMIT_PARAM_BYTES.as_ref());
+			CommitmentParam::deserialize(COMMIT_PARAM.data);
 		})
 	});
 	bench_group.finish();
@@ -173,7 +173,7 @@ fn bench_transfer_verify(c: &mut Criterion) {
 		b.iter(|| {
 			assert!(manta_verify_transfer_zkp(
 				&TRANSFER_PK,
-				proof_bytes,
+				&proof_bytes,
 				&sender_data_1,
 				&sender_data_2,
 				&receiver_data_1,

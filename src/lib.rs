@@ -89,6 +89,7 @@ mod crypto;
 mod param;
 mod serdes;
 mod shard;
+mod checksum;
 
 #[cfg(test)]
 mod bench_composite;
@@ -99,7 +100,7 @@ mod test;
 extern crate std;
 
 pub use coin::*;
-pub use constants::{COMMIT_PARAM_BYTES, HASH_PARAM_BYTES, TRANSFER_PK, RECLAIM_PK};
+pub use constants::{COMMIT_PARAM, HASH_PARAM, TRANSFER_PK, RECLAIM_PK};
 pub use param::*;
 pub use serdes::MantaSerDes;
 pub use shard::{Shard, Shards};
@@ -113,7 +114,7 @@ use sp_std::prelude::*;
 use ark_std::vec::Vec;
 use frame_support::{decl_error, decl_event, decl_module, decl_storage, ensure};
 use frame_system::ensure_signed;
-use serdes::Checksum;
+use checksum::Checksum;
 use shard::LedgerSharding;
 use sp_runtime::traits::{StaticLookup, Zero};
 
@@ -148,8 +149,8 @@ decl_module! {
 			//  * hash parameter seed: [1u8; 32]
 			//  * commitment parameter seed: [2u8; 32]
 			// We may want to pass those two in for `init`
-			let hash_param = HashParam::deserialize(HASH_PARAM_BYTES.as_ref());
-			let commit_param = CommitmentParam::deserialize(COMMIT_PARAM_BYTES.as_ref());
+			let hash_param = HashParam::deserialize(HASH_PARAM.data);
+			let commit_param = CommitmentParam::deserialize(COMMIT_PARAM.data);
 			let hash_param_checksum = hash_param.get_checksum();
 			let commit_param_checksum = commit_param.get_checksum();
 
@@ -230,13 +231,11 @@ decl_module! {
 			let origin_balance = <Balances<T>>::get(&origin_account);
 			ensure!(origin_balance >= amount, Error::<T>::BalanceLow);
 
-			let hash_param = HashParam::deserialize(HASH_PARAM_BYTES.as_ref());
-			let commit_param = CommitmentParam::deserialize(COMMIT_PARAM_BYTES.as_ref());
-			let hash_param_checksum_local = hash_param.get_checksum();
-			let commit_param_checksum_local = commit_param.get_checksum();
-
-
 			// get the parameter checksum from the ledger
+			// and make sure the parameters match
+			let hash_param_checksum_local = HASH_PARAM.get_checksum();
+			let commit_param_checksum_local = COMMIT_PARAM.get_checksum();
+
 			let hash_param_checksum = HashParamChecksum::get();
 			let commit_param_checksum = CommitParamChecksum::get();
 			ensure!(
@@ -247,6 +246,9 @@ decl_module! {
 				commit_param_checksum_local == commit_param_checksum,
 				<Error<T>>::MintFail
 			);
+			
+			let hash_param = HashParam::deserialize(HASH_PARAM.data);
+			let commit_param = CommitmentParam::deserialize(COMMIT_PARAM.data);
 
 			// check the validity of the commitment
 			ensure!(
@@ -294,16 +296,16 @@ decl_module! {
 			ensure!(Self::is_init(), <Error<T>>::BasecoinNotInit);
 			let origin = ensure_signed(origin)?;
 
-			let hash_param = HashParam::deserialize(HASH_PARAM_BYTES.as_ref());
-			let hash_param_checksum_local = hash_param.get_checksum();
-
-
 			// get the parameter checksum from the ledger
+			// and make sure the parameters match
+			let hash_param_checksum_local = HASH_PARAM.get_checksum();
+
 			let hash_param_checksum = HashParamChecksum::get();
 			ensure!(
 				hash_param_checksum_local == hash_param_checksum,
-				<Error<T>>::ParamFail
+				<Error<T>>::MintFail
 			);
+			let hash_param = HashParam::deserialize(HASH_PARAM.data);
 
 			// check if vn_old already spent
 			let mut sn_list = VNList::get();
@@ -358,7 +360,7 @@ decl_module! {
 			ensure!(
 				crypto::manta_verify_transfer_zkp(
 					&transfer_vk,
-					proof,
+					&proof,
 					&sender_data_1,
 					&sender_data_2,
 					&receiver_data_1,
@@ -406,17 +408,17 @@ decl_module! {
 			let origin_balance = <Balances<T>>::get(&origin);
 			ensure!(Self::is_init(), <Error<T>>::BasecoinNotInit);
 
-			let hash_param = HashParam::deserialize(HASH_PARAM_BYTES.as_ref());
-			let hash_param_checksum_local = hash_param.get_checksum();
-
 
 			// get the parameter checksum from the ledger
+			// and make sure the parameters match
+			let hash_param_checksum_local = HASH_PARAM.get_checksum();
+
 			let hash_param_checksum = HashParamChecksum::get();
 			ensure!(
 				hash_param_checksum_local == hash_param_checksum,
 				<Error<T>>::MintFail
 			);
-			// todo: checksum ZKP verification eky
+			let hash_param = HashParam::deserialize(HASH_PARAM.data);
 
 			// check the balance is greater than amount
 			let mut pool = PoolBalance::get();
@@ -429,11 +431,11 @@ decl_module! {
 				!sn_list.contains(&sender_data_1.sn),
 				<Error<T>>::MantaCoinSpent
 			);
+			sn_list.push(sender_data_1.sn);
 			ensure!(
 				!sn_list.contains(&sender_data_2.sn),
 				<Error<T>>::MantaCoinSpent
 			);
-			sn_list.push(sender_data_1.sn);
 			sn_list.push(sender_data_2.sn);
 
 			// get the coin list
@@ -468,7 +470,7 @@ decl_module! {
 				crypto::manta_verify_reclaim_zkp(
 					&reclaim_vk,
 					amount,
-					proof,
+					&proof,
 					&sender_data_1,
 					&sender_data_2,
 					&receiver_data),
