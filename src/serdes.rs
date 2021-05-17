@@ -22,7 +22,6 @@ use ark_std::{
 	io::{Read, Write},
 	vec::Vec,
 };
-use blake2::{Blake2s, Digest};
 
 /// Manta's native (de)serialization trait.
 pub trait MantaSerDes {
@@ -30,12 +29,6 @@ pub trait MantaSerDes {
 	fn serialize<W: Write>(&self, writer: W);
 	/// Deserialize a readable data into a struct.
 	fn deserialize<R: Read>(reader: R) -> Self;
-}
-
-/// Manta's native checksum trait.
-pub trait Checksum {
-	/// Generate a unique checksum for a give data struct.
-	fn get_checksum(&self) -> [u8; 32];
 }
 
 impl MantaSerDes for crh::pedersen::Parameters<EdwardsProjective> {
@@ -162,31 +155,5 @@ impl MantaSerDes for ReceiverData {
 		reader.read_exact(&mut data.cm).unwrap();
 		reader.read_exact(&mut data.cipher).unwrap();
 		data
-	}
-}
-
-impl Checksum for crh::pedersen::Parameters<EdwardsProjective> {
-	fn get_checksum(&self) -> [u8; 32] {
-		let mut buf: Vec<u8> = Vec::new();
-		self.serialize(&mut buf);
-		let mut hasher = Blake2s::new();
-		hasher.update(buf);
-		let digest = hasher.finalize();
-		let mut res = [0u8; 32];
-		res.copy_from_slice(digest.as_slice());
-		res
-	}
-}
-
-impl Checksum for commitment::pedersen::Parameters<EdwardsProjective> {
-	fn get_checksum(&self) -> [u8; 32] {
-		let mut buf: Vec<u8> = Vec::new();
-		self.serialize(&mut buf);
-		let mut hasher = Blake2s::new();
-		hasher.update(buf);
-		let digest = hasher.finalize();
-		let mut res = [0u8; 32];
-		res.copy_from_slice(digest.as_slice());
-		res
 	}
 }
