@@ -120,7 +120,6 @@ pub(crate) type MantaCoinCommitmentOpenVar =
 	<CommitmentSchemeVar as CommitmentGadget<CommitmentScheme, Fq>>::RandomnessVar;
 pub(crate) type MantaCoinCommitmentOutputVar = AffineVar<EdwardsParameters, FpVar<Fq>>;
 
-
 //=======================
 // wrapper of Blobs
 //=======================
@@ -128,7 +127,6 @@ pub(crate) type MantaCoinCommitmentOutputVar = AffineVar<EdwardsParameters, FpVa
 pub struct VerificationKey {
 	pub data: &'static [u8],
 }
-
 
 #[derive(Debug, Clone, Default, PartialEq)]
 pub struct Parameter {

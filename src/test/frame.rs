@@ -15,12 +15,7 @@
 // along with pallet-manta-pay.  If not, see <http://www.gnu.org/licenses/>.
 
 use crate as pallet_manta_pay;
-use crate::{
-	coin::*,
-	param::{Groth16Pk},
-	serdes::*,
-	*,
-};
+use crate::{coin::*, param::Groth16Pk, serdes::*, *};
 use ark_groth16::create_random_proof;
 use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
 use ark_std::rand::{RngCore, SeedableRng};

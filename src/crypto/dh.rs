@@ -19,8 +19,8 @@
 //! <https://github.com/phayes/ecies-ed25519/>
 use aes::{cipher::NewBlockCipher, Aes256, BlockDecrypt, BlockEncrypt};
 use ark_std::rand::{CryptoRng, RngCore};
-use generic_array::GenericArray;
 use blake2::{Blake2s, Digest};
+use generic_array::GenericArray;
 use x25519_dalek::{EphemeralSecret, PublicKey, StaticSecret};
 
 /// Encrypt the value under receiver's public key.

@@ -61,16 +61,15 @@ benchmarks! {
 	}: init_asset (RawOrigin::Signed(caller.clone()), 1000u64)
 	verify {
 		assert_eq!(
-			//<TotalSupply>::get(), 1000u64
-			1000u64, 1000u64
+			<TotalSupply>::get(), 1000u64
 		);
 	}
 
 	transfer_asset {
 		let caller: T::AccountId = whitelisted_caller();
 		let origin: T::Origin = T::Origin::from(RawOrigin::Signed(caller.clone()));
-		<Balances<T>>::insert(&caller, 1000);
-		assert!(Module::<T>::init_asset(origin, 1000).is_ok());
+		<Balances<T>>::insert(&caller, 1_000);
+		assert!(Module::<T>::init_asset(origin, 1_000).is_ok());
 		let recipient: T::AccountId = account("recipient", 0, SEED);
 		let recipient_lookup: <T::Lookup as StaticLookup>::Source = T::Lookup::unlookup(recipient.clone());
 		let transfer_amount = 10;
@@ -85,7 +84,7 @@ benchmarks! {
 		let caller: T::AccountId = whitelisted_caller();
 		let origin: T::Origin = T::Origin::from(RawOrigin::Signed(caller.clone()));
 		<Balances<T>>::insert(&caller, 1000);
-		assert!(Module::<T>::init_asset(origin.clone(), 1000).is_ok());
+		assert!(Module::<T>::init_asset(origin, 1000).is_ok());
 		let amount = 10;
 
 		let mut mint_bytes = [0u8; 96];

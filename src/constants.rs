@@ -14,29 +14,23 @@
 // You should have received a copy of the GNU General Public License
 // along with pallet-manta-pay.  If not, see <http://www.gnu.org/licenses/>.
 
-use crate::VerificationKey;
-use crate::Parameter;
-
+use crate::{Parameter, VerificationKey};
 
 pub const TRANSFER_PK: VerificationKey = VerificationKey {
-	data: &TRANSFER_VKBYTES
+	data: &TRANSFER_VKBYTES,
 };
 
 pub const RECLAIM_PK: VerificationKey = VerificationKey {
-	data: &RECLAIM_VKBYTES
+	data: &RECLAIM_VKBYTES,
 };
 
-
-
 pub const HASH_PARAM: Parameter = Parameter {
-	data: &HASH_PARAM_BYTES
+	data: &HASH_PARAM_BYTES,
 };
 
 pub const COMMIT_PARAM: Parameter = Parameter {
-	data: &COMMIT_PARAM_BYTES
+	data: &COMMIT_PARAM_BYTES,
 };
-
-
 
 /// Pre-computed,
 /// serialized verification key transfer proof.
@@ -7390,4 +7384,3 @@ const COMMIT_PARAM_BYTES: [u8; 81664] = [
 	164, 46, 80, 140, 166, 10, 240, 89, 138, 115, 125, 198, 119, 236, 9, 70, 54, 39, 226, 160, 105,
 	16, 125, 155, 187, 149, 53, 230, 142, 9, 35, 235, 127, 116, 65, 130, 64, 130, 49, 28,
 ];
-

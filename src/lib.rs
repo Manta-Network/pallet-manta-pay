@@ -83,13 +83,13 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
 mod benchmark;
+mod checksum;
 mod coin;
 mod constants;
 mod crypto;
 mod param;
 mod serdes;
 mod shard;
-mod checksum;
 
 #[cfg(test)]
 mod bench_composite;
@@ -100,7 +100,7 @@ mod test;
 extern crate std;
 
 pub use coin::*;
-pub use constants::{COMMIT_PARAM, HASH_PARAM, TRANSFER_PK, RECLAIM_PK};
+pub use constants::{COMMIT_PARAM, HASH_PARAM, RECLAIM_PK, TRANSFER_PK};
 pub use param::*;
 pub use serdes::MantaSerDes;
 pub use shard::{Shard, Shards};
@@ -110,13 +110,13 @@ pub use shard::{Shard, Shards};
 #[allow(unused_imports)]
 pub use crypto::*;
 
-use sp_std::prelude::*;
 use ark_std::vec::Vec;
+use checksum::Checksum;
 use frame_support::{decl_error, decl_event, decl_module, decl_storage, ensure};
 use frame_system::ensure_signed;
-use checksum::Checksum;
 use shard::LedgerSharding;
 use sp_runtime::traits::{StaticLookup, Zero};
+use sp_std::prelude::*;
 
 /// The module configuration trait.
 pub trait Config: frame_system::Config {
@@ -246,7 +246,7 @@ decl_module! {
 				commit_param_checksum_local == commit_param_checksum,
 				<Error<T>>::MintFail
 			);
-			
+
 			let hash_param = HashParam::deserialize(HASH_PARAM.data);
 			let commit_param = CommitmentParam::deserialize(COMMIT_PARAM.data);
 

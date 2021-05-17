@@ -31,8 +31,6 @@ pub trait MantaSerDes {
 	fn deserialize<R: Read>(reader: R) -> Self;
 }
 
-
-
 impl MantaSerDes for crh::pedersen::Parameters<EdwardsProjective> {
 	/// serialize the hash parameters without compression
 	fn serialize<W: Write>(&self, mut writer: W) {
