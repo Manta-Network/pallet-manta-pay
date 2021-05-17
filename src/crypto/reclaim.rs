@@ -15,7 +15,8 @@
 // along with pallet-manta-pay.  If not, see <http://www.gnu.org/licenses/>.
 
 use super::transfer::*;
-use crate::{coin::*, param::*};
+use manta_crypto::*;
+use pallet_manta_asset::*;
 use ark_ed_on_bls12_381::{constraints::FqVar, Fq};
 use ark_r1cs_std::{alloc::AllocVar, prelude::*};
 use ark_relations::r1cs::{ConstraintSynthesizer, ConstraintSystemRef, SynthesisError};
@@ -45,15 +46,11 @@ pub struct ReclaimCircuit {
 	pub hash_param: HashParam,
 
 	// sender
-	pub sender_coin_1: MantaCoin,
-	pub sender_pub_info_1: MantaCoinPubInfo,
-	pub sender_priv_info_1: MantaCoinPrivInfo,
+	pub sender_coin_1: MantaAsset,
 	pub sender_membership_1: AccountMembership,
 	pub root_1: LedgerMerkleTreeRoot,
 
-	pub sender_coin_2: MantaCoin,
-	pub sender_pub_info_2: MantaCoinPubInfo,
-	pub sender_priv_info_2: MantaCoinPrivInfo,
+	pub sender_coin_2: MantaAsset,
 	pub sender_membership_2: AccountMembership,
 	pub root_2: LedgerMerkleTreeRoot,
 

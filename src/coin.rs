@@ -14,19 +14,11 @@
 // You should have received a copy of the GNU General Public License
 // along with pallet-manta-pay.  If not, see <http://www.gnu.org/licenses/>.
 
-use crate::param::*;
-use ark_crypto_primitives::{
-	commitment::pedersen::Randomness,
-	prf::{Blake2s, PRF},
-	CommitmentScheme as ArkCommitmentScheme,
-};
-use ark_ed_on_bls12_381::Fr;
-use ark_ff::UniformRand;
-use ark_serialize::CanonicalSerialize;
+use manta_crypto::CommitmentParam;
 use ark_std::{
-	rand::{CryptoRng, RngCore},
-	vec::Vec,
+	io::{Read, Write},
 };
+use manta_crypto::MantaSerDes;
 use frame_support::codec::{Decode, Encode};
 
 /// Input data to a mint function.
@@ -60,81 +52,57 @@ pub struct ReceiverData {
 	pub cipher: [u8; 16],
 }
 
-/// A MantaCoin is a commitment `cm = com(v||k, s)`.
-#[derive(Encode, Debug, Decode, Clone, Default, PartialEq)]
-pub struct MantaCoin {
-	pub cm_bytes: [u8; 32],
+
+impl MantaSerDes for MintData {
+	/// Serialize the mint data into an array of 96 bytes.
+	fn serialize<W: Write>(&self, mut writer: W) {
+		writer.write_all(&self.cm).unwrap();
+		writer.write_all(&self.k).unwrap();
+		writer.write_all(&self.s).unwrap();
+	}
+
+	/// Deserialize an array of 96 bytes into a MintData.
+	fn deserialize<R: Read>(mut reader: R) -> Self {
+		let mut data = MintData::default();
+		reader.read_exact(&mut data.cm).unwrap();
+		reader.read_exact(&mut data.k).unwrap();
+		reader.read_exact(&mut data.s).unwrap();
+		data
+	}
 }
 
-/// Information related to a coin that may be revealed.
-#[derive(Encode, Decode, Default, Clone, PartialEq)]
-pub struct MantaCoinPubInfo {
-	pub pk: [u8; 32],
-	pub rho: [u8; 32],
-	pub s: [u8; 32],
-	pub r: [u8; 32],
-	pub k: [u8; 32],
+impl MantaSerDes for SenderData {
+	/// Serialize the sender data into an array of 64 bytes.
+	fn serialize<W: Write>(&self, mut writer: W) {
+		writer.write_all(&self.k).unwrap();
+		writer.write_all(&self.sn).unwrap();
+		writer.write_all(&self.root).unwrap();
+	}
+
+	/// Deserialize an array of 64 bytes into a SenderData.
+	fn deserialize<R: Read>(mut reader: R) -> Self {
+		let mut data = SenderData::default();
+		reader.read_exact(&mut data.k).unwrap();
+		reader.read_exact(&mut data.sn).unwrap();
+		reader.read_exact(&mut data.root).unwrap();
+		data
+	}
 }
 
-/// Information related to a coin that may __not__ be revealed,
-/// unless the coin is spend.
-#[derive(Encode, Decode, Default, Clone, PartialEq)]
-pub struct MantaCoinPrivInfo {
-	pub value: u64,
-	pub sk: [u8; 32],
-	pub sn: [u8; 32],
-}
+impl MantaSerDes for ReceiverData {
+	/// Serialize the receiver data into an array of 80 bytes.
+	fn serialize<W: Write>(&self, mut writer: W) {
+		writer.write_all(&self.k).unwrap();
+		writer.write_all(&self.cm).unwrap();
+		writer.write_all(&self.cipher).unwrap();
+	}
 
-/// Make a coin from inputs.
-#[allow(dead_code)]
-pub fn make_coin<R: RngCore + CryptoRng>(
-	commit_param: &CommitmentParam,
-	sk: [u8; 32],
-	value: u64,
-	rng: &mut R,
-) -> (MantaCoin, MantaCoinPubInfo, MantaCoinPrivInfo) {
-	//  sample a random rho
-	let mut rho = [0u8; 32];
-	rng.fill_bytes(&mut rho);
-
-	// pk = PRF(sk, 0); which is also the address
-	let pk = <Blake2s as PRF>::evaluate(&sk, &[0u8; 32]).unwrap();
-
-	// sn = PRF(sk, rho)
-	let sn = <Blake2s as PRF>::evaluate(&sk, &rho).unwrap();
-
-	// k = com(pk||rho, r)
-	let buf = [pk, rho].concat();
-
-	let r = Fr::rand(rng);
-	let mut r_bytes = [0u8; 32];
-	r.serialize(r_bytes.as_mut()).unwrap();
-	let r = Randomness(r);
-
-	let k = CommitmentScheme::commit(&commit_param, &buf, &r).unwrap();
-	let mut k_bytes = [0u8; 32];
-	k.serialize(k_bytes.as_mut()).unwrap();
-
-	// cm = com(v||k, s)
-	let buf: Vec<u8> = [value.to_le_bytes().as_ref(), k_bytes.clone().as_ref()].concat();
-
-	let s = Fr::rand(rng);
-	let mut s_bytes = [0u8; 32];
-	s.serialize(s_bytes.as_mut()).unwrap();
-	let s = Randomness(s);
-
-	let cm = CommitmentScheme::commit(&commit_param, &buf, &s).unwrap();
-	let mut cm_bytes = [0u8; 32];
-	cm.serialize(cm_bytes.as_mut()).unwrap();
-
-	let coin = MantaCoin { cm_bytes };
-	let pub_info = MantaCoinPubInfo {
-		pk,
-		rho,
-		s: s_bytes,
-		r: r_bytes,
-		k: k_bytes,
-	};
-	let priv_info = MantaCoinPrivInfo { value, sk, sn };
-	(coin, pub_info, priv_info)
+	/// Deserialize an array of 80 bytes into a receiver data.
+	fn deserialize<R: Read>(mut reader: R) -> Self {
+		let mut data = ReceiverData::default();
+		reader.read_exact(&mut data.k).unwrap();
+		reader.read_exact(&mut data.cm).unwrap();
+		reader.read_exact(&mut data.cipher).unwrap();
+		data
+	}
 }

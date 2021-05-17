@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with pallet-manta-pay.  If not, see <http://www.gnu.org/licenses/>.
 
-use crate::param::*;
+use manta_crypto::*;
 use ark_std::vec::Vec;
 use frame_support::codec::{Decode, Encode};
 

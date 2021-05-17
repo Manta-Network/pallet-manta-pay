@@ -83,12 +83,8 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
 mod benchmark;
-mod checksum;
 mod coin;
-mod constants;
 mod crypto;
-mod param;
-mod serdes;
 mod shard;
 
 #[cfg(test)]
@@ -100,9 +96,7 @@ mod test;
 extern crate std;
 
 pub use coin::*;
-pub use constants::{COMMIT_PARAM, HASH_PARAM, RECLAIM_PK, TRANSFER_PK};
-pub use param::*;
-pub use serdes::MantaSerDes;
+pub use manta_crypto::MantaSerDes;
 pub use shard::{Shard, Shards};
 
 // TODO: this interface is only exposed for benchmarking
@@ -111,7 +105,7 @@ pub use shard::{Shard, Shards};
 pub use crypto::*;
 
 use ark_std::vec::Vec;
-use checksum::Checksum;
+use manta_crypto::*;
 use frame_support::{decl_error, decl_event, decl_module, decl_storage, ensure};
 use frame_system::ensure_signed;
 use shard::LedgerSharding;
