@@ -23,7 +23,7 @@ use ark_ff::vec;
 use ark_std::{boxed::Box, primitive::str};
 use data_encoding::BASE64;
 use frame_benchmarking::{account, benchmarks, whitelisted_caller};
-use frame_system::RawOrigin;
+use frame_system::{RawOrigin, EventRecord};
 
 const SEED: u32 = 0;
 
@@ -55,16 +55,23 @@ fn benchmark_helper<T: Config>(sender: T::Origin) {
 	Module::<T>::mint_private_asset(sender, 10, mint_bytes).unwrap();
 }
 
+pub fn assert_last_event<T: Config>(generic_event: <T as Config>::Event)
+{
+	let events = frame_system::Module::<T>::events();
+	let system_event: <T as frame_system::Config>::Event = generic_event.into();
+	let EventRecord {event, .. } = &events[events.len() - 1];
+	assert_eq!(event, &system_event);
+}
+
 benchmarks! {
 
 	init_asset {
 		let caller: T::AccountId = whitelisted_caller();
-	}: init_asset (RawOrigin::Signed(caller.clone()), 1000u64)
+		let total = 1000u64;
+	}: init_asset (RawOrigin::Signed(caller.clone()), total)
 	verify {
-		assert_eq!(
-			//<TotalSupply>::get(), 1000u64
-			1000u64, 1000u64
-		);
+		assert_last_event::<T>(RawEvent::Issued(caller.clone(), total).into());
+		assert_eq!(<TotalSupply>::get(), total);
 	}
 
 	transfer_asset {
@@ -78,6 +85,7 @@ benchmarks! {
 		Init::put(true);
 	}: transfer_asset(RawOrigin::Signed(caller.clone()), recipient_lookup, transfer_amount)
 	verify {
+		assert_last_event::<T>(RawEvent::Transferred(caller.clone(), recipient.clone(), transfer_amount).into());
 		assert_eq!(Balances::<T>::get(&recipient), transfer_amount);
 	}
 
@@ -97,10 +105,11 @@ benchmarks! {
 		mint_bytes.copy_from_slice(mint_data.as_ref());
 
 	}: mint_private_asset (
-		RawOrigin::Signed(caller),
+		RawOrigin::Signed(caller.clone()),
 		10,
 		mint_bytes)
 	verify {
+		assert_last_event::<T>(RawEvent::Minted(caller.clone(), amount).into());
 		assert_eq!(TotalSupply::get(), 1000);
 		assert_eq!(PoolBalance::get(), 10);
 	}
@@ -148,13 +157,14 @@ benchmarks! {
 		proof_bytes.copy_from_slice(proof_data.as_ref());
 
 	}: private_transfer (
-		RawOrigin::Signed(caller),
+		RawOrigin::Signed(caller.clone()),
 		sender_bytes_1,
 		sender_bytes_2,
 		receiver_bytes_1,
 		receiver_bytes_2,
 		proof_bytes)
 	verify {
+		assert_last_event::<T>(RawEvent::PrivateTransferred(caller.clone()).into());
 		assert_eq!(TotalSupply::get(), 1000);
 		assert_eq!(PoolBalance::get(), 40);
 	}
@@ -196,13 +206,14 @@ benchmarks! {
 		proof_bytes.copy_from_slice(proof_data.as_ref());
 
 	}: reclaim (
-		RawOrigin::Signed(caller),
+		RawOrigin::Signed(caller.clone()),
 		10,
 		sender_bytes_1,
 		sender_bytes_2,
 		receiver_bytes,
 		proof_bytes)
 	verify {
+		assert_last_event::<T>(RawEvent::PrivateReclaimed(caller.clone()).into());
 		assert_eq!(TotalSupply::get(), 1000);
 		assert_eq!(PoolBalance::get(), 30);
 	}
