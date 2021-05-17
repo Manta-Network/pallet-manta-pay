@@ -23,7 +23,7 @@ use ark_ff::vec;
 use ark_std::{boxed::Box, primitive::str};
 use data_encoding::BASE64;
 use frame_benchmarking::{account, benchmarks, whitelisted_caller};
-use frame_system::{RawOrigin, EventRecord};
+use frame_system::{EventRecord, RawOrigin};
 
 const SEED: u32 = 0;
 
@@ -55,11 +55,10 @@ fn benchmark_helper<T: Config>(sender: T::Origin) {
 	Module::<T>::mint_private_asset(sender, 10, mint_bytes).unwrap();
 }
 
-pub fn assert_last_event<T: Config>(generic_event: <T as Config>::Event)
-{
+pub fn assert_last_event<T: Config>(generic_event: <T as Config>::Event) {
 	let events = frame_system::Module::<T>::events();
 	let system_event: <T as frame_system::Config>::Event = generic_event.into();
-	let EventRecord {event, .. } = &events[events.len() - 1];
+	let EventRecord { event, .. } = &events[events.len() - 1];
 	assert_eq!(event, &system_event);
 }
 
