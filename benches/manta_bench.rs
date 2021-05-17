@@ -38,8 +38,8 @@ criterion_group!(
 	bench_pedersen_hash,
 	bench_pedersen_com,
 	bench_merkle_tree,
+	bench_transfer_verify,
 	bench_transfer_prove,
-	bench_trasnfer_verify,
 );
 criterion_main!(manta_bench);
 
@@ -49,20 +49,20 @@ fn bench_param_io(c: &mut Criterion) {
 	let bench_str = format!("hash param");
 	bench_group.bench_function(bench_str, move |b| {
 		b.iter(|| {
-			HashParam::deserialize(HASH_PARAM_BYTES.as_ref());
+			HashParam::deserialize(HASH_PARAM.data);
 		})
 	});
 
 	let bench_str = format!("commit param");
 	bench_group.bench_function(bench_str, move |b| {
 		b.iter(|| {
-			CommitmentParam::deserialize(COMMIT_PARAM_BYTES.as_ref());
+			CommitmentParam::deserialize(COMMIT_PARAM.data);
 		})
 	});
 	bench_group.finish();
 }
 
-fn bench_trasnfer_verify(c: &mut Criterion) {
+fn bench_transfer_verify(c: &mut Criterion) {
 	let hash_param_seed = HASH_PARAM_SEED;
 	let commit_param_seed = COMMIT_PARAM_SEED;
 
@@ -172,8 +172,8 @@ fn bench_trasnfer_verify(c: &mut Criterion) {
 	bench_group.bench_function(bench_str, move |b| {
 		b.iter(|| {
 			assert!(manta_verify_transfer_zkp(
-				TRANSFER_VKBYTES.to_vec(),
-				proof_bytes,
+				&TRANSFER_PK,
+				&proof_bytes,
 				&sender_data_1,
 				&sender_data_2,
 				&receiver_data_1,

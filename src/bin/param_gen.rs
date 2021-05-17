@@ -150,7 +150,7 @@ fn manta_transfer_zkp_key_gen(
 
 	let mut vk_buf: Vec<u8> = vec![];
 	let transfer_vk = &pk.vk;
-	transfer_vk.serialize(&mut vk_buf).unwrap();
+	transfer_vk.serialize_uncompressed(&mut vk_buf).unwrap();
 	println!("pk_uncompressed len {}", transfer_pk_bytes.len());
 	println!("vk: {:?}", vk_buf);
 
@@ -246,7 +246,7 @@ fn manta_reclaim_zkp_key_gen(
 
 	let mut vk_buf: Vec<u8> = vec![];
 	let reclaim_vk = &pk.vk;
-	reclaim_vk.serialize(&mut vk_buf).unwrap();
+	reclaim_vk.serialize_uncompressed(&mut vk_buf).unwrap();
 	println!("pk_uncompressed len {}", reclaim_pk_bytes.len());
 	println!("vk: {:?}", vk_buf);
 

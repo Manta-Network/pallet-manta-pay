@@ -83,6 +83,7 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
 mod benchmark;
+mod checksum;
 mod coin;
 mod constants;
 mod crypto;
@@ -99,7 +100,7 @@ mod test;
 extern crate std;
 
 pub use coin::*;
-pub use constants::{COMMIT_PARAM_BYTES, HASH_PARAM_BYTES, RECLAIM_VKBYTES, TRANSFER_VKBYTES};
+pub use constants::{COMMIT_PARAM, HASH_PARAM, RECLAIM_PK, TRANSFER_PK};
 pub use param::*;
 pub use serdes::MantaSerDes;
 pub use shard::{Shard, Shards};
@@ -109,14 +110,13 @@ pub use shard::{Shard, Shards};
 #[allow(unused_imports)]
 pub use crypto::*;
 
-use sp_std::prelude::*;
-
 use ark_std::vec::Vec;
+use checksum::Checksum;
 use frame_support::{decl_error, decl_event, decl_module, decl_storage, ensure};
 use frame_system::ensure_signed;
-use serdes::Checksum;
 use shard::LedgerSharding;
 use sp_runtime::traits::{StaticLookup, Zero};
+use sp_std::prelude::*;
 
 /// The module configuration trait.
 pub trait Config: frame_system::Config {
@@ -149,8 +149,8 @@ decl_module! {
 			//  * hash parameter seed: [1u8; 32]
 			//  * commitment parameter seed: [2u8; 32]
 			// We may want to pass those two in for `init`
-			let hash_param = HashParam::deserialize(HASH_PARAM_BYTES.as_ref());
-			let commit_param = CommitmentParam::deserialize(COMMIT_PARAM_BYTES.as_ref());
+			let hash_param = HashParam::deserialize(HASH_PARAM.data);
+			let commit_param = CommitmentParam::deserialize(COMMIT_PARAM.data);
 			let hash_param_checksum = hash_param.get_checksum();
 			let commit_param_checksum = commit_param.get_checksum();
 
@@ -164,8 +164,11 @@ decl_module! {
 			// for product we should use a MPC protocol to build the ZKP verification key
 			// and then deploy that vk
 			//
-			TransferZKPKey::put(TRANSFER_VKBYTES.to_vec());
-			ReclaimZKPKey::put(RECLAIM_VKBYTES.to_vec());
+			let transfer_key_digest = TRANSFER_PK.get_checksum();
+			TransferZKPKeyChecksum::put(transfer_key_digest);
+
+			let reclaim_key_digest = RECLAIM_PK.get_checksum();
+			ReclaimZKPKeyChecksum::put(reclaim_key_digest);
 
 			// coin_shards are a 256 lists of commitments
 			let coin_shards = Shards::default();
@@ -228,13 +231,11 @@ decl_module! {
 			let origin_balance = <Balances<T>>::get(&origin_account);
 			ensure!(origin_balance >= amount, Error::<T>::BalanceLow);
 
-			let hash_param = HashParam::deserialize(HASH_PARAM_BYTES.as_ref());
-			let commit_param = CommitmentParam::deserialize(COMMIT_PARAM_BYTES.as_ref());
-			let hash_param_checksum_local = hash_param.get_checksum();
-			let commit_param_checksum_local = commit_param.get_checksum();
-
-
 			// get the parameter checksum from the ledger
+			// and make sure the parameters match
+			let hash_param_checksum_local = HASH_PARAM.get_checksum();
+			let commit_param_checksum_local = COMMIT_PARAM.get_checksum();
+
 			let hash_param_checksum = HashParamChecksum::get();
 			let commit_param_checksum = CommitParamChecksum::get();
 			ensure!(
@@ -245,9 +246,9 @@ decl_module! {
 				commit_param_checksum_local == commit_param_checksum,
 				<Error<T>>::MintFail
 			);
-			// todo: checksum ZKP verification eky
 
-
+			let hash_param = HashParam::deserialize(HASH_PARAM.data);
+			let commit_param = CommitmentParam::deserialize(COMMIT_PARAM.data);
 
 			// check the validity of the commitment
 			ensure!(
@@ -295,18 +296,16 @@ decl_module! {
 			ensure!(Self::is_init(), <Error<T>>::BasecoinNotInit);
 			let origin = ensure_signed(origin)?;
 
-			let hash_param = HashParam::deserialize(HASH_PARAM_BYTES.as_ref());
-			let hash_param_checksum_local = hash_param.get_checksum();
-
-
 			// get the parameter checksum from the ledger
+			// and make sure the parameters match
+			let hash_param_checksum_local = HASH_PARAM.get_checksum();
+
 			let hash_param_checksum = HashParamChecksum::get();
 			ensure!(
 				hash_param_checksum_local == hash_param_checksum,
-				<Error<T>>::ParamFail
+				<Error<T>>::MintFail
 			);
-			// todo: checksum ZKP verification eky
-
+			let hash_param = HashParam::deserialize(HASH_PARAM.data);
 
 			// check if vn_old already spent
 			let mut sn_list = VNList::get();
@@ -314,11 +313,11 @@ decl_module! {
 				!sn_list.contains(&sender_data_1.sn),
 				<Error<T>>::MantaCoinSpent
 			);
+			sn_list.push(sender_data_1.sn);
 			ensure!(
 				!sn_list.contains(&sender_data_2.sn),
 				<Error<T>>::MantaCoinSpent
 			);
-			sn_list.push(sender_data_1.sn);
 			sn_list.push(sender_data_2.sn);
 
 			// get the ledger state from the ledger
@@ -332,35 +331,41 @@ decl_module! {
 				coin_shards.check_root(&sender_data_2.root),
 				<Error<T>>::InvalidLedgerState
 			);
+
 			// check the commitment are not in the list already
+			// and update coin list
+			// with sharding, there is no point to batch update
+			// since the commitments are likely to go to different shards
 			ensure!(
 				!coin_shards.exist(&receiver_data_1.cm),
 				<Error<T>>::MantaCoinExist
 			);
+			coin_shards.update(&receiver_data_1.cm, hash_param.clone());
 			ensure!(
 				!coin_shards.exist(&receiver_data_2.cm),
 				<Error<T>>::MantaCoinExist
 			);
-
-			// update coin list
-			// with sharding, there is no point to batch update
-			// since the commitments are likely to go to different shards
-			coin_shards.update(&receiver_data_1.cm, hash_param.clone());
 			coin_shards.update(&receiver_data_2.cm, hash_param);
 
 			// get the verification key from the ledger
-			let transfer_vk_bytes = TransferZKPKey::get();
+			let transfer_vk_checksum = TransferZKPKeyChecksum::get();
+			let transfer_vk = TRANSFER_PK;
+
+			ensure!(
+				transfer_vk.get_checksum() == transfer_vk_checksum,
+				<Error<T>>::ZkpParamFail,
+			);
 
 			// check validity of zkp
 			ensure!(
 				crypto::manta_verify_transfer_zkp(
-					transfer_vk_bytes,
-					proof,
+					&transfer_vk,
+					&proof,
 					&sender_data_1,
 					&sender_data_2,
 					&receiver_data_1,
 					&receiver_data_2),
-				<Error<T>>::ZkpFail,
+				<Error<T>>::ZkpVerificationFail,
 			);
 
 			// TODO: revisit replay attack here
@@ -403,17 +408,17 @@ decl_module! {
 			let origin_balance = <Balances<T>>::get(&origin);
 			ensure!(Self::is_init(), <Error<T>>::BasecoinNotInit);
 
-			let hash_param = HashParam::deserialize(HASH_PARAM_BYTES.as_ref());
-			let hash_param_checksum_local = hash_param.get_checksum();
-
 
 			// get the parameter checksum from the ledger
+			// and make sure the parameters match
+			let hash_param_checksum_local = HASH_PARAM.get_checksum();
+
 			let hash_param_checksum = HashParamChecksum::get();
 			ensure!(
 				hash_param_checksum_local == hash_param_checksum,
 				<Error<T>>::MintFail
 			);
-			// todo: checksum ZKP verification eky
+			let hash_param = HashParam::deserialize(HASH_PARAM.data);
 
 			// check the balance is greater than amount
 			let mut pool = PoolBalance::get();
@@ -426,19 +431,23 @@ decl_module! {
 				!sn_list.contains(&sender_data_1.sn),
 				<Error<T>>::MantaCoinSpent
 			);
+			sn_list.push(sender_data_1.sn);
 			ensure!(
 				!sn_list.contains(&sender_data_2.sn),
 				<Error<T>>::MantaCoinSpent
 			);
-			sn_list.push(sender_data_1.sn);
 			sn_list.push(sender_data_2.sn);
 
 			// get the coin list
 			let mut coin_shards = CoinShards::get();
 
 			// get the verification key from the ledger
-			let reclaim_vk_bytes = ReclaimZKPKey::get();
-
+			let reclaim_vk_checksum = ReclaimZKPKeyChecksum::get();
+			let reclaim_vk = RECLAIM_PK;
+			ensure!(
+				reclaim_vk.get_checksum() == reclaim_vk_checksum,
+				<Error<T>>::ZkpParamFail
+			);
 			// get the ledger state from the ledger
 			// and check the validity of the state
 			ensure!(
@@ -459,13 +468,13 @@ decl_module! {
 			// check validity of zkp
 			ensure!(
 				crypto::manta_verify_reclaim_zkp(
-					reclaim_vk_bytes,
+					&reclaim_vk,
 					amount,
-					proof,
+					&proof,
 					&sender_data_1,
 					&sender_data_2,
 					&receiver_data),
-				<Error<T>>::ZkpFail,
+				<Error<T>>::ZkpVerificationFail,
 			);
 
 			// TODO: revisit replay attack here
@@ -484,7 +493,6 @@ decl_module! {
 			EncValueList::put(enc_value_list);
 			<Balances<T>>::insert(origin_account, origin_balance + amount);
 		}
-
 	}
 }
 
@@ -526,8 +534,10 @@ decl_error! {
 		MantaNotCoinExist,
 		/// MantaCoin already spend
 		MantaCoinSpent,
+		/// ZKP parameter failed
+		ZkpParamFail,
 		/// ZKP verification failed
-		ZkpFail,
+		ZkpVerificationFail,
 		/// invalid ledger state
 		InvalidLedgerState,
 		/// Pool overdrawn
@@ -575,12 +585,12 @@ decl_storage! {
 		/// The verification key for zero-knowledge proof for transfer protocol.
 		/// At the moment we are storing the whole serialized key
 		/// in the blockchain storage.
-		pub TransferZKPKey get(fn transfer_zkp_vk): Vec<u8>;
+		pub TransferZKPKeyChecksum get(fn transfer_zkp_vk_checksum): [u8; 32];
 
 		/// The verification key for zero-knowledge proof for reclaim protocol.
 		/// At the moment we are storing the whole serialized key
 		/// in the blockchain storage.
-		pub ReclaimZKPKey get(fn reclaim_zkp_vk): Vec<u8>;
+		pub ReclaimZKPKeyChecksum get(fn reclaim_zkp_vk_checksum): [u8; 32];
 	}
 }
 

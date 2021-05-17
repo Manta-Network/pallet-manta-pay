@@ -15,12 +15,7 @@
 // along with pallet-manta-pay.  If not, see <http://www.gnu.org/licenses/>.
 
 use crate as pallet_manta_pay;
-use crate::{
-	coin::*,
-	param::{Groth16Pk, Groth16Vk},
-	serdes::*,
-	*,
-};
+use crate::{coin::*, param::Groth16Pk, serdes::*, *};
 use ark_groth16::create_random_proof;
 use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
 use ark_std::rand::{RngCore, SeedableRng};
@@ -97,8 +92,8 @@ fn test_constants_should_work() {
 	new_test_ext().execute_with(|| {
 		assert_ok!(Assets::init_asset(Origin::signed(1), 100));
 		assert_eq!(Assets::balance(1), 100);
-		let hash_param = HashParam::deserialize(HASH_PARAM_BYTES.as_ref());
-		let commit_param = CommitmentParam::deserialize(COMMIT_PARAM_BYTES.as_ref());
+		let hash_param = HashParam::deserialize(HASH_PARAM.data);
+		let commit_param = CommitmentParam::deserialize(COMMIT_PARAM.data);
 		let hash_param_checksum_local = hash_param.get_checksum();
 		let commit_param_checksum_local = commit_param.get_checksum();
 		let hash_param_checksum = HashParamChecksum::get();
@@ -114,7 +109,7 @@ fn test_mint_should_work() {
 		assert_ok!(Assets::init_asset(Origin::signed(1), 1000));
 		assert_eq!(Assets::balance(1), 1000);
 		assert_eq!(PoolBalance::get(), 0);
-		let commit_param = CommitmentParam::deserialize(COMMIT_PARAM_BYTES.as_ref());
+		let commit_param = CommitmentParam::deserialize(COMMIT_PARAM.data);
 		let mut rng = ChaCha20Rng::from_seed([3u8; 32]);
 		let mut sk = [0u8; 32];
 		rng.fill_bytes(&mut sk);
@@ -253,7 +248,7 @@ fn cannot_init_twice() {
 }
 
 fn mint_tokens(size: usize) -> Vec<(MantaCoin, MantaCoinPubInfo, MantaCoinPrivInfo)> {
-	let commit_param = CommitmentParam::deserialize(COMMIT_PARAM_BYTES.as_ref());
+	let commit_param = CommitmentParam::deserialize(COMMIT_PARAM.data);
 
 	let mut rng = ChaCha20Rng::from_seed([88u8; 32]);
 	let mut pool = 0;
@@ -303,8 +298,8 @@ fn transfer_test_helper(iter: usize) {
 	assert_eq!(Assets::balance(1), 10_000_000);
 	assert_eq!(PoolBalance::get(), 0);
 
-	let hash_param = HashParam::deserialize(HASH_PARAM_BYTES.as_ref());
-	let commit_param = CommitmentParam::deserialize(COMMIT_PARAM_BYTES.as_ref());
+	let hash_param = HashParam::deserialize(HASH_PARAM.data);
+	let commit_param = CommitmentParam::deserialize(COMMIT_PARAM.data);
 
 	// load the ZKP keys
 	let mut file = File::open("transfer_pk.bin").unwrap();
@@ -312,10 +307,12 @@ fn transfer_test_helper(iter: usize) {
 	file.read_to_end(&mut transfer_key_bytes).unwrap();
 	let buf: &[u8] = transfer_key_bytes.as_ref();
 	let pk = Groth16Pk::deserialize_unchecked(buf).unwrap();
-	let vk_bytes = TransferZKPKey::get();
-	let buf: &[u8] = vk_bytes.as_ref();
-	let vk = Groth16Vk::deserialize(buf).unwrap();
-	assert_eq!(pk.vk, vk);
+	let vk = pk.vk.clone();
+	let mut vk_bytes = Vec::new();
+	vk.serialize_uncompressed(&mut vk_bytes).unwrap();
+	let vk = TRANSFER_PK;
+	let vk_checksum = TransferZKPKeyChecksum::get();
+	assert_eq!(vk.get_checksum(), vk_checksum);
 
 	let mut rng = ChaCha20Rng::from_seed([3u8; 32]);
 	let mut sk = [0u8; 32];
@@ -508,8 +505,8 @@ fn reclaim_test_helper(iter: usize) {
 	assert_eq!(Assets::balance(1), 10_000_000);
 	assert_eq!(PoolBalance::get(), 0);
 
-	let hash_param = HashParam::deserialize(HASH_PARAM_BYTES.as_ref());
-	let commit_param = CommitmentParam::deserialize(COMMIT_PARAM_BYTES.as_ref());
+	let hash_param = HashParam::deserialize(HASH_PARAM.data);
+	let commit_param = CommitmentParam::deserialize(COMMIT_PARAM.data);
 
 	let size = iter << 1;
 	let senders = mint_tokens(size);
@@ -524,10 +521,12 @@ fn reclaim_test_helper(iter: usize) {
 	file.read_to_end(&mut reclaim_pk_bytes).unwrap();
 	let buf: &[u8] = reclaim_pk_bytes.as_ref();
 	let pk = Groth16Pk::deserialize_unchecked(buf).unwrap();
-	let vk_bytes = ReclaimZKPKey::get();
-	let buf: &[u8] = vk_bytes.as_ref();
-	let vk = Groth16Vk::deserialize(buf).unwrap();
-	assert_eq!(pk.vk, vk);
+	let vk = pk.vk.clone();
+	let mut vk_bytes = Vec::new();
+	vk.serialize_uncompressed(&mut vk_bytes).unwrap();
+	let vk = RECLAIM_PK;
+	let vk_checksum = ReclaimZKPKeyChecksum::get();
+	assert_eq!(vk.get_checksum(), vk_checksum);
 
 	for i in 0usize..iter {
 		let coin_shards = CoinShards::get();

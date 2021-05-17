@@ -22,15 +22,15 @@ use ark_serialize::CanonicalDeserialize;
 use ark_std::vec::Vec;
 
 pub fn manta_verify_transfer_zkp(
-	transfer_key_bytes: Vec<u8>,
-	proof: [u8; 192],
+	transfer_key_bytes: &VerificationKey,
+	proof: &[u8; 192],
 	sender_data_1: &SenderData,
 	sender_data_2: &SenderData,
 	receiver_data_1: &ReceiverData,
 	receiver_data_2: &ReceiverData,
 ) -> bool {
-	let buf: &[u8] = transfer_key_bytes.as_ref();
-	let vk = Groth16Vk::deserialize(buf).unwrap();
+	let buf: &[u8] = transfer_key_bytes.data;
+	let vk = Groth16Vk::deserialize_unchecked(buf).unwrap();
 	let pvk = Groth16Pvk::from(vk);
 	let proof = Groth16Proof::deserialize(proof.as_ref()).unwrap();
 	let k_old_1 = CommitmentOutput::deserialize(sender_data_1.k.as_ref()).unwrap();
@@ -67,15 +67,15 @@ pub fn manta_verify_transfer_zkp(
 }
 
 pub fn manta_verify_reclaim_zkp(
-	reclaim_key_bytes: Vec<u8>,
+	reclaim_key_bytes: &VerificationKey,
 	value: u64,
-	proof: [u8; 192],
+	proof: &[u8; 192],
 	sender_data_1: &SenderData,
 	sender_data_2: &SenderData,
 	receiver_data: &ReceiverData,
 ) -> bool {
-	let buf: &[u8] = reclaim_key_bytes.as_ref();
-	let vk = Groth16Vk::deserialize(buf).unwrap();
+	let buf: &[u8] = reclaim_key_bytes.data;
+	let vk = Groth16Vk::deserialize_unchecked(buf).unwrap();
 	let pvk = Groth16Pvk::from(vk);
 	let proof = Groth16Proof::deserialize(proof.as_ref()).unwrap();
 	let k_old_1 = CommitmentOutput::deserialize(sender_data_1.k.as_ref()).unwrap();
