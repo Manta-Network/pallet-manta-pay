@@ -20,8 +20,7 @@
 use aes::{cipher::NewBlockCipher, Aes256, BlockDecrypt, BlockEncrypt};
 use ark_std::rand::{CryptoRng, RngCore};
 use generic_array::GenericArray;
-use hkdf::Hkdf;
-use sha2::Sha512Trunc256;
+use blake2::{Blake2s, Digest};
 use x25519_dalek::{EphemeralSecret, PublicKey, StaticSecret};
 
 /// Encrypt the value under receiver's public key.
@@ -101,8 +100,10 @@ pub fn manta_dh_dec(
 // with a fixed salt
 fn manta_kdf(input: &[u8]) -> [u8; 32] {
 	let salt = "manta kdf instantiated with Sha512-256 hash function";
-	let output = Hkdf::<Sha512Trunc256>::extract(Some(salt.as_ref()), input);
+	let mut hasher = Blake2s::new();
+	hasher.update([input, salt.as_bytes()].concat());
+	let digest = hasher.finalize();
 	let mut res = [0u8; 32];
-	res.copy_from_slice(&output.0[0..32]);
+	res.copy_from_slice(digest.as_slice());
 	res
 }
