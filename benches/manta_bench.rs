@@ -143,7 +143,8 @@ fn bench_transfer_verify(c: &mut Criterion) {
 
 	let bench_str = format!("ZKP verification");
 	bench_group.bench_function(bench_str, move |b| {
-		b.iter(|| assert!(manta_verify_transfer_zkp(&TRANSFER_PK, &transfer_data,)))
+		b.iter(|| assert!(
+			transfer_data.verify(&TRANSFER_PK)))
 	});
 
 	bench_group.finish();

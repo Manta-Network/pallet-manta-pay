@@ -127,6 +127,9 @@ use pallet_manta_asset::SanityCheck;
 use sp_runtime::traits::{StaticLookup, Zero};
 use sp_std::prelude::*;
 
+/// An abstract struct for manta-pay.
+pub struct MantaPay;
+
 /// The module configuration trait.
 pub trait Config: frame_system::Config {
 	/// The overarching event type.
@@ -358,7 +361,7 @@ decl_module! {
 
 			// check validity of zkp
 			ensure!(
-				data.sanity(&transfer_vk),
+				data.verify(&transfer_vk),
 				<Error<T>>::ZkpVerificationFail,
 			);
 
@@ -454,7 +457,7 @@ decl_module! {
 
 			// check validity of zkp
 			ensure!(
-				data.sanity(&reclaim_vk),
+				data.verify(&reclaim_vk),
 				<Error<T>>::ZkpVerificationFail,
 			);
 

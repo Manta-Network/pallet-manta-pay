@@ -15,7 +15,6 @@
 // along with pallet-manta-pay.  If not, see <http://www.gnu.org/licenses/>.
 
 use super::*;
-use crate::zkp::*;
 use pallet_manta_asset::SanityCheck;
 
 impl SanityCheck for MintData {
@@ -24,25 +23,5 @@ impl SanityCheck for MintData {
 	fn sanity(&self, param: &Self::Param) -> bool {
 		let payload = [self.amount.to_le_bytes().as_ref(), self.k.as_ref()].concat();
 		<MantaCrypto as Commitment>::check_commitment(&param, &payload, &self.s, &self.cm)
-	}
-}
-
-impl SanityCheck for PrivateTransferData {
-	type Param = VerificationKey;
-
-	/// the sanity check for the private transfer data is
-	/// to check the validity of the ZKP proof
-	fn sanity(&self, param: &Self::Param) -> bool {
-		manta_verify_transfer_zkp(param, self)
-	}
-}
-
-impl SanityCheck for ReclaimData {
-	type Param = VerificationKey;
-
-	/// the sanity check for the reclaim data is
-	/// to check the validity of the ZKP proof
-	fn sanity(&self, param: &Self::Param) -> bool {
-		manta_verify_reclaim_zkp(param, self)
 	}
 }
