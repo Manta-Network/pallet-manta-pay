@@ -15,8 +15,6 @@
 // along with pallet-manta-pay.  If not, see <http://www.gnu.org/licenses/>.
 
 use crate::*;
-use manta_crypto::*;
-use pallet_manta_asset::*;
 use ark_bls12_381::Bls12_381;
 use ark_ed_on_bls12_381::Fq;
 use ark_ff::ToConstraintField;
@@ -24,6 +22,8 @@ use ark_groth16::{create_random_proof, generate_random_parameters, verify_proof}
 use ark_relations::r1cs::{ConstraintSynthesizer, ConstraintSystem};
 use ark_serialize::CanonicalDeserialize;
 use ark_std::rand::{RngCore, SeedableRng};
+use manta_crypto::*;
+use pallet_manta_asset::*;
 use rand_chacha::ChaCha20Rng;
 
 /// this is a local test on zero knowledge proof generation and verifications
@@ -87,7 +87,6 @@ fn test_transfer_zkp_local() {
 
 		receiver_1: receiver_1,
 		receiver_2: receiver_2,
-
 	};
 
 	let sanity_cs = ConstraintSystem::<Fq>::new_ref();
@@ -117,7 +116,6 @@ fn test_transfer_zkp_local() {
 	rng.fill_bytes(&mut sk);
 	let receiver_2_full = MantaAssetFullReceiver::sample(&commit_param, &sk, &(), &mut rng);
 	let receiver_2 = receiver_2_full.prepared.process(&260);
-
 
 	test_transfer_helper(
 		commit_param.clone(),
@@ -177,7 +175,6 @@ fn test_transfer_zkp_local() {
 	let receiver_2_full = MantaAssetFullReceiver::sample(&commit_param, &sk, &(), &mut rng);
 	let receiver_2 = receiver_2_full.prepared.process(&500);
 
-
 	test_transfer_helper(
 		commit_param.clone(),
 		hash_param.clone(),
@@ -199,7 +196,6 @@ fn test_transfer_zkp_local() {
 	list.push(sender_1.commitment);
 	list.push(sender_2.commitment);
 
-
 	rng.fill_bytes(&mut sk);
 	let receiver_1_full = MantaAssetFullReceiver::sample(&commit_param, &sk, &(), &mut rng);
 	let receiver_1 = receiver_1_full.prepared.process(&0);
@@ -207,8 +203,6 @@ fn test_transfer_zkp_local() {
 	rng.fill_bytes(&mut sk);
 	let receiver_2_full = MantaAssetFullReceiver::sample(&commit_param, &sk, &(), &mut rng);
 	let receiver_2 = receiver_2_full.prepared.process(&0);
-
-
 
 	test_transfer_helper(
 		commit_param.clone(),
@@ -281,8 +275,10 @@ fn test_transfer_helper(
 		cm_new_2.x, cm_new_2.y, // receiver coin 2
 	]
 	.to_vec();
-	let sn_1: Vec<Fq> = ToConstraintField::<Fq>::to_field_elements(sender_1.void_number.as_ref()).unwrap();
-	let sn_2: Vec<Fq> = ToConstraintField::<Fq>::to_field_elements(sender_2.void_number.as_ref()).unwrap();
+	let sn_1: Vec<Fq> =
+		ToConstraintField::<Fq>::to_field_elements(sender_1.void_number.as_ref()).unwrap();
+	let sn_2: Vec<Fq> =
+		ToConstraintField::<Fq>::to_field_elements(sender_2.void_number.as_ref()).unwrap();
 	let mr: Vec<Fq> = ToConstraintField::<Fq>::to_field_elements(&merkle_root).unwrap();
 	inputs = [
 		inputs[..].as_ref(),
@@ -364,7 +360,7 @@ fn test_reclaim_zkp_local() {
 	// =============================
 	// a normal test
 	// =============================
-	
+
 	rng.fill_bytes(&mut sk);
 	let sender_1 = MantaAsset::sample(&commit_param, &sk, &100, &mut rng);
 	rng.fill_bytes(&mut sk);
@@ -523,8 +519,10 @@ fn test_reclaim_helper(
 		cm_new.x, cm_new.y, // receiver coin 1
 	]
 	.to_vec();
-	let sn_1: Vec<Fq> = ToConstraintField::<Fq>::to_field_elements(sender_1.void_number.as_ref()).unwrap();
-	let sn_2: Vec<Fq> = ToConstraintField::<Fq>::to_field_elements(sender_2.void_number.as_ref()).unwrap();
+	let sn_1: Vec<Fq> =
+		ToConstraintField::<Fq>::to_field_elements(sender_1.void_number.as_ref()).unwrap();
+	let sn_2: Vec<Fq> =
+		ToConstraintField::<Fq>::to_field_elements(sender_2.void_number.as_ref()).unwrap();
 	let mr: Vec<Fq> = ToConstraintField::<Fq>::to_field_elements(&merkle_root).unwrap();
 	let reclaim_value_fq = Fq::from(reclaim_value);
 	inputs = [

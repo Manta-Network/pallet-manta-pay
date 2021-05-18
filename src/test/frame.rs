@@ -16,12 +16,12 @@
 
 use crate as pallet_manta_pay;
 use crate::*;
-use manta_crypto::*;
-use pallet_manta_asset::*;
 use ark_groth16::create_random_proof;
 use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
 use ark_std::rand::{RngCore, SeedableRng};
 use frame_support::{assert_noop, assert_ok, parameter_types};
+use manta_crypto::*;
+use pallet_manta_asset::*;
 use rand_chacha::ChaCha20Rng;
 use sp_core::H256;
 use sp_runtime::{
@@ -265,12 +265,11 @@ fn mint_tokens_helper(size: usize) -> Vec<MantaAsset> {
 		rng.fill_bytes(&mut sk);
 		let asset = MantaAsset::sample(&commit_param, &sk, &token_value, &mut rng);
 
-
 		let mut mint_data = [0u8; 96];
 		mint_data.copy_from_slice(
 			[asset.commitment.clone(), asset.pub_info.k, asset.pub_info.s]
-			.concat()
-			.as_ref(),
+				.concat()
+				.as_ref(),
 		);
 
 		// mint a sender token
@@ -618,7 +617,7 @@ fn reclaim_test_helper(iter: usize) {
 				receiver.prepared_data.k.as_ref(),
 				receiver.commitment.as_ref(),
 				// cipher.as_ref(),
-				&[0u8;16],
+				&[0u8; 16],
 			]
 			.concat()
 			.as_ref(),

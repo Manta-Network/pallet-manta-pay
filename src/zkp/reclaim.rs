@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with pallet-manta-pay.  If not, see <http://www.gnu.org/licenses/>.
 
-use super::transfer::*;
+use super::*;
 use ark_ed_on_bls12_381::{constraints::FqVar, Fq};
 use ark_r1cs_std::{alloc::AllocVar, prelude::*};
 use ark_relations::r1cs::{ConstraintSynthesizer, ConstraintSystemRef, SynthesisError};
@@ -77,9 +77,7 @@ impl ConstraintSynthesizer<Fq> for ReclaimCircuit {
 			.unwrap();
 
 		sender_token_well_formed_circuit_helper(&parameters_var, &self.sender_1, cs.clone());
-
 		sender_token_well_formed_circuit_helper(&parameters_var, &self.sender_2, cs.clone());
-
 		receiver_token_well_formed_circuit_helper(&parameters_var, &self.receiver, cs.clone());
 
 		// 2. address and the secret key derives public key

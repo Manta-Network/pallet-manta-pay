@@ -18,8 +18,6 @@
 extern crate criterion;
 extern crate pallet_manta_pay;
 
-use manta_crypto::*;
-use pallet_manta_asset::*;
 use ark_crypto_primitives::{
 	commitment::pedersen::Randomness, CommitmentScheme as ArkCommitmentScheme, FixedLengthCRH,
 };
@@ -30,6 +28,8 @@ use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
 use ark_std::rand::{RngCore, SeedableRng};
 use criterion::Criterion;
 use data_encoding::BASE64;
+use manta_crypto::*;
+use pallet_manta_asset::*;
 use pallet_manta_pay::*;
 use rand_chacha::ChaCha20Rng;
 use std::{fs::File, io::prelude::*};
@@ -89,7 +89,6 @@ fn bench_transfer_verify(c: &mut Criterion) {
 
 	rng.fill_bytes(&mut sk);
 	let sender_2 = MantaAsset::sample(&commit_param, &sk, &300, &mut rng);
-
 
 	// receiver
 	rng.fill_bytes(&mut sk);
@@ -199,7 +198,7 @@ fn bench_merkle_tree(c: &mut Criterion) {
 
 	bench_group.bench_function(bench_str, move |b| {
 		b.iter(|| {
-			<MantaCrypto as MerkleTree>::root(hash_param_clone.clone(), &[cm_bytes1]);
+			<MantaCrypto as MerkleTree>::root(hash_param_clone.clone(), &[cm_bytes1.clone()]);
 		})
 	});
 
@@ -213,9 +212,10 @@ fn bench_merkle_tree(c: &mut Criterion) {
 	let bench_str = format!("with 2 leaf");
 	bench_group.bench_function(bench_str, move |b| {
 		b.iter(|| {
-			b.iter(|| {
-				<MantaCrypto as MerkleTree>::root(hash_param_clone.clone(), &[cm_bytes1]);
-			})
+			<MantaCrypto as MerkleTree>::root(
+				hash_param_clone.clone(),
+				&[cm_bytes1.clone(), cm_bytes2.clone()],
+			);
 		})
 	});
 
@@ -225,12 +225,14 @@ fn bench_merkle_tree(c: &mut Criterion) {
 		.unwrap();
 	cm_bytes3.copy_from_slice(cm_vec[0..32].as_ref());
 
+	let hash_param_clone = hash_param.clone();
 	let bench_str = format!("with 3 leaf");
 	bench_group.bench_function(bench_str, move |b| {
 		b.iter(|| {
-			b.iter(|| {
-				<MantaCrypto as MerkleTree>::root(hash_param_clone.clone(), &[cm_bytes1]);
-			})
+			<MantaCrypto as MerkleTree>::root(
+				hash_param_clone.clone(),
+				&[cm_bytes1.clone(), cm_bytes2.clone(), cm_bytes3.clone()],
+			);
 		})
 	});
 
@@ -289,51 +291,44 @@ fn bench_transfer_prove(c: &mut Criterion) {
 	// sender
 	let mut sk = [0u8; 32];
 	rng.fill_bytes(&mut sk);
-	let sender_1 = make_coin(&commit_param, sk, 100, &mut rng);
+	let sender_1 = MantaAsset::sample(&commit_param, &sk, &100, &mut rng);
 	rng.fill_bytes(&mut sk);
-	let sender_2 = make_coin(&commit_param, sk, 300, &mut rng);
+	let sender_2 = MantaAsset::sample(&commit_param, &sk, &300, &mut rng);
 
 	// receiver
 	rng.fill_bytes(&mut sk);
-	let receiver_1 = make_coin(&commit_param, sk, 150, &mut rng);
+	let receiver_1_full = MantaAssetFullReceiver::sample(&commit_param, &sk, &(), &mut rng);
+	let receiver_1 = receiver_1_full.prepared.process(&150);
+
 	rng.fill_bytes(&mut sk);
-	let receiver_2 = make_coin(&commit_param, sk, 250, &mut rng);
+	let receiver_2_full = MantaAssetFullReceiver::sample(&commit_param, &sk, &(), &mut rng);
+	let receiver_2 = receiver_2_full.prepared.process(&250);
 
 	// merkle tree
 	let tree = LedgerMerkleTree::new(
 		hash_param.clone(),
-		&[sender_1.0.cm_bytes, sender_2.0.cm_bytes],
+		&[sender_1.commitment, sender_2.commitment],
 	)
 	.unwrap();
 	let root = tree.root();
-	let path_1 = tree.generate_proof(0, &sender_1.0.cm_bytes).unwrap();
-	let path_2 = tree.generate_proof(1, &sender_2.0.cm_bytes).unwrap();
+	let path_1 = tree.generate_proof(0, &sender_1.commitment).unwrap();
+	let path_2 = tree.generate_proof(1, &sender_2.commitment).unwrap();
 
 	let circuit = TransferCircuit {
 		commit_param: commit_param.clone(),
 		hash_param,
 
-		sender_coin_1: sender_1.0.clone(),
-		sender_pub_info_1: sender_1.1.clone(),
-		sender_priv_info_1: sender_1.2.clone(),
+		sender_1: sender_1.clone(),
 		sender_membership_1: path_1.clone(),
 		root_1: root.clone(),
 
-		sender_coin_2: sender_2.0.clone(),
-		sender_pub_info_2: sender_2.1.clone(),
-		sender_priv_info_2: sender_2.2.clone(),
+		sender_2: sender_2.clone(),
 		sender_membership_2: path_2.clone(),
 		root_2: root,
 
-		receiver_coin_1: receiver_1.0.clone(),
-		receiver_k_1: receiver_1.1.k,
-		receiver_s_1: receiver_1.1.s,
-		receiver_value_1: receiver_1.2.value,
+		receiver_1: receiver_1.clone(),
 
-		receiver_coin_2: receiver_2.0.clone(),
-		receiver_k_2: receiver_2.1.k,
-		receiver_s_2: receiver_2.1.s,
-		receiver_value_2: receiver_2.2.value,
+		receiver_2: receiver_2.clone(),
 	};
 	let mut bench_group = c.benchmark_group("private transfer");
 	bench_group.sample_size(10);

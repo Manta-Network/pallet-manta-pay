@@ -22,12 +22,12 @@ use ark_relations::r1cs::{ConstraintSynthesizer, ConstraintSystem};
 use ark_serialize::CanonicalSerialize;
 use ark_std::rand::{RngCore, SeedableRng};
 use hkdf::Hkdf;
+use manta_crypto::*;
+use pallet_manta_asset::*;
 use pallet_manta_pay::*;
 use rand_chacha::ChaCha20Rng;
 use sha2::Sha512Trunc256;
 use std::{fs::File, io::prelude::*};
-use manta_crypto::*;
-use pallet_manta_asset::*;
 
 fn main() {
 	println!("Hello, Manta!");
@@ -117,19 +117,18 @@ fn manta_transfer_zkp_key_gen(
 		hash_param,
 
 		// sender
-		sender_1: sender_1,
+		sender_1,
 		sender_membership_1: path_1,
 		root_1: root,
 
-		sender_2: sender_2,
+		sender_2,
 		sender_membership_2: path_2,
 		root_2: root,
 
 		// receiver
-		receiver_1: receiver_1,
+		receiver_1,
 
-		receiver_2: receiver_2,
-
+		receiver_2,
 	};
 
 	let sanity_cs = ConstraintSystem::<Fq>::new_ref();
@@ -206,16 +205,16 @@ fn manta_reclaim_zkp_key_gen(
 		hash_param,
 
 		// sender
-		sender_1: sender_1,
+		sender_1,
 		sender_membership_1: path_1,
 		root_1: root,
 
-		sender_2: sender_2,
+		sender_2,
 		sender_membership_2: path_2,
 		root_2: root,
 
 		// receiver
-		receiver: receiver,
+		receiver,
 
 		// reclaim value
 		reclaim_value: 130,
