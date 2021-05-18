@@ -26,7 +26,7 @@ mod default;
 mod santiy;
 mod serdes;
 
-/// Input data to a mint function.
+/// Input data to a mint intrinsic.
 #[derive(Encode, Debug, Decode, Clone, Default, PartialEq)]
 pub struct MintData {
 	pub amount: u64,
@@ -35,7 +35,7 @@ pub struct MintData {
 	pub s: [u8; 32],
 }
 
-/// Input data to a mint function.
+/// Input data to a private transfer intrinsic.
 #[derive(Encode, Debug, Decode, Clone, PartialEq)]
 pub struct PrivateTransferData {
 	pub sender_1: SenderData,
@@ -45,7 +45,7 @@ pub struct PrivateTransferData {
 	pub proof: [u8; 192],
 }
 
-/// Input data to a mint function.
+/// Input data to a reclaim intrinsic.
 #[derive(Encode, Debug, Decode, Clone, PartialEq)]
 pub struct ReclaimData {
 	pub reclaim_amount: u64,
@@ -71,6 +71,8 @@ pub struct ReceiverData {
 	pub cipher: [u8; 16],
 }
 
+
+/// Given the inputs, generate the payload for the mint_asset intrinsic.
 pub fn generate_mint_payload(asset: &MantaAsset) -> MintData {
 	MintData {
 		amount: asset.priv_info.value,
@@ -80,6 +82,21 @@ pub fn generate_mint_payload(asset: &MantaAsset) -> MintData {
 	}
 }
 
+
+/// Given the inputs, generate the payload for the private_transfer
+/// intrinsic.
+/// Inputs: 
+///     - commit_param: commitment parameters.
+///     - hash_param: hash parameters.
+///     - pk: proving key of the Groth16 proving system. 
+///     - sender_1: meta data for the sender's first coin.
+///     - sender_2: meta data for the second's first coin.
+///     - receiver_1: a __PROCESSED__ receiver.
+///     - receiver_2: the other __PROCESSED__ receiver.
+///     - rng: a random number generator.
+/// Outputs:
+///     - a data struct, once serialized, can be passed to the 
+///       private_transfer intrinsic.
 #[allow(clippy::too_many_arguments)]
 pub fn generate_private_transfer_payload<R: RngCore + CryptoRng>(
 	commit_param: CommitmentParam,
@@ -140,6 +157,20 @@ pub fn generate_private_transfer_payload<R: RngCore + CryptoRng>(
 	}
 }
 
+
+/// Given the inputs, generate the payload for the reclaim intrinsic.
+/// Inputs: 
+///     - commit_param: commitment parameters.
+///     - hash_param: hash parameters.
+///     - pk: proving key of the Groth16 proving system. 
+///     - sender_1: meta data for the sender's first coin.
+///     - sender_2: meta data for the second's first coin.
+///     - receiver: a __PROCESSED__ receiver.
+///     - reclaimed_value: the number of reclaimed assets.
+///     - rng: a random number generator.
+/// Outputs:
+///     - a data struct, once serialized, can be passed to the 
+///       reclaim intrinsic.
 #[allow(clippy::too_many_arguments)]
 pub fn generate_reclaim_payload<R: RngCore + CryptoRng>(
 	commit_param: CommitmentParam,

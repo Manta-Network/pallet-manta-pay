@@ -14,6 +14,14 @@
 // You should have received a copy of the GNU General Public License
 // along with pallet-manta-pay.  If not, see <http://www.gnu.org/licenses/>.
 
+
+//! This module implements the ledger for manta's private asset.
+//! TODO: Shall we factor out this module?
+//! The private asset ledger consist of a fixed number of __256__ merkle trees.
+//! Each tree is a `Shard`, and collectively they form the `Shards`.
+//! When an UTXO is posted to the ledger, it will be send to the corresponding
+//! shard via some deterministic fashion.
+
 use ark_std::vec::Vec;
 use frame_support::codec::{Decode, Encode};
 use manta_crypto::*;
