@@ -14,7 +14,6 @@
 // You should have received a copy of the GNU General Public License
 // along with pallet-manta-pay.  If not, see <http://www.gnu.org/licenses/>.
 
-
 //! This module implements the ledger for manta's private asset.
 //! TODO: Shall we factor out this module?
 //! The private asset ledger consist of a fixed number of __256__ merkle trees.

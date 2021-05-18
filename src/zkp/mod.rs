@@ -16,9 +16,9 @@
 
 //! This module contains zkp implementations for manta-pay.
 
-mod keys;
 mod circuit;
 mod gadget;
+mod keys;
 mod zkp;
 
 pub use circuit::{ReclaimCircuit, TransferCircuit};
