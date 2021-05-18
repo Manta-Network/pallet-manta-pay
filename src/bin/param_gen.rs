@@ -106,6 +106,7 @@ fn manta_transfer_zkp_key_gen(
 	rng.fill_bytes(&mut sk);
 	let receiver_1_full = MantaAssetFullReceiver::sample(&commit_param, &sk, &(), &mut rng);
 	let receiver_1 = receiver_1_full.prepared.process(&80);
+	rng.fill_bytes(&mut sk);
 	let receiver_2_full = MantaAssetFullReceiver::sample(&commit_param, &sk, &(), &mut rng);
 	let receiver_2 = receiver_2_full.prepared.process(&130);
 
