@@ -16,12 +16,14 @@
 
 //! This module contains zkp implementations for manta-pay.
 
+mod keys;
 mod circuit;
 mod gadget;
 mod zkp;
 
 pub use circuit::{ReclaimCircuit, TransferCircuit};
 pub(crate) use gadget::*;
+pub use keys::write_zkp_keys;
 
 use crate::payload::*;
 use ark_ff::ToConstraintField;
