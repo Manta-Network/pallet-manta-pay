@@ -82,33 +82,27 @@
 // Ensure we're `no_std` when compiling for Wasm.
 #![cfg_attr(not(feature = "std"), no_std)]
 
-mod benchmark;
-mod coin;
-mod crypto;
-mod shard;
+mod ledger;
+mod payload;
+mod runtime_benchmark;
+mod zkp;
 
-#[cfg(test)]
-mod bench_composite;
 #[cfg(test)]
 mod test;
 #[cfg(test)]
 #[macro_use]
 extern crate std;
 
-pub use coin::*;
+pub use ledger::{Shard, Shards};
 pub use manta_crypto::MantaSerDes;
-pub use shard::{Shard, Shards};
-
-// TODO: this interface is only exposed for benchmarking
-// use a feature gate to control this expose
-#[allow(unused_imports)]
-pub use crypto::*;
+pub use payload::*;
+pub use zkp::*;
 
 use ark_std::vec::Vec;
-use manta_crypto::*;
 use frame_support::{decl_error, decl_event, decl_module, decl_storage, ensure};
 use frame_system::ensure_signed;
-use shard::LedgerSharding;
+use ledger::LedgerSharding;
+use manta_crypto::*;
 use sp_runtime::traits::{StaticLookup, Zero};
 use sp_std::prelude::*;
 
@@ -352,7 +346,7 @@ decl_module! {
 
 			// check validity of zkp
 			ensure!(
-				crypto::manta_verify_transfer_zkp(
+				manta_verify_transfer_zkp(
 					&transfer_vk,
 					&proof,
 					&sender_data_1,
@@ -461,7 +455,7 @@ decl_module! {
 
 			// check validity of zkp
 			ensure!(
-				crypto::manta_verify_reclaim_zkp(
+				manta_verify_reclaim_zkp(
 					&reclaim_vk,
 					amount,
 					&proof,

@@ -18,6 +18,9 @@
 
 #![cfg(feature = "runtime-benchmarks")]
 
+#[cfg(test)]
+mod bench_composite;
+
 use super::*;
 use ark_ff::vec;
 use ark_std::{boxed::Box, primitive::str};

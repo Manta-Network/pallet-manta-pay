@@ -26,6 +26,8 @@ use pallet_manta_pay::*;
 use rand_chacha::ChaCha20Rng;
 use sha2::Sha512Trunc256;
 use std::{fs::File, io::prelude::*};
+use manta_crypto::*;
+use pallet_manta_asset::*;
 
 fn main() {
 	println!("Hello, Manta!");
@@ -78,8 +80,8 @@ fn manta_transfer_zkp_key_gen(
 	for e in 0..128 {
 		rng.fill_bytes(&mut sk);
 
-		let sender = make_coin(&commit_param, sk, e + 100, &mut rng);
-		ledger.push(sender.0.cm_bytes);
+		let sender = MantaAsset::sample(&commit_param, &sk, &(e + 100), &mut rng);
+		ledger.push(sender.commitment);
 		coins.push(sender);
 	}
 
@@ -90,20 +92,22 @@ fn manta_transfer_zkp_key_gen(
 	let tree = LedgerMerkleTree::new(hash_param.clone(), &ledger).unwrap();
 	let index_1 = ledger
 		.iter()
-		.position(|x| *x == sender_1.0.cm_bytes)
+		.position(|x| *x == sender_1.commitment)
 		.unwrap();
-	let path_1 = tree.generate_proof(index_1, &sender_1.0.cm_bytes).unwrap();
+	let path_1 = tree.generate_proof(index_1, &sender_1.commitment).unwrap();
 	let index_2 = ledger
 		.iter()
-		.position(|x| *x == sender_2.0.cm_bytes)
+		.position(|x| *x == sender_2.commitment)
 		.unwrap();
-	let path_2 = tree.generate_proof(index_2, &sender_2.0.cm_bytes).unwrap();
+	let path_2 = tree.generate_proof(index_2, &sender_2.commitment).unwrap();
 	let root = tree.root();
 
 	// receiver's total value is also 210
 	rng.fill_bytes(&mut sk);
-	let receiver_1 = make_coin(&commit_param, sk, 80, &mut rng);
-	let receiver_2 = make_coin(&commit_param, sk, 130, &mut rng);
+	let receiver_1_full = MantaAssetFullReceiver::sample(&commit_param, &sk, &(), &mut rng);
+	let receiver_1 = receiver_1_full.prepared.process(&80);
+	let receiver_2_full = MantaAssetFullReceiver::sample(&commit_param, &sk, &(), &mut rng);
+	let receiver_2 = receiver_2_full.prepared.process(&130);
 
 	// transfer circuit
 	let transfer_circuit = TransferCircuit {
@@ -112,28 +116,19 @@ fn manta_transfer_zkp_key_gen(
 		hash_param,
 
 		// sender
-		sender_coin_1: sender_1.0,
-		sender_pub_info_1: sender_1.1,
-		sender_priv_info_1: sender_1.2,
+		sender_1: sender_1,
 		sender_membership_1: path_1,
 		root_1: root,
 
-		sender_coin_2: sender_2.0,
-		sender_pub_info_2: sender_2.1,
-		sender_priv_info_2: sender_2.2,
+		sender_2: sender_2,
 		sender_membership_2: path_2,
 		root_2: root,
 
 		// receiver
-		receiver_coin_1: receiver_1.0.clone(),
-		receiver_k_1: receiver_1.1.k,
-		receiver_s_1: receiver_1.1.s,
-		receiver_value_1: receiver_1.2.value,
+		receiver_1: receiver_1,
 
-		receiver_coin_2: receiver_2.0.clone(),
-		receiver_k_2: receiver_2.1.k,
-		receiver_s_2: receiver_2.1.s,
-		receiver_value_2: receiver_2.2.value,
+		receiver_2: receiver_2,
+
 	};
 
 	let sanity_cs = ConstraintSystem::<Fq>::new_ref();
@@ -178,8 +173,8 @@ fn manta_reclaim_zkp_key_gen(
 	for e in 0..128 {
 		rng.fill_bytes(&mut sk);
 
-		let sender = make_coin(&commit_param, sk, e + 100, &mut rng);
-		ledger.push(sender.0.cm_bytes);
+		let sender = MantaAsset::sample(&commit_param, &sk, &(e + 100), &mut rng);
+		ledger.push(sender.commitment);
 		coins.push(sender);
 	}
 	// sender's total value is 210
@@ -189,19 +184,19 @@ fn manta_reclaim_zkp_key_gen(
 	let tree = LedgerMerkleTree::new(hash_param.clone(), &ledger).unwrap();
 	let index_1 = ledger
 		.iter()
-		.position(|x| *x == sender_1.0.cm_bytes)
+		.position(|x| *x == sender_1.commitment)
 		.unwrap();
-	let path_1 = tree.generate_proof(index_1, &sender_1.0.cm_bytes).unwrap();
+	let path_1 = tree.generate_proof(index_1, &sender_1.commitment).unwrap();
 	let index_2 = ledger
 		.iter()
-		.position(|x| *x == sender_2.0.cm_bytes)
+		.position(|x| *x == sender_2.commitment)
 		.unwrap();
-	let path_2 = tree.generate_proof(index_2, &sender_2.0.cm_bytes).unwrap();
+	let path_2 = tree.generate_proof(index_2, &sender_2.commitment).unwrap();
 	let root = tree.root();
 
 	// receiver's total value is also 210
-	rng.fill_bytes(&mut sk);
-	let receiver = make_coin(&commit_param, sk, 80, &mut rng);
+	let receiver_full = MantaAssetFullReceiver::sample(&commit_param, &sk, &(), &mut rng);
+	let receiver = receiver_full.prepared.process(&80);
 
 	// transfer circuit
 	let reclaim_circuit = ReclaimCircuit {
@@ -210,23 +205,16 @@ fn manta_reclaim_zkp_key_gen(
 		hash_param,
 
 		// sender
-		sender_coin_1: sender_1.0,
-		sender_pub_info_1: sender_1.1,
-		sender_priv_info_1: sender_1.2,
+		sender_1: sender_1,
 		sender_membership_1: path_1,
 		root_1: root,
 
-		sender_coin_2: sender_2.0,
-		sender_pub_info_2: sender_2.1,
-		sender_priv_info_2: sender_2.2,
+		sender_2: sender_2,
 		sender_membership_2: path_2,
 		root_2: root,
 
 		// receiver
-		receiver_coin: receiver.0,
-		receiver_k: receiver.1.k,
-		receiver_s: receiver.1.s,
-		receiver_value: receiver.2.value,
+		receiver: receiver,
 
 		// reclaim value
 		reclaim_value: 130,

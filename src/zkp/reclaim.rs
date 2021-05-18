@@ -15,11 +15,11 @@
 // along with pallet-manta-pay.  If not, see <http://www.gnu.org/licenses/>.
 
 use super::transfer::*;
-use manta_crypto::*;
-use pallet_manta_asset::*;
 use ark_ed_on_bls12_381::{constraints::FqVar, Fq};
 use ark_r1cs_std::{alloc::AllocVar, prelude::*};
 use ark_relations::r1cs::{ConstraintSynthesizer, ConstraintSystemRef, SynthesisError};
+use manta_crypto::*;
+use pallet_manta_asset::*;
 
 // =============================
 /// ZK circuit for the __reclaim__ statements.
@@ -46,19 +46,16 @@ pub struct ReclaimCircuit {
 	pub hash_param: HashParam,
 
 	// sender
-	pub sender_coin_1: MantaAsset,
+	pub sender_1: MantaAsset,
 	pub sender_membership_1: AccountMembership,
 	pub root_1: LedgerMerkleTreeRoot,
 
-	pub sender_coin_2: MantaAsset,
+	pub sender_2: MantaAsset,
 	pub sender_membership_2: AccountMembership,
 	pub root_2: LedgerMerkleTreeRoot,
 
 	// receiver
-	pub receiver_coin: MantaCoin,
-	pub receiver_k: [u8; 32],
-	pub receiver_s: [u8; 32],
-	pub receiver_value: u64,
+	pub receiver: MantaAssetProcessedReceiver,
 
 	// reclaimed amount
 	pub reclaim_value: u64,
@@ -79,60 +76,41 @@ impl ConstraintSynthesizer<Fq> for ReclaimCircuit {
 			})
 			.unwrap();
 
-		sender_token_well_formed_circuit_helper(
-			&parameters_var,
-			&self.sender_coin_1,
-			&self.sender_pub_info_1,
-			self.sender_priv_info_1.value,
-			cs.clone(),
-		);
+		sender_token_well_formed_circuit_helper(&parameters_var, &self.sender_1, cs.clone());
 
-		sender_token_well_formed_circuit_helper(
-			&parameters_var,
-			&self.sender_coin_2,
-			&self.sender_pub_info_2,
-			self.sender_priv_info_2.value,
-			cs.clone(),
-		);
+		sender_token_well_formed_circuit_helper(&parameters_var, &self.sender_2, cs.clone());
 
-		receiver_token_well_formed_circuit_helper(
-			&parameters_var,
-			&self.receiver_coin,
-			&self.receiver_k,
-			&self.receiver_s,
-			self.receiver_value,
-			cs.clone(),
-		);
+		receiver_token_well_formed_circuit_helper(&parameters_var, &self.receiver, cs.clone());
 
 		// 2. address and the secret key derives public key
 		//  sender.pk = PRF(sender_sk, [0u8;32])
 		//  sender.sn = PRF(sender_sk, rho)
 		prf_circuit_helper(
 			true,
-			&self.sender_priv_info_1.sk,
+			&self.sender_1.priv_info.sk,
 			&[0u8; 32],
-			&self.sender_pub_info_1.pk,
+			&self.sender_1.pub_info.pk,
 			cs.clone(),
 		);
 		prf_circuit_helper(
 			false,
-			&self.sender_priv_info_1.sk,
-			&self.sender_pub_info_1.rho,
-			&self.sender_priv_info_1.sn,
+			&self.sender_1.priv_info.sk,
+			&self.sender_1.pub_info.rho,
+			&self.sender_1.void_number,
 			cs.clone(),
 		);
 		prf_circuit_helper(
 			true,
-			&self.sender_priv_info_2.sk,
+			&self.sender_2.priv_info.sk,
 			&[0u8; 32],
-			&self.sender_pub_info_2.pk,
+			&self.sender_2.pub_info.pk,
 			cs.clone(),
 		);
 		prf_circuit_helper(
 			false,
-			&self.sender_priv_info_2.sk,
-			&self.sender_pub_info_2.rho,
-			&self.sender_priv_info_2.sn,
+			&self.sender_2.priv_info.sk,
+			&self.sender_2.pub_info.rho,
+			&self.sender_2.void_number,
 			cs.clone(),
 		);
 
@@ -145,7 +123,7 @@ impl ConstraintSynthesizer<Fq> for ReclaimCircuit {
 		.unwrap();
 
 		merkle_membership_circuit_proof(
-			&self.sender_coin_1.cm_bytes,
+			&self.sender_1.commitment,
 			&self.sender_membership_1,
 			param_var.clone(),
 			self.root_1,
@@ -153,7 +131,7 @@ impl ConstraintSynthesizer<Fq> for ReclaimCircuit {
 		);
 
 		merkle_membership_circuit_proof(
-			&self.sender_coin_2.cm_bytes,
+			&self.sender_2.commitment,
 			&self.sender_membership_2,
 			param_var,
 			self.root_2,
@@ -163,20 +141,20 @@ impl ConstraintSynthesizer<Fq> for ReclaimCircuit {
 		// 4. sender's and receiver's total value are the same
 		// TODO: do we need to check that the values are all positive?
 		// seems that Rust's type system has already eliminated negative values
-		let sender_value_1_fq = Fq::from(self.sender_priv_info_1.value);
+		let sender_value_1_fq = Fq::from(self.sender_1.priv_info.value);
 		let mut sender_value_sum =
 			FqVar::new_witness(ark_relations::ns!(cs, "sender value"), || {
 				Ok(&sender_value_1_fq)
 			})
 			.unwrap();
-		let sender_value_2_fq = Fq::from(self.sender_priv_info_2.value);
+		let sender_value_2_fq = Fq::from(self.sender_2.priv_info.value);
 		let sender_value_2_var = FqVar::new_witness(ark_relations::ns!(cs, "sender value"), || {
 			Ok(&sender_value_2_fq)
 		})
 		.unwrap();
 		sender_value_sum += sender_value_2_var;
 
-		let receiver_value_fq = Fq::from(self.receiver_value);
+		let receiver_value_fq = Fq::from(self.receiver.value);
 		let mut receiver_value_sum =
 			FqVar::new_witness(ark_relations::ns!(cs, "receiver value"), || {
 				Ok(&receiver_value_fq)

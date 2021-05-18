@@ -14,12 +14,19 @@
 // You should have received a copy of the GNU General Public License
 // along with pallet-manta-pay.  If not, see <http://www.gnu.org/licenses/>.
 
-use crate::{coin::*, param::*};
+mod reclaim;
+mod transfer;
+
+pub use reclaim::ReclaimCircuit;
+pub use transfer::TransferCircuit;
+
+use crate::payload::*;
 use ark_ed_on_bls12_381::Fq;
 use ark_ff::ToConstraintField;
 use ark_groth16::verify_proof;
 use ark_serialize::CanonicalDeserialize;
 use ark_std::vec::Vec;
+use manta_crypto::*;
 
 pub fn manta_verify_transfer_zkp(
 	transfer_key_bytes: &VerificationKey,

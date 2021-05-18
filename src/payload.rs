@@ -14,12 +14,9 @@
 // You should have received a copy of the GNU General Public License
 // along with pallet-manta-pay.  If not, see <http://www.gnu.org/licenses/>.
 
-use manta_crypto::CommitmentParam;
-use ark_std::{
-	io::{Read, Write},
-};
-use manta_crypto::MantaSerDes;
+use ark_std::io::{Read, Write};
 use frame_support::codec::{Decode, Encode};
+use manta_crypto::{Commitment, CommitmentParam, MantaCrypto, MantaSerDes};
 
 /// Input data to a mint function.
 #[derive(Encode, Debug, Decode, Clone, Default, PartialEq)]
@@ -32,7 +29,7 @@ pub struct MintData {
 impl MintData {
 	pub(crate) fn sanity_check(&self, value: u64, param: &CommitmentParam) -> bool {
 		let payload = [value.to_le_bytes().as_ref(), self.k.as_ref()].concat();
-		crate::crypto::comm_open(&param, &self.s, &payload, &self.cm)
+		<MantaCrypto as Commitment>::check_commitment(&param, &payload, &self.s, &self.cm)
 	}
 }
 
@@ -51,7 +48,6 @@ pub struct ReceiverData {
 	pub cm: [u8; 32],
 	pub cipher: [u8; 16],
 }
-
 
 impl MantaSerDes for MintData {
 	/// Serialize the mint data into an array of 96 bytes.

@@ -14,9 +14,9 @@
 // You should have received a copy of the GNU General Public License
 // along with pallet-manta-pay.  If not, see <http://www.gnu.org/licenses/>.
 
-use manta_crypto::*;
 use ark_std::vec::Vec;
 use frame_support::codec::{Decode, Encode};
+use manta_crypto::*;
 
 /// A shard is a list of commitment, and a merkle root of this list.
 #[derive(Encode, Debug, Decode, Clone, Default, PartialEq)]
@@ -88,7 +88,7 @@ impl LedgerSharding for Shards {
 		// update the list, and the root accordingly
 		self.shard[shard_index].list.push(*target);
 		self.shard[shard_index].root =
-			crate::crypto::merkle_root(param, &self.shard[shard_index].list);
+			<MantaCrypto as MerkleTree>::root(param, &self.shard[shard_index].list);
 	}
 }
 
