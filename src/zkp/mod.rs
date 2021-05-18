@@ -36,24 +36,43 @@ use ark_std::vec::Vec;
 use manta_crypto::*;
 use pallet_manta_asset::*;
 
+#[derive(Debug, Clone, Default)]
+pub struct SenderMetaData {
+	pub asset: MantaAsset,
+	pub root: LedgerMerkleTreeRoot,
+	pub membership: AccountMembership,
+}
+
+impl SenderMetaData {
+	pub fn build(param: HashParam, sender: MantaAsset, leaves: &[[u8; 32]]) -> Self {
+		let tree = LedgerMerkleTree::new(param, &leaves).unwrap();
+		let root = tree.root();
+
+		let index = leaves.iter().position(|x| *x == sender.commitment).unwrap();
+		let membership = tree.generate_proof(index, &sender.commitment).unwrap();
+
+		Self {
+			asset: sender,
+			root,
+			membership,
+		}
+	}
+}
+
 pub fn manta_verify_transfer_zkp(
 	transfer_key_bytes: &VerificationKey,
-	proof: &[u8; 192],
-	sender_data_1: &SenderData,
-	sender_data_2: &SenderData,
-	receiver_data_1: &ReceiverData,
-	receiver_data_2: &ReceiverData,
+	data: &PrivateTransferData,
 ) -> bool {
 	let buf: &[u8] = transfer_key_bytes.data;
 	let vk = Groth16Vk::deserialize_unchecked(buf).unwrap();
 	let pvk = Groth16Pvk::from(vk);
-	let proof = Groth16Proof::deserialize(proof.as_ref()).unwrap();
-	let k_old_1 = CommitmentOutput::deserialize(sender_data_1.k.as_ref()).unwrap();
-	let k_old_2 = CommitmentOutput::deserialize(sender_data_2.k.as_ref()).unwrap();
-	let cm_new_1 = CommitmentOutput::deserialize(receiver_data_1.cm.as_ref()).unwrap();
-	let cm_new_2 = CommitmentOutput::deserialize(receiver_data_2.cm.as_ref()).unwrap();
-	let merkle_root_1 = HashOutput::deserialize(sender_data_1.root.as_ref()).unwrap();
-	let merkle_root_2 = HashOutput::deserialize(sender_data_2.root.as_ref()).unwrap();
+	let proof = Groth16Proof::deserialize(data.proof.as_ref()).unwrap();
+	let k_old_1 = CommitmentOutput::deserialize(data.sender_1.k.as_ref()).unwrap();
+	let k_old_2 = CommitmentOutput::deserialize(data.sender_2.k.as_ref()).unwrap();
+	let cm_new_1 = CommitmentOutput::deserialize(data.receiver_1.cm.as_ref()).unwrap();
+	let cm_new_2 = CommitmentOutput::deserialize(data.receiver_2.cm.as_ref()).unwrap();
+	let merkle_root_1 = HashOutput::deserialize(data.sender_1.root.as_ref()).unwrap();
+	let merkle_root_2 = HashOutput::deserialize(data.sender_2.root.as_ref()).unwrap();
 
 	let mut inputs = [
 		k_old_1.x, k_old_1.y, // sender coin 1
@@ -63,9 +82,9 @@ pub fn manta_verify_transfer_zkp(
 	]
 	.to_vec();
 	let sn_1: Vec<Fq> =
-		ToConstraintField::<Fq>::to_field_elements(sender_data_1.sn.as_ref()).unwrap();
+		ToConstraintField::<Fq>::to_field_elements(data.sender_1.void_number.as_ref()).unwrap();
 	let sn_2: Vec<Fq> =
-		ToConstraintField::<Fq>::to_field_elements(sender_data_2.sn.as_ref()).unwrap();
+		ToConstraintField::<Fq>::to_field_elements(data.sender_2.void_number.as_ref()).unwrap();
 
 	let mr_1: Vec<Fq> = ToConstraintField::<Fq>::to_field_elements(&merkle_root_1).unwrap();
 	let mr_2: Vec<Fq> = ToConstraintField::<Fq>::to_field_elements(&merkle_root_2).unwrap();
@@ -81,23 +100,16 @@ pub fn manta_verify_transfer_zkp(
 	verify_proof(&pvk, &proof, &inputs[..]).unwrap()
 }
 
-pub fn manta_verify_reclaim_zkp(
-	reclaim_key_bytes: &VerificationKey,
-	value: u64,
-	proof: &[u8; 192],
-	sender_data_1: &SenderData,
-	sender_data_2: &SenderData,
-	receiver_data: &ReceiverData,
-) -> bool {
+pub fn manta_verify_reclaim_zkp(reclaim_key_bytes: &VerificationKey, data: &ReclaimData) -> bool {
 	let buf: &[u8] = reclaim_key_bytes.data;
 	let vk = Groth16Vk::deserialize_unchecked(buf).unwrap();
 	let pvk = Groth16Pvk::from(vk);
-	let proof = Groth16Proof::deserialize(proof.as_ref()).unwrap();
-	let k_old_1 = CommitmentOutput::deserialize(sender_data_1.k.as_ref()).unwrap();
-	let k_old_2 = CommitmentOutput::deserialize(sender_data_2.k.as_ref()).unwrap();
-	let cm_new = CommitmentOutput::deserialize(receiver_data.cm.as_ref()).unwrap();
-	let merkle_root_1 = HashOutput::deserialize(sender_data_1.root.as_ref()).unwrap();
-	let merkle_root_2 = HashOutput::deserialize(sender_data_2.root.as_ref()).unwrap();
+	let proof = Groth16Proof::deserialize(data.proof.as_ref()).unwrap();
+	let k_old_1 = CommitmentOutput::deserialize(data.sender_1.k.as_ref()).unwrap();
+	let k_old_2 = CommitmentOutput::deserialize(data.sender_2.k.as_ref()).unwrap();
+	let cm_new = CommitmentOutput::deserialize(data.receiver.cm.as_ref()).unwrap();
+	let merkle_root_1 = HashOutput::deserialize(data.sender_1.root.as_ref()).unwrap();
+	let merkle_root_2 = HashOutput::deserialize(data.sender_2.root.as_ref()).unwrap();
 
 	let mut inputs = [
 		k_old_1.x, k_old_1.y, // sender coin 1
@@ -106,13 +118,13 @@ pub fn manta_verify_reclaim_zkp(
 	]
 	.to_vec();
 	let sn_1: Vec<Fq> =
-		ToConstraintField::<Fq>::to_field_elements(sender_data_1.sn.as_ref()).unwrap();
+		ToConstraintField::<Fq>::to_field_elements(data.sender_1.void_number.as_ref()).unwrap();
 	let sn_2: Vec<Fq> =
-		ToConstraintField::<Fq>::to_field_elements(sender_data_2.sn.as_ref()).unwrap();
+		ToConstraintField::<Fq>::to_field_elements(data.sender_2.void_number.as_ref()).unwrap();
 
 	let mr_1: Vec<Fq> = ToConstraintField::<Fq>::to_field_elements(&merkle_root_1).unwrap();
 	let mr_2: Vec<Fq> = ToConstraintField::<Fq>::to_field_elements(&merkle_root_2).unwrap();
-	let value_fq = Fq::from(value);
+	let value_fq = Fq::from(data.reclaim_amount);
 	inputs = [
 		inputs[..].as_ref(),
 		sn_1.as_ref(),

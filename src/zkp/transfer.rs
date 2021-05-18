@@ -46,13 +46,8 @@ pub struct TransferCircuit {
 	pub hash_param: HashParam,
 
 	// sender
-	pub sender_1: MantaAsset,
-	pub sender_membership_1: AccountMembership,
-	pub root_1: LedgerMerkleTreeRoot,
-
-	pub sender_2: MantaAsset,
-	pub sender_membership_2: AccountMembership,
-	pub root_2: LedgerMerkleTreeRoot,
+	pub sender_1: SenderMetaData,
+	pub sender_2: SenderMetaData,
 
 	// receiver
 	pub receiver_1: MantaAssetProcessedReceiver,
@@ -74,8 +69,8 @@ impl ConstraintSynthesizer<Fq> for TransferCircuit {
 			})
 			.unwrap();
 
-		sender_token_well_formed_circuit_helper(&parameters_var, &self.sender_1, cs.clone());
-		sender_token_well_formed_circuit_helper(&parameters_var, &self.sender_2, cs.clone());
+		sender_token_well_formed_circuit_helper(&parameters_var, &self.sender_1.asset, cs.clone());
+		sender_token_well_formed_circuit_helper(&parameters_var, &self.sender_2.asset, cs.clone());
 		receiver_token_well_formed_circuit_helper(&parameters_var, &self.receiver_1, cs.clone());
 		receiver_token_well_formed_circuit_helper(&parameters_var, &self.receiver_2, cs.clone());
 
@@ -84,30 +79,30 @@ impl ConstraintSynthesizer<Fq> for TransferCircuit {
 		//  sender.sn = PRF(sender_sk, rho)
 		prf_circuit_helper(
 			true,
-			&self.sender_1.priv_info.sk,
+			&self.sender_1.asset.priv_info.sk,
 			&[0u8; 32],
-			&self.sender_1.pub_info.pk,
+			&self.sender_1.asset.pub_info.pk,
 			cs.clone(),
 		);
 		prf_circuit_helper(
 			false,
-			&self.sender_1.priv_info.sk,
-			&self.sender_1.pub_info.rho,
-			&self.sender_1.void_number,
+			&self.sender_1.asset.priv_info.sk,
+			&self.sender_1.asset.pub_info.rho,
+			&self.sender_1.asset.void_number,
 			cs.clone(),
 		);
 		prf_circuit_helper(
 			true,
-			&self.sender_2.priv_info.sk,
+			&self.sender_2.asset.priv_info.sk,
 			&[0u8; 32],
-			&self.sender_2.pub_info.pk,
+			&self.sender_2.asset.pub_info.pk,
 			cs.clone(),
 		);
 		prf_circuit_helper(
 			false,
-			&self.sender_2.priv_info.sk,
-			&self.sender_2.pub_info.rho,
-			&self.sender_2.void_number,
+			&self.sender_2.asset.priv_info.sk,
+			&self.sender_2.asset.pub_info.rho,
+			&self.sender_2.asset.void_number,
 			cs.clone(),
 		);
 
@@ -120,31 +115,31 @@ impl ConstraintSynthesizer<Fq> for TransferCircuit {
 		.unwrap();
 
 		merkle_membership_circuit_proof(
-			&self.sender_1.commitment,
-			&self.sender_membership_1,
+			&self.sender_1.asset.commitment,
+			&self.sender_1.membership,
 			param_var.clone(),
-			self.root_1,
+			self.sender_1.root,
 			cs.clone(),
 		);
 
 		merkle_membership_circuit_proof(
-			&self.sender_2.commitment,
-			&self.sender_membership_2,
+			&self.sender_2.asset.commitment,
+			&self.sender_2.membership,
 			param_var,
-			self.root_2,
+			self.sender_2.root,
 			cs.clone(),
 		);
 
 		// 4. sender's and receiver's total value are the same
 		// TODO: do we need to check that the values are all positive?
 		// seems that Rust's type system has already eliminated negative values
-		let sender_value_1_fq = Fq::from(self.sender_1.priv_info.value);
+		let sender_value_1_fq = Fq::from(self.sender_1.asset.priv_info.value);
 		let mut sender_value_sum =
 			FqVar::new_witness(ark_relations::ns!(cs, "sender value"), || {
 				Ok(&sender_value_1_fq)
 			})
 			.unwrap();
-		let sender_value_2_fq = Fq::from(self.sender_2.priv_info.value);
+		let sender_value_2_fq = Fq::from(self.sender_2.asset.priv_info.value);
 		let sender_value_2_var = FqVar::new_witness(ark_relations::ns!(cs, "sender value"), || {
 			Ok(&sender_value_2_fq)
 		})

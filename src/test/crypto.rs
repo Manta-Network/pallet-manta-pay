@@ -40,11 +40,23 @@ fn test_transfer_zkp_local() {
 
 	// sender
 	let mut sk = [0u8; 32];
+
 	rng.fill_bytes(&mut sk);
 	let sender_1 = MantaAsset::sample(&commit_param, &sk, &100, &mut rng);
 
 	rng.fill_bytes(&mut sk);
 	let sender_2 = MantaAsset::sample(&commit_param, &sk, &400, &mut rng);
+
+	// list of commitment
+	let mut list = vec![sender_1.commitment, sender_2.commitment];
+	for _e in 2..24 {
+		let mut cm_rand = [0u8; 32];
+		rng.fill_bytes(&mut cm_rand);
+		list.push(cm_rand);
+	}
+
+	let sender_1 = SenderMetaData::build(hash_param.clone(), sender_1, &list);
+	let sender_2 = SenderMetaData::build(hash_param.clone(), sender_2, &list);
 
 	// receiver
 	rng.fill_bytes(&mut sk);
@@ -55,35 +67,13 @@ fn test_transfer_zkp_local() {
 	let receiver_2_full = MantaAssetFullReceiver::sample(&commit_param, &sk, &(), &mut rng);
 	let receiver_2 = receiver_2_full.prepared.process(&260);
 
-	// list of commitment
-	let mut list = vec![sender_1.commitment, sender_2.commitment];
-	for _e in 2..24 {
-		let mut cm_rand = [0u8; 32];
-		rng.fill_bytes(&mut cm_rand);
-		list.push(cm_rand);
-	}
-
-	let tree = LedgerMerkleTree::new(hash_param.clone(), &list).unwrap();
-	let merkle_root = tree.root();
-
-	let index_1 = list.iter().position(|x| *x == sender_1.commitment).unwrap();
-	let path_1 = tree.generate_proof(index_1, &sender_1.commitment).unwrap();
-
-	let index_2 = list.iter().position(|x| *x == sender_2.commitment).unwrap();
-	let path_2 = tree.generate_proof(index_2, &sender_2.commitment).unwrap();
-
 	// build the circuit
 	let circuit = TransferCircuit {
 		commit_param: commit_param.clone(),
 		hash_param: hash_param.clone(),
 
 		sender_1: sender_1,
-		sender_membership_1: path_1,
-		root_1: merkle_root.clone(),
-
 		sender_2: sender_2,
-		sender_membership_2: path_2,
-		root_2: merkle_root,
 
 		receiver_1: receiver_1,
 		receiver_2: receiver_2,
@@ -228,26 +218,15 @@ fn test_transfer_helper(
 ) {
 	let mut rng = ChaCha20Rng::from_seed([8u8; 32]);
 
-	let tree = LedgerMerkleTree::new(hash_param.clone(), &list).unwrap();
-	let merkle_root = tree.root();
-
-	let index_1 = list.iter().position(|x| *x == sender_1.commitment).unwrap();
-	let path_1 = tree.generate_proof(index_1, &sender_1.commitment).unwrap();
-
-	let index_2 = list.iter().position(|x| *x == sender_2.commitment).unwrap();
-	let path_2 = tree.generate_proof(index_2, &sender_2.commitment).unwrap();
+	let sender_1 = SenderMetaData::build(hash_param.clone(), sender_1, &list);
+	let sender_2 = SenderMetaData::build(hash_param.clone(), sender_2, &list);
 
 	let circuit = TransferCircuit {
 		commit_param: commit_param.clone(),
 		hash_param,
 
 		sender_1: sender_1.clone(),
-		sender_membership_1: path_1.clone(),
-		root_1: merkle_root.clone(),
-
 		sender_2: sender_2.clone(),
-		sender_membership_2: path_2.clone(),
-		root_2: merkle_root,
 
 		receiver_1: receiver_1.clone(),
 		receiver_2: receiver_2.clone(),
@@ -262,8 +241,8 @@ fn test_transfer_helper(
 
 	let proof = create_random_proof(circuit, &pk, &mut rng).unwrap();
 
-	let k_old_1 = CommitmentOutput::deserialize(sender_1.pub_info.k.as_ref()).unwrap();
-	let k_old_2 = CommitmentOutput::deserialize(sender_2.pub_info.k.as_ref()).unwrap();
+	let k_old_1 = CommitmentOutput::deserialize(sender_1.asset.pub_info.k.as_ref()).unwrap();
+	let k_old_2 = CommitmentOutput::deserialize(sender_2.asset.pub_info.k.as_ref()).unwrap();
 	let cm_new_1 = CommitmentOutput::deserialize(receiver_1.commitment.as_ref()).unwrap();
 	let cm_new_2 = CommitmentOutput::deserialize(receiver_2.commitment.as_ref()).unwrap();
 
@@ -276,10 +255,10 @@ fn test_transfer_helper(
 	]
 	.to_vec();
 	let sn_1: Vec<Fq> =
-		ToConstraintField::<Fq>::to_field_elements(sender_1.void_number.as_ref()).unwrap();
+		ToConstraintField::<Fq>::to_field_elements(sender_1.asset.void_number.as_ref()).unwrap();
 	let sn_2: Vec<Fq> =
-		ToConstraintField::<Fq>::to_field_elements(sender_2.void_number.as_ref()).unwrap();
-	let mr: Vec<Fq> = ToConstraintField::<Fq>::to_field_elements(&merkle_root).unwrap();
+		ToConstraintField::<Fq>::to_field_elements(sender_2.asset.void_number.as_ref()).unwrap();
+	let mr: Vec<Fq> = ToConstraintField::<Fq>::to_field_elements(&sender_1.root).unwrap();
 	inputs = [
 		inputs[..].as_ref(),
 		sn_1.as_ref(),
@@ -321,14 +300,8 @@ fn test_reclaim_zkp_local() {
 		list.push(cm_rand);
 	}
 
-	let tree = LedgerMerkleTree::new(hash_param.clone(), &list).unwrap();
-	let merkle_root = tree.root();
-
-	let index_1 = list.iter().position(|x| *x == sender_1.commitment).unwrap();
-	let path_1 = tree.generate_proof(index_1, &sender_1.commitment).unwrap();
-
-	let index_2 = list.iter().position(|x| *x == sender_2.commitment).unwrap();
-	let path_2 = tree.generate_proof(index_2, &sender_2.commitment).unwrap();
+	let sender_1 = SenderMetaData::build(hash_param.clone(), sender_1, &list);
+	let sender_2 = SenderMetaData::build(hash_param.clone(), sender_2, &list);
 
 	// build the circuit
 	let circuit = ReclaimCircuit {
@@ -336,12 +309,7 @@ fn test_reclaim_zkp_local() {
 		hash_param: hash_param.clone(),
 
 		sender_1: sender_1.clone(),
-		sender_membership_1: path_1,
-		root_1: merkle_root.clone(),
-
 		sender_2: sender_2.clone(),
-		sender_membership_2: path_2,
-		root_2: merkle_root,
 
 		receiver: receiver,
 
@@ -473,26 +441,15 @@ fn test_reclaim_helper(
 ) {
 	let mut rng = ChaCha20Rng::from_seed([8u8; 32]);
 
-	let tree = LedgerMerkleTree::new(hash_param.clone(), &list).unwrap();
-	let merkle_root = tree.root();
-
-	let index_1 = list.iter().position(|x| *x == sender_1.commitment).unwrap();
-	let path_1 = tree.generate_proof(index_1, &sender_1.commitment).unwrap();
-
-	let index_2 = list.iter().position(|x| *x == sender_2.commitment).unwrap();
-	let path_2 = tree.generate_proof(index_2, &sender_2.commitment).unwrap();
+	let sender_1 = SenderMetaData::build(hash_param.clone(), sender_1, &list);
+	let sender_2 = SenderMetaData::build(hash_param.clone(), sender_2, &list);
 
 	let circuit = ReclaimCircuit {
 		commit_param: commit_param.clone(),
 		hash_param,
 
 		sender_1: sender_1.clone(),
-		sender_membership_1: path_1.clone(),
-		root_1: merkle_root.clone(),
-
 		sender_2: sender_2.clone(),
-		sender_membership_2: path_2.clone(),
-		root_2: merkle_root,
 
 		receiver: receiver.clone(),
 
@@ -508,8 +465,8 @@ fn test_reclaim_helper(
 
 	let proof = create_random_proof(circuit, &pk, &mut rng).unwrap();
 
-	let k_old_1 = CommitmentOutput::deserialize(sender_1.pub_info.k.as_ref()).unwrap();
-	let k_old_2 = CommitmentOutput::deserialize(sender_2.pub_info.k.as_ref()).unwrap();
+	let k_old_1 = CommitmentOutput::deserialize(sender_1.asset.pub_info.k.as_ref()).unwrap();
+	let k_old_2 = CommitmentOutput::deserialize(sender_2.asset.pub_info.k.as_ref()).unwrap();
 	let cm_new = CommitmentOutput::deserialize(receiver.commitment.as_ref()).unwrap();
 
 	// format the input to the verification
@@ -520,10 +477,10 @@ fn test_reclaim_helper(
 	]
 	.to_vec();
 	let sn_1: Vec<Fq> =
-		ToConstraintField::<Fq>::to_field_elements(sender_1.void_number.as_ref()).unwrap();
+		ToConstraintField::<Fq>::to_field_elements(sender_1.asset.void_number.as_ref()).unwrap();
 	let sn_2: Vec<Fq> =
-		ToConstraintField::<Fq>::to_field_elements(sender_2.void_number.as_ref()).unwrap();
-	let mr: Vec<Fq> = ToConstraintField::<Fq>::to_field_elements(&merkle_root).unwrap();
+		ToConstraintField::<Fq>::to_field_elements(sender_2.asset.void_number.as_ref()).unwrap();
+	let mr: Vec<Fq> = ToConstraintField::<Fq>::to_field_elements(&sender_1.root).unwrap();
 	let reclaim_value_fq = Fq::from(reclaim_value);
 	inputs = [
 		inputs[..].as_ref(),

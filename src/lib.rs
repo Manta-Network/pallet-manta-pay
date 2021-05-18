@@ -103,6 +103,7 @@ use frame_support::{decl_error, decl_event, decl_module, decl_storage, ensure};
 use frame_system::ensure_signed;
 use ledger::LedgerSharding;
 use manta_crypto::*;
+use pallet_manta_asset::SanityCheck;
 use sp_runtime::traits::{StaticLookup, Zero};
 use sp_std::prelude::*;
 
@@ -203,21 +204,20 @@ decl_module! {
 		/// Given an amount, and relevant data, mint the token to the ledger
 		#[weight = 0]
 		fn mint_private_asset(origin,
-			amount: u64,
-			input_data: [u8; 96]
+			payload: [u8; 104]
 		) {
 			// todo: Implement the fix denomination method
 
 			// parse the input_data into input
-			let input = MintData::deserialize(input_data.as_ref());
+			let input = MintData::deserialize(payload.as_ref());
 
 			// get the original balance
 			ensure!(Self::is_init(), <Error<T>>::BasecoinNotInit);
 			let origin = ensure_signed(origin)?;
 			let origin_account = origin.clone();
-			ensure!(!amount.is_zero(), Error::<T>::AmountZero);
+			ensure!(!input.amount.is_zero(), Error::<T>::AmountZero);
 			let origin_balance = <Balances<T>>::get(&origin_account);
-			ensure!(origin_balance >= amount, Error::<T>::BalanceLow);
+			ensure!(origin_balance >= input.amount, Error::<T>::BalanceLow);
 
 			// get the parameter checksum from the ledger
 			// and make sure the parameters match
@@ -240,7 +240,7 @@ decl_module! {
 
 			// check the validity of the commitment
 			ensure!(
-				input.sanity_check(amount, &commit_param),
+				input.sanity(&commit_param),
 				<Error<T>>::MintFail
 			);
 
@@ -255,12 +255,12 @@ decl_module! {
 			coin_shards.update(&input.cm, hash_param);
 
 			// write back to ledger storage
-			Self::deposit_event(RawEvent::Minted(origin, amount));
+			Self::deposit_event(RawEvent::Minted(origin, input.amount));
 			CoinShards::put(coin_shards);
 
 			let old_pool_balance = PoolBalance::get();
-			PoolBalance::put(old_pool_balance + amount);
-			<Balances<T>>::insert(origin_account, origin_balance - amount);
+			PoolBalance::put(old_pool_balance + input.amount);
+			<Balances<T>>::insert(origin_account, origin_balance - input.amount);
 		}
 
 
@@ -270,17 +270,9 @@ decl_module! {
 		/// Neither the values nor the identities is leaked during this process.
 		#[weight = 0]
 		fn private_transfer(origin,
-			sender_data_1: [u8; 96],
-			sender_data_2: [u8; 96],
-			receiver_data_1: [u8; 80],
-			receiver_data_2: [u8; 80],
-			proof: [u8; 192],
+			payload: [u8; 544],
 		) {
-
-			let sender_data_1 = SenderData::deserialize(sender_data_1.as_ref());
-			let sender_data_2 = SenderData::deserialize(sender_data_2.as_ref());
-			let receiver_data_1 = ReceiverData::deserialize(receiver_data_1.as_ref());
-			let receiver_data_2 = ReceiverData::deserialize(receiver_data_2.as_ref());
+			let data = PrivateTransferData::deserialize(payload.as_ref());
 			ensure!(Self::is_init(), <Error<T>>::BasecoinNotInit);
 			let origin = ensure_signed(origin)?;
 
@@ -298,25 +290,25 @@ decl_module! {
 			// check if vn_old already spent
 			let mut sn_list = VNList::get();
 			ensure!(
-				!sn_list.contains(&sender_data_1.sn),
+				!sn_list.contains(&data.sender_1.void_number),
 				<Error<T>>::MantaCoinSpent
 			);
-			sn_list.push(sender_data_1.sn);
+			sn_list.push(data.sender_1.void_number);
 			ensure!(
-				!sn_list.contains(&sender_data_2.sn),
+				!sn_list.contains(&data.sender_2.void_number),
 				<Error<T>>::MantaCoinSpent
 			);
-			sn_list.push(sender_data_2.sn);
+			sn_list.push(data.sender_2.void_number);
 
 			// get the ledger state from the ledger
 			// and check the validity of the state
 			let mut coin_shards = CoinShards::get();
 			ensure!(
-				coin_shards.check_root(&sender_data_1.root),
+				coin_shards.check_root(&data.sender_1.root),
 				<Error<T>>::InvalidLedgerState
 			);
 			ensure!(
-				coin_shards.check_root(&sender_data_2.root),
+				coin_shards.check_root(&data.sender_2.root),
 				<Error<T>>::InvalidLedgerState
 			);
 
@@ -325,15 +317,15 @@ decl_module! {
 			// with sharding, there is no point to batch update
 			// since the commitments are likely to go to different shards
 			ensure!(
-				!coin_shards.exist(&receiver_data_1.cm),
+				!coin_shards.exist(&data.receiver_1.cm),
 				<Error<T>>::MantaCoinExist
 			);
-			coin_shards.update(&receiver_data_1.cm, hash_param.clone());
+			coin_shards.update(&data.receiver_1.cm, hash_param.clone());
 			ensure!(
-				!coin_shards.exist(&receiver_data_2.cm),
+				!coin_shards.exist(&data.receiver_2.cm),
 				<Error<T>>::MantaCoinExist
 			);
-			coin_shards.update(&receiver_data_2.cm, hash_param);
+			coin_shards.update(&data.receiver_2.cm, hash_param);
 
 			// get the verification key from the ledger
 			let transfer_vk_checksum = TransferZKPKeyChecksum::get();
@@ -346,13 +338,7 @@ decl_module! {
 
 			// check validity of zkp
 			ensure!(
-				manta_verify_transfer_zkp(
-					&transfer_vk,
-					&proof,
-					&sender_data_1,
-					&sender_data_2,
-					&receiver_data_1,
-					&receiver_data_2),
+				data.sanity(&transfer_vk),
 				<Error<T>>::ZkpVerificationFail,
 			);
 
@@ -360,8 +346,8 @@ decl_module! {
 
 			// update ledger storage
 			let mut enc_value_list = EncValueList::get();
-			enc_value_list.push(receiver_data_1.cipher);
-			enc_value_list.push(receiver_data_2.cipher);
+			enc_value_list.push(data.receiver_1.cipher);
+			enc_value_list.push(data.receiver_2.cipher);
 
 			Self::deposit_event(RawEvent::PrivateTransferred(origin));
 			CoinShards::put(coin_shards);
@@ -380,16 +366,9 @@ decl_module! {
 		/// __TODO__: shall we use a different receiver rather than `origin`?
 		#[weight = 0]
 		fn reclaim(origin,
-			amount: u64,
-			sender_data_1: [u8; 96],
-			sender_data_2: [u8; 96],
-			receiver_data: [u8; 80],
-			proof: [u8; 192],
+			payload: [u8; 472],
 		) {
-
-			let sender_data_1 = SenderData::deserialize(sender_data_1.as_ref());
-			let sender_data_2 = SenderData::deserialize(sender_data_2.as_ref());
-			let receiver_data = ReceiverData::deserialize(receiver_data.as_ref());
+			let data = ReclaimData::deserialize(payload.as_ref());
 
 			let origin = ensure_signed(origin)?;
 			let origin_account = origin.clone();
@@ -410,21 +389,21 @@ decl_module! {
 
 			// check the balance is greater than amount
 			let mut pool = PoolBalance::get();
-			ensure!(pool>=amount, <Error<T>>::PoolOverdrawn);
-			pool -= amount;
+			ensure!(pool>=data.reclaim_amount, <Error<T>>::PoolOverdrawn);
+			pool -= data.reclaim_amount;
 
 			// check if sn_old already spent
 			let mut sn_list = VNList::get();
 			ensure!(
-				!sn_list.contains(&sender_data_1.sn),
+				!sn_list.contains(&data.sender_1.void_number),
 				<Error<T>>::MantaCoinSpent
 			);
-			sn_list.push(sender_data_1.sn);
+			sn_list.push(data.sender_1.void_number);
 			ensure!(
-				!sn_list.contains(&sender_data_2.sn),
+				!sn_list.contains(&data.sender_2.void_number),
 				<Error<T>>::MantaCoinSpent
 			);
-			sn_list.push(sender_data_2.sn);
+			sn_list.push(data.sender_2.void_number);
 
 			// get the coin list
 			let mut coin_shards = CoinShards::get();
@@ -439,29 +418,23 @@ decl_module! {
 			// get the ledger state from the ledger
 			// and check the validity of the state
 			ensure!(
-				coin_shards.check_root(&sender_data_1.root),
+				coin_shards.check_root(&data.sender_1.root),
 				<Error<T>>::InvalidLedgerState
 			);
 			ensure!(
-				coin_shards.check_root(&sender_data_2.root),
+				coin_shards.check_root(&data.sender_2.root),
 				<Error<T>>::InvalidLedgerState
 			);
 			// check the commitment are not in the list already
 			ensure!(
-				!coin_shards.exist(&receiver_data.cm),
+				!coin_shards.exist(&data.receiver.cm),
 				<Error<T>>::MantaCoinSpent
 			);
 
 
 			// check validity of zkp
 			ensure!(
-				manta_verify_reclaim_zkp(
-					&reclaim_vk,
-					amount,
-					&proof,
-					&sender_data_1,
-					&sender_data_2,
-					&receiver_data),
+				data.sanity(&reclaim_vk),
 				<Error<T>>::ZkpVerificationFail,
 			);
 
@@ -469,17 +442,17 @@ decl_module! {
 
 			// update ledger storage
 			let mut enc_value_list = EncValueList::get();
-			enc_value_list.push(receiver_data.cipher);
+			enc_value_list.push(data.receiver.cipher);
 
 
-			coin_shards.update(&receiver_data.cm, hash_param);
+			coin_shards.update(&data.receiver.cm, hash_param);
 			CoinShards::put(coin_shards);
 
 			Self::deposit_event(RawEvent::PrivateReclaimed(origin));
 			VNList::put(sn_list);
 			PoolBalance::put(pool);
 			EncValueList::put(enc_value_list);
-			<Balances<T>>::insert(origin_account, origin_balance + amount);
+			<Balances<T>>::insert(origin_account, origin_balance + data.reclaim_amount);
 		}
 	}
 }

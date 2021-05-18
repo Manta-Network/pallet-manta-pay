@@ -89,18 +89,8 @@ fn manta_transfer_zkp_key_gen(
 	let sender_1 = coins[0].clone();
 	let sender_2 = coins[10].clone();
 
-	let tree = LedgerMerkleTree::new(hash_param.clone(), &ledger).unwrap();
-	let index_1 = ledger
-		.iter()
-		.position(|x| *x == sender_1.commitment)
-		.unwrap();
-	let path_1 = tree.generate_proof(index_1, &sender_1.commitment).unwrap();
-	let index_2 = ledger
-		.iter()
-		.position(|x| *x == sender_2.commitment)
-		.unwrap();
-	let path_2 = tree.generate_proof(index_2, &sender_2.commitment).unwrap();
-	let root = tree.root();
+	let sender_1 = SenderMetaData::build(hash_param.clone(), sender_1, &ledger);
+	let sender_2 = SenderMetaData::build(hash_param.clone(), sender_2, &ledger);
 
 	// receiver's total value is also 210
 	rng.fill_bytes(&mut sk);
@@ -118,16 +108,10 @@ fn manta_transfer_zkp_key_gen(
 
 		// sender
 		sender_1,
-		sender_membership_1: path_1,
-		root_1: root,
-
 		sender_2,
-		sender_membership_2: path_2,
-		root_2: root,
 
 		// receiver
 		receiver_1,
-
 		receiver_2,
 	};
 
@@ -181,18 +165,8 @@ fn manta_reclaim_zkp_key_gen(
 	let sender_1 = coins[0].clone();
 	let sender_2 = coins[10].clone();
 
-	let tree = LedgerMerkleTree::new(hash_param.clone(), &ledger).unwrap();
-	let index_1 = ledger
-		.iter()
-		.position(|x| *x == sender_1.commitment)
-		.unwrap();
-	let path_1 = tree.generate_proof(index_1, &sender_1.commitment).unwrap();
-	let index_2 = ledger
-		.iter()
-		.position(|x| *x == sender_2.commitment)
-		.unwrap();
-	let path_2 = tree.generate_proof(index_2, &sender_2.commitment).unwrap();
-	let root = tree.root();
+	let sender_1 = SenderMetaData::build(hash_param.clone(), sender_1, &ledger);
+	let sender_2 = SenderMetaData::build(hash_param.clone(), sender_2, &ledger);
 
 	// receiver's total value is also 210
 	let receiver_full = MantaAssetFullReceiver::sample(&commit_param, &sk, &(), &mut rng);
@@ -206,12 +180,7 @@ fn manta_reclaim_zkp_key_gen(
 
 		// sender
 		sender_1,
-		sender_membership_1: path_1,
-		root_1: root,
-
 		sender_2,
-		sender_membership_2: path_2,
-		root_2: root,
 
 		// receiver
 		receiver,

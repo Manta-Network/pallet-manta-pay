@@ -14,55 +14,93 @@
 // You should have received a copy of the GNU General Public License
 // along with pallet-manta-pay.  If not, see <http://www.gnu.org/licenses/>.
 
+use super::*;
 use ark_std::io::{Read, Write};
-use frame_support::codec::{Decode, Encode};
-use manta_crypto::{Commitment, CommitmentParam, MantaCrypto, MantaSerDes};
-
-/// Input data to a mint function.
-#[derive(Encode, Debug, Decode, Clone, Default, PartialEq)]
-pub struct MintData {
-	pub cm: [u8; 32],
-	pub k: [u8; 32],
-	pub s: [u8; 32],
-}
-
-impl MintData {
-	pub(crate) fn sanity_check(&self, value: u64, param: &CommitmentParam) -> bool {
-		let payload = [value.to_le_bytes().as_ref(), self.k.as_ref()].concat();
-		<MantaCrypto as Commitment>::check_commitment(&param, &payload, &self.s, &self.cm)
-	}
-}
-
-/// Data required for a sender to spend a coin.
-#[derive(Encode, Debug, Decode, Clone, Default, PartialEq)]
-pub struct SenderData {
-	pub k: [u8; 32],
-	pub sn: [u8; 32],
-	pub root: [u8; 32],
-}
-
-/// Data required for a receiver to receive a coin.
-#[derive(Encode, Debug, Decode, Clone, Default, PartialEq)]
-pub struct ReceiverData {
-	pub k: [u8; 32],
-	pub cm: [u8; 32],
-	pub cipher: [u8; 16],
-}
 
 impl MantaSerDes for MintData {
-	/// Serialize the mint data into an array of 96 bytes.
+	/// Serialize the mint data into an array of 104 bytes.
 	fn serialize<W: Write>(&self, mut writer: W) {
+		writer
+			.write_all(self.amount.to_le_bytes().as_ref())
+			.unwrap();
 		writer.write_all(&self.cm).unwrap();
 		writer.write_all(&self.k).unwrap();
 		writer.write_all(&self.s).unwrap();
 	}
 
-	/// Deserialize an array of 96 bytes into a MintData.
+	/// Deserialize an array of 104 bytes into a MintData.
 	fn deserialize<R: Read>(mut reader: R) -> Self {
 		let mut data = MintData::default();
+
+		let mut buf = [0u8; 8];
+		reader.read_exact(&mut buf).unwrap();
+		data.amount = u64::from_le_bytes(buf);
+
 		reader.read_exact(&mut data.cm).unwrap();
 		reader.read_exact(&mut data.k).unwrap();
 		reader.read_exact(&mut data.s).unwrap();
+		data
+	}
+}
+
+impl MantaSerDes for PrivateTransferData {
+	/// Serialize the private transfer data
+	fn serialize<W: Write>(&self, mut writer: W) {
+		self.sender_1.serialize(&mut writer);
+		self.sender_2.serialize(&mut writer);
+		self.receiver_1.serialize(&mut writer);
+		self.receiver_2.serialize(&mut writer);
+		writer.write_all(&self.proof.as_ref()).unwrap();
+	}
+
+	/// Deserialize the private transfer data
+	fn deserialize<R: Read>(mut reader: R) -> Self {
+		let sender_1 = SenderData::deserialize(&mut reader);
+		let sender_2 = SenderData::deserialize(&mut reader);
+		let receiver_1 = ReceiverData::deserialize(&mut reader);
+		let receiver_2 = ReceiverData::deserialize(&mut reader);
+
+		let mut proof = [0u8; 192];
+		reader.read_exact(proof.as_mut()).unwrap();
+
+		Self {
+			sender_1,
+			sender_2,
+			receiver_1,
+			receiver_2,
+			proof,
+		}
+	}
+}
+
+impl MantaSerDes for ReclaimData {
+	/// Serialize the private transfer data
+	fn serialize<W: Write>(&self, mut writer: W) {
+		writer
+			.write_all(self.reclaim_amount.to_le_bytes().as_ref())
+			.unwrap();
+		self.sender_1.serialize(&mut writer);
+		self.sender_2.serialize(&mut writer);
+		self.receiver.serialize(&mut writer);
+		writer.write_all(&self.proof.as_ref()).unwrap();
+	}
+
+	/// Deserialize the private transfer data
+	fn deserialize<R: Read>(mut reader: R) -> Self {
+		let mut data = ReclaimData::default();
+
+		let mut buf = [0u8; 8];
+		reader.read_exact(&mut buf).unwrap();
+		data.reclaim_amount = u64::from_le_bytes(buf);
+
+		data.sender_1 = SenderData::deserialize(&mut reader);
+		data.sender_2 = SenderData::deserialize(&mut reader);
+		data.receiver = ReceiverData::deserialize(&mut reader);
+
+		let mut buf = [0u8; 192];
+		reader.read_exact(&mut buf).unwrap();
+		data.proof.copy_from_slice(buf.as_ref());
+
 		data
 	}
 }
@@ -71,7 +109,7 @@ impl MantaSerDes for SenderData {
 	/// Serialize the sender data into an array of 64 bytes.
 	fn serialize<W: Write>(&self, mut writer: W) {
 		writer.write_all(&self.k).unwrap();
-		writer.write_all(&self.sn).unwrap();
+		writer.write_all(&self.void_number).unwrap();
 		writer.write_all(&self.root).unwrap();
 	}
 
@@ -79,7 +117,7 @@ impl MantaSerDes for SenderData {
 	fn deserialize<R: Read>(mut reader: R) -> Self {
 		let mut data = SenderData::default();
 		reader.read_exact(&mut data.k).unwrap();
-		reader.read_exact(&mut data.sn).unwrap();
+		reader.read_exact(&mut data.void_number).unwrap();
 		reader.read_exact(&mut data.root).unwrap();
 		data
 	}

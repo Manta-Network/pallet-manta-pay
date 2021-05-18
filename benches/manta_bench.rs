@@ -90,6 +90,10 @@ fn bench_transfer_verify(c: &mut Criterion) {
 	rng.fill_bytes(&mut sk);
 	let sender_2 = MantaAsset::sample(&commit_param, &sk, &300, &mut rng);
 
+	let list = [sender_1.commitment, sender_2.commitment];
+	let sender_1 = SenderMetaData::build(hash_param.clone(), sender_1, &list);
+	let sender_2 = SenderMetaData::build(hash_param.clone(), sender_2, &list);
+
 	// receiver
 	rng.fill_bytes(&mut sk);
 	let receiver_1_full = MantaAssetFullReceiver::sample(&commit_param, &sk, &(), &mut rng);
@@ -99,27 +103,12 @@ fn bench_transfer_verify(c: &mut Criterion) {
 	let receiver_2_full = MantaAssetFullReceiver::sample(&commit_param, &sk, &(), &mut rng);
 	let receiver_2 = receiver_2_full.prepared.process(&250);
 
-	// merkle tree
-	let tree = LedgerMerkleTree::new(
-		hash_param.clone(),
-		&[sender_1.commitment, sender_2.commitment],
-	)
-	.unwrap();
-	let root = tree.root();
-	let path_1 = tree.generate_proof(0, &sender_1.commitment).unwrap();
-	let path_2 = tree.generate_proof(1, &sender_2.commitment).unwrap();
-
 	let circuit = TransferCircuit {
 		commit_param: commit_param.clone(),
-		hash_param,
+		hash_param: hash_param.clone(),
 
 		sender_1: sender_1.clone(),
-		sender_membership_1: path_1.clone(),
-		root_1: root.clone(),
-
 		sender_2: sender_2.clone(),
-		sender_membership_2: path_2.clone(),
-		root_2: root,
 
 		receiver_1: receiver_1.clone(),
 		receiver_2: receiver_2.clone(),
@@ -137,44 +126,24 @@ fn bench_transfer_verify(c: &mut Criterion) {
 	let mut proof_bytes = [0u8; 192];
 	proof.serialize(proof_bytes.as_mut()).unwrap();
 
-	let mut merkle_root_bytes = [0u8; 32];
-	root.serialize(merkle_root_bytes.as_mut()).unwrap();
-	let sender_data_1 = SenderData {
-		k: sender_1.pub_info.k,
-		sn: sender_1.void_number,
-		root: merkle_root_bytes,
-	};
-	let sender_data_2 = SenderData {
-		k: sender_2.pub_info.k,
-		sn: sender_2.void_number,
-		root: merkle_root_bytes,
-	};
-	let receiver_data_1 = ReceiverData {
-		k: receiver_1.prepared_data.k,
-		cm: receiver_1.commitment,
-		cipher: [0u8; 16],
-	};
-	let receiver_data_2 = ReceiverData {
-		k: receiver_2.prepared_data.k,
-		cm: receiver_2.commitment,
-		cipher: [0u8; 16],
-	};
+	// form the transaction payload
+	let transfer_data = generate_private_transfer_payload(
+		commit_param.clone(),
+		hash_param.clone(),
+		&pk,
+		sender_1,
+		sender_2,
+		receiver_1,
+		receiver_2,
+		&mut rng,
+	);
 
 	println!("start benchmarking proof verification");
 	let mut bench_group = c.benchmark_group("private transfer");
 
 	let bench_str = format!("ZKP verification");
 	bench_group.bench_function(bench_str, move |b| {
-		b.iter(|| {
-			assert!(manta_verify_transfer_zkp(
-				&TRANSFER_PK,
-				&proof_bytes,
-				&sender_data_1,
-				&sender_data_2,
-				&receiver_data_1,
-				&receiver_data_2,
-			))
-		})
+		b.iter(|| assert!(manta_verify_transfer_zkp(&TRANSFER_PK, &transfer_data,)))
 	});
 
 	bench_group.finish();
@@ -292,8 +261,13 @@ fn bench_transfer_prove(c: &mut Criterion) {
 	let mut sk = [0u8; 32];
 	rng.fill_bytes(&mut sk);
 	let sender_1 = MantaAsset::sample(&commit_param, &sk, &100, &mut rng);
+
 	rng.fill_bytes(&mut sk);
 	let sender_2 = MantaAsset::sample(&commit_param, &sk, &300, &mut rng);
+
+	let list = [sender_1.commitment, sender_2.commitment];
+	let sender_1 = SenderMetaData::build(hash_param.clone(), sender_1, &list);
+	let sender_2 = SenderMetaData::build(hash_param.clone(), sender_2, &list);
 
 	// receiver
 	rng.fill_bytes(&mut sk);
@@ -304,32 +278,17 @@ fn bench_transfer_prove(c: &mut Criterion) {
 	let receiver_2_full = MantaAssetFullReceiver::sample(&commit_param, &sk, &(), &mut rng);
 	let receiver_2 = receiver_2_full.prepared.process(&250);
 
-	// merkle tree
-	let tree = LedgerMerkleTree::new(
-		hash_param.clone(),
-		&[sender_1.commitment, sender_2.commitment],
-	)
-	.unwrap();
-	let root = tree.root();
-	let path_1 = tree.generate_proof(0, &sender_1.commitment).unwrap();
-	let path_2 = tree.generate_proof(1, &sender_2.commitment).unwrap();
-
 	let circuit = TransferCircuit {
 		commit_param: commit_param.clone(),
 		hash_param,
 
 		sender_1: sender_1.clone(),
-		sender_membership_1: path_1.clone(),
-		root_1: root.clone(),
-
 		sender_2: sender_2.clone(),
-		sender_membership_2: path_2.clone(),
-		root_2: root,
 
 		receiver_1: receiver_1.clone(),
-
 		receiver_2: receiver_2.clone(),
 	};
+
 	let mut bench_group = c.benchmark_group("private transfer");
 	bench_group.sample_size(10);
 	let bench_str = format!("ZKP proof generation");
