@@ -47,6 +47,7 @@ open target/debug/coverage/index.html
 * benchmark environment
 
 AMD Ryzen 9 5900X 12-Core Processor; Ubuntu 20.04; rustc 1.50.0 (cb75ad5db 2021-02-10)
+Crucial SSD P2 M.2 NVME PCIEx4; Crucial Ballistix 2x16GB
 
   * with `criterion` (take some time)
 
