@@ -44,7 +44,7 @@ blake2 = { version = "0.9.1", default-features = false }
 
 # Manta Dependencies
 manta-crypto = { branch = "master", git = "https://github.com/Manta-Network/manta-crypto" }
-pallet-manta-asset = { branch = "integrate-token-from-pallet-manta-pay", git = "https://github.com/Manta-Network/pallet-manta-asset" }
+pallet-manta-asset = { branch = "master", git = "https://github.com/Manta-Network/pallet-manta-asset" }
 
 # binaries
 hkdf = { version = "0.11", default-features = false }

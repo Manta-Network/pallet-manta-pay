@@ -113,14 +113,12 @@ mod test;
 #[macro_use]
 extern crate std;
 
-
 pub use ledger::{Shard, Shards};
 pub use manta_crypto::MantaSerDes;
 pub use payload::*;
 pub use zkp::*;
 pub mod weights;
 pub use weights::WeightInfo;
-
 
 use ark_std::vec::Vec;
 use frame_support::{decl_error, decl_event, decl_module, decl_storage, ensure};
