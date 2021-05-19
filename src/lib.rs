@@ -293,7 +293,7 @@ decl_module! {
 		/// Neither the values nor the identities is leaked during this process.
 		#[weight = 0]
 		fn private_transfer(origin,
-			payload: [u8; 544],
+			payload: [u8; 608],
 		) {
 			let data = PrivateTransferData::deserialize(payload.as_ref());
 			ensure!(Self::is_init(), <Error<T>>::BasecoinNotInit);
@@ -389,7 +389,7 @@ decl_module! {
 		/// __TODO__: shall we use a different receiver rather than `origin`?
 		#[weight = 0]
 		fn reclaim(origin,
-			payload: [u8; 472],
+			payload: [u8; 504],
 		) {
 			let data = ReclaimData::deserialize(payload.as_ref());
 

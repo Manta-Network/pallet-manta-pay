@@ -68,6 +68,7 @@ pub struct SenderData {
 pub struct ReceiverData {
 	pub k: [u8; 32],
 	pub cm: [u8; 32],
+	pub sender_pk: [u8; 32],
 	pub cipher: [u8; 16],
 }
 
@@ -144,11 +145,13 @@ pub fn generate_private_transfer_payload<R: RngCore + CryptoRng>(
 		receiver_1: ReceiverData {
 			k: receiver_1.prepared_data.k,
 			cm: receiver_1.commitment,
+			sender_pk: receiver_1.sender_pk,
 			cipher: receiver_1.ciphertext,
 		},
 		receiver_2: ReceiverData {
 			k: receiver_2.prepared_data.k,
 			cm: receiver_2.commitment,
+			sender_pk: receiver_2.sender_pk,
 			cipher: receiver_2.ciphertext,
 		},
 		proof: proof_bytes,
@@ -219,6 +222,7 @@ pub fn generate_reclaim_payload<R: RngCore + CryptoRng>(
 		receiver: ReceiverData {
 			k: receiver.prepared_data.k,
 			cm: receiver.commitment,
+			sender_pk: receiver.sender_pk,
 			cipher: receiver.ciphertext,
 		},
 		proof: proof_bytes,

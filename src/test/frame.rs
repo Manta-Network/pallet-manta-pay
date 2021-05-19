@@ -319,7 +319,7 @@ fn transfer_test_helper(iter: usize) {
 		// build a receiver token
 		rng.fill_bytes(&mut sk);
 		let receiver_full = MantaAssetFullReceiver::sample(&commit_param, &sk, &(), &mut rng);
-		let receiver = receiver_full.prepared.process(&(i as u64 + 10));
+		let receiver = receiver_full.prepared.process(&(i as u64 + 10), &mut rng);
 		receivers_full.push(receiver_full);
 		receivers_processed.push(receiver);
 	}
@@ -348,30 +348,39 @@ fn transfer_test_helper(iter: usize) {
 			&pk,
 			sender_1,
 			sender_2,
-			receiver_1,
-			receiver_2,
+			receiver_1.clone(),
+			receiver_2.clone(),
 			&mut rng,
 		);
-		let mut payload = [0; 544];
+		let mut payload = [0; 608];
 		transfer_data.serialize(payload.as_mut());
 
 		// invoke the transfer event
 		assert_ok!(Assets::private_transfer(Origin::signed(1), payload));
 
-		// // check the ciphertexts
-		// let enc_value_list = EncValueList::get();
-		// assert_eq!(enc_value_list.len(), 2 * (i + 1));
-		// assert_eq!(enc_value_list[2 * i], cipher_1);
-		// assert_eq!(enc_value_list[2 * i + 1], cipher_2);
-		// assert_eq!(
-		// 	crypto::manta_dh_dec(&cipher_1, &sender_pk_bytes_1, &receiver_sk_bytes_1),
-		// 	receiver_1.2.value
-		// );
-		// assert_eq!(
-		// 	crypto::manta_dh_dec(&cipher_2, &sender_pk_bytes_2, &receiver_sk_bytes_2),
-		// 	receiver_2.2.value
-		// );
+		// check the ciphertexts
+		let enc_value_list = EncValueList::get();
+		assert_eq!(enc_value_list.len(), 2 * (i + 1));
+		assert_eq!(enc_value_list[2 * i], receiver_1.ciphertext);
+		assert_eq!(enc_value_list[2 * i + 1], receiver_2.ciphertext);
 
+		let mut ciphertext_1 = [0u8; 48];		
+		ciphertext_1[0..16].copy_from_slice(receiver_1.ciphertext.as_ref());
+		ciphertext_1[16..48].copy_from_slice(receiver_1.sender_pk.as_ref());
+		let sk_1 =  receivers_full[i * 2 + 1].spend.ecsk.clone();
+		assert_eq!(
+			<MantaCrypto as Ecies>::decrypt(&sk_1, &ciphertext_1),
+			receiver_1.value
+		);
+
+		let mut ciphertext_2 = [0u8; 48];		
+		ciphertext_2[0..16].copy_from_slice(receiver_2.ciphertext.as_ref());
+		ciphertext_2[16..48].copy_from_slice(receiver_2.sender_pk.as_ref());
+		let sk_2 =  receivers_full[i * 2].spend.ecsk.clone();
+		assert_eq!(
+			<MantaCrypto as Ecies>::decrypt(&sk_2, &ciphertext_2),
+			receiver_2.value
+		);
 		assert_eq!(PoolBalance::get(), pool);
 	}
 
@@ -430,7 +439,7 @@ fn reclaim_test_helper(iter: usize) {
 
 		rng.fill_bytes(&mut sk);
 		let receiver_full = MantaAssetFullReceiver::sample(&commit_param, &sk, &(), &mut rng);
-		let receiver = receiver_full.prepared.process(&10);
+		let receiver = receiver_full.prepared.process(&10, &mut rng);
 
 		let reclaim_value =
 			sender_1.asset.priv_info.value + sender_2.asset.priv_info.value - receiver.value;
@@ -446,7 +455,7 @@ fn reclaim_test_helper(iter: usize) {
 			reclaim_value,
 			&mut rng,
 		);
-		let mut payload = [0; 472];
+		let mut payload = [0; 504];
 		reclaim_data.serialize(payload.as_mut());
 		// invoke the reclaim event
 		assert_ok!(Assets::reclaim(Origin::signed(1), payload));

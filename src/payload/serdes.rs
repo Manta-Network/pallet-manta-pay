@@ -128,6 +128,7 @@ impl MantaSerDes for ReceiverData {
 	fn serialize<W: Write>(&self, mut writer: W) {
 		writer.write_all(&self.k).unwrap();
 		writer.write_all(&self.cm).unwrap();
+		writer.write_all(&self.sender_pk).unwrap();
 		writer.write_all(&self.cipher).unwrap();
 	}
 
@@ -136,6 +137,7 @@ impl MantaSerDes for ReceiverData {
 		let mut data = ReceiverData::default();
 		reader.read_exact(&mut data.k).unwrap();
 		reader.read_exact(&mut data.cm).unwrap();
+		reader.read_exact(&mut data.sender_pk).unwrap();
 		reader.read_exact(&mut data.cipher).unwrap();
 		data
 	}

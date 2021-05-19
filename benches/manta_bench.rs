@@ -97,11 +97,11 @@ fn bench_transfer_verify(c: &mut Criterion) {
 	// receiver
 	rng.fill_bytes(&mut sk);
 	let receiver_1_full = MantaAssetFullReceiver::sample(&commit_param, &sk, &(), &mut rng);
-	let receiver_1 = receiver_1_full.prepared.process(&150);
+	let receiver_1 = receiver_1_full.prepared.process(&150, &mut rng);
 
 	rng.fill_bytes(&mut sk);
 	let receiver_2_full = MantaAssetFullReceiver::sample(&commit_param, &sk, &(), &mut rng);
-	let receiver_2 = receiver_2_full.prepared.process(&250);
+	let receiver_2 = receiver_2_full.prepared.process(&250, &mut rng);
 
 	let circuit = TransferCircuit {
 		commit_param: commit_param.clone(),
@@ -272,11 +272,11 @@ fn bench_transfer_prove(c: &mut Criterion) {
 	// receiver
 	rng.fill_bytes(&mut sk);
 	let receiver_1_full = MantaAssetFullReceiver::sample(&commit_param, &sk, &(), &mut rng);
-	let receiver_1 = receiver_1_full.prepared.process(&150);
+	let receiver_1 = receiver_1_full.prepared.process(&150, &mut rng);
 
 	rng.fill_bytes(&mut sk);
 	let receiver_2_full = MantaAssetFullReceiver::sample(&commit_param, &sk, &(), &mut rng);
-	let receiver_2 = receiver_2_full.prepared.process(&250);
+	let receiver_2 = receiver_2_full.prepared.process(&250, &mut rng);
 
 	let circuit = TransferCircuit {
 		commit_param: commit_param.clone(),
