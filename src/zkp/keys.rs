@@ -28,6 +28,10 @@ use pallet_manta_asset::*;
 use rand_chacha::ChaCha20Rng;
 use sha2::Sha512Trunc256;
 use std::{fs::File, io::prelude::*};
+
+
+/// Generate the ZKP keys with a default seed, and write to 
+/// `transfer_pk.bin` and `reclaim_pk.bin`.
 pub fn write_zkp_keys() {
 	let hash_param_seed = [1u8; 32];
 	let commit_param_seed = [2u8; 32];
@@ -54,6 +58,8 @@ pub fn write_zkp_keys() {
 	// println!("reclaim circuit pk length: {}", reclaim_pk_bytes.len());
 }
 
+
+// Generate ZKP keys for `private_transfer` circuit.
 fn manta_transfer_zkp_key_gen(
 	hash_param_seed: &[u8; 32],
 	commit_param_seed: &[u8; 32],
@@ -131,6 +137,7 @@ fn manta_transfer_zkp_key_gen(
 	transfer_pk_bytes
 }
 
+// Generate ZKP keys for `reclaim` circuit.
 fn manta_reclaim_zkp_key_gen(
 	hash_param_seed: &[u8; 32],
 	commit_param_seed: &[u8; 32],
