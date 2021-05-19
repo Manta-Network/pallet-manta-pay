@@ -28,7 +28,6 @@ use sp_runtime::{
 	traits::{BlakeTwo256, IdentityLookup},
 };
 use std::{boxed::Box, fs::File, io::prelude::*, string::String};
-// use x25519_dalek::{PublicKey, StaticSecret};
 
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Test>;
 type Block = frame_system::mocking::MockBlock<Test>;
