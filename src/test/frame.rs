@@ -436,7 +436,7 @@ fn reclaim_test_helper(iter: usize) {
 			sender_1.asset.priv_info.value + sender_2.asset.priv_info.value - receiver.value;
 
 		// form the transaction payload
-		let transfer_data = generate_reclaim_payload(
+		let reclaim_data = generate_reclaim_payload(
 			commit_param.clone(),
 			hash_param.clone(),
 			&pk,
@@ -447,7 +447,7 @@ fn reclaim_test_helper(iter: usize) {
 			&mut rng,
 		);
 		let mut payload = [0; 472];
-		transfer_data.serialize(payload.as_mut());
+		reclaim_data.serialize(payload.as_mut());
 		// invoke the reclaim event
 		assert_ok!(Assets::reclaim(Origin::signed(1), payload));
 

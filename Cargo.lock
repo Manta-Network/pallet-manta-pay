@@ -1437,7 +1437,7 @@ dependencies = [
 [[package]]
 name = "manta-crypto"
 version = "3.0.0"
-source = "git+https://github.com/Manta-Network/manta-crypto?branch=refactoring-pallet-manta-pay's-crypto-code#3ac2f44aa660e25841b62aa72422d0bfa9ed84c3"
+source = "git+https://github.com/Manta-Network/manta-crypto?branch=refactoring-pallet-manta-pay's-crypto-code#ebce5bce871d0fbe110209934cb8211fa6e7b53b"
 dependencies = [
  "aes",
  "ark-bls12-381",
@@ -1704,7 +1704,7 @@ checksum = "624a8340c38c1b80fd549087862da4ba43e08858af025b236e509b6649fc13d5"
 [[package]]
 name = "pallet-manta-asset"
 version = "3.0.0"
-source = "git+https://github.com/Manta-Network/pallet-manta-asset?branch=integrate-token-from-pallet-manta-pay#506b81faca39134f4c77e01623731c2ea90f7e76"
+source = "git+https://github.com/Manta-Network/pallet-manta-asset?branch=integrate-token-from-pallet-manta-pay#65245d50b936a5f9e03fc9710697b2ae78d1fbca"
 dependencies = [
  "ark-crypto-primitives",
  "ark-ed-on-bls12-381",
