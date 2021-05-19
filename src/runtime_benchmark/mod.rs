@@ -23,40 +23,20 @@ mod bench_composite;
 
 use super::*;
 use ark_ff::vec;
-use ark_std::{boxed::Box, primitive::str};
+use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
+use ark_std::{
+	boxed::Box,
+	primitive::str,
+	rand::{RngCore, SeedableRng},
+};
 use data_encoding::BASE64;
 use frame_benchmarking::{account, benchmarks, whitelisted_caller};
 use frame_system::{EventRecord, RawOrigin};
+use pallet_manta_asset::{MantaAsset, MantaAssetFullReceiver, Process, Sampling};
+use rand_chacha::ChaCha20Rng;
+use std::{fs::File, io::Read};
 
 const SEED: u32 = 0;
-
-fn mint_helper<T: Config>(sender: T::Origin) {
-	let mut payload = [0u8; 104];
-	payload[0..8].copy_from_slice(10u64.to_le_bytes().as_ref());
-	let mint_data =	BASE64
-		.decode(b"UdmGpEUW6WUwJZdU1nKKxUNXCRIJdqipFY7Q3WPVa3BM6DRE/LGrx0B0QY2MdxikuuHt96SFMkGleUc0GQ/b41rCMvzhnYdnO19XCVmJHDpxHziwHSOKRm2bZX/rwJwH")
-		.unwrap();
-	payload[8..104].copy_from_slice(mint_data.as_ref());
-	Module::<T>::mint_private_asset(sender.clone(), payload).unwrap();
-
-	let mint_data =	BASE64
-		.decode(b"ePVtcyyTC95xbHdcRVqhN6SBS4zvDIsmPRbWZa2YyQhPhmKLMV+/QrKJ1rvbO0Lqpsu1IlST9AXY22Ybw/iDxcbVJOcI2C08k4m7N50Ir9V/9Wlvw7w8zfEx0wP+fDUO")
-		.unwrap();
-	payload[8..104].copy_from_slice(mint_data.as_ref());
-	Module::<T>::mint_private_asset(sender.clone(), payload).unwrap();
-
-	let mint_data =	BASE64
-		.decode(b"BbkHR/7EX2ylnwEIpGp0bniLvfR2AQCAnjFDMCiG6RhpkGPm7OI/3imiJHpkaPRZA5AjusJHWtLS/x6o2t4wU7OADIt/h+IkY/LtUkCHFZm6V6AoFr2YiIKCXWwI5+MC")
-		.unwrap();
-	payload[8..104].copy_from_slice(mint_data.as_ref());
-	Module::<T>::mint_private_asset(sender.clone(), payload).unwrap();
-
-	let mint_data =	BASE64
-		.decode(b"Qv2uaLsuLuNNU+T1HJUuqqoQOtJ9bO9nEwip3PGmgBfEoWShKUp76ncWyIRsOwNmTz0Rd6rol6+zQuh1GJYu0ZlNOK4Ax5d7Dt31O8RMMSCrhyEWE8F0fNj2g/Z8kgsO")
-		.unwrap();
-	payload[8..104].copy_from_slice(mint_data.as_ref());
-	Module::<T>::mint_private_asset(sender.clone(), payload).unwrap();
-}
 
 pub fn assert_last_event<T: Config>(generic_event: <T as Config>::Event) {
 	let events = frame_system::Module::<T>::events();
@@ -122,56 +102,64 @@ benchmarks! {
 		<Balances<T>>::insert(&caller, 1000);
 		assert!(Module::<T>::init_asset(origin.clone(), 1000).is_ok());
 
-		mint_helper::<T>(origin);
+		let hash_param = HashParam::deserialize(HASH_PARAM.data);
+		let commit_param = CommitmentParam::deserialize(COMMIT_PARAM.data);
 
-		// hardcoded sender
-		// let mut sender_bytes_1 = [0u8; 96];
-		let sender_data_1 = BASE64
-			.decode(b"TOg0RPyxq8dAdEGNjHcYpLrh7fekhTJBpXlHNBkP2+MgIkzsMzMRTvThgza1tf0NmB93IBVQfktQCCDorNpeMGH9EyeUUj2Oz1Y9BnQb0+rHAl9Ne1eaevfH2wT6LoQB")
-			.unwrap();
-		// sender_bytes_1.copy_from_slice(sender_data_1.as_ref());
-		let sender_1 = SenderData::deserialize(sender_data_1.as_ref());
+		// load the ZKP keys
+		let mut file = File::open("transfer_pk.bin").unwrap();
+		let mut transfer_key_bytes: Vec<u8> = vec![];
+		file.read_to_end(&mut transfer_key_bytes).unwrap();
+		let buf: &[u8] = transfer_key_bytes.as_ref();
+		let pk = Groth16Pk::deserialize_unchecked(buf).unwrap();
+		let vk = pk.vk.clone();
+		let mut vk_bytes = Vec::new();
+		vk.serialize_uncompressed(&mut vk_bytes).unwrap();
+		let vk = TRANSFER_PK;
+		let vk_checksum = TransferZKPKeyChecksum::get();
+		assert_eq!(vk.get_checksum(), vk_checksum);
 
-		// let mut sender_bytes_2 = [0u8; 96];
-		let sender_data_2 = BASE64
-			.decode(b"T4ZiizFfv0Kyida72ztC6qbLtSJUk/QF2NtmG8P4g8XDX0rOcCM/4ZT0QQXcPbb3VZIQf3RQ67wVNM38d+LCQQTIFdSTS1TxETxUpd67jfZKICuSgxKwb5X+PBvMGxYu")
-			.unwrap();
-		// sender_bytes_2.copy_from_slice(sender_data_2.as_ref());
-		let sender_2 = SenderData::deserialize(sender_data_2.as_ref());
+		let mut rng = ChaCha20Rng::from_seed([3u8; 32]);
+		let mut sk = [0u8; 32];
 
-		// hardcoded receiver
-		// let mut receiver_bytes_1 = [0u8; 80];
-		let receiver_data_1 = BASE64
-			.decode(b"0oTFuAQG8C21A2N30b4nqbOB5nfwIcrs1aER00EBvaKF0KxGrBcL736UyP/+oExnzVthf0U8CDG2/qmkXNm5mAAAAAAAAAAAAAAAAAAAAAA=")
-			.unwrap();
-		// receiver_bytes_1.copy_from_slice(receiver_data_1.as_ref());
+		// mint the tokens
+		let mut payload = [0u8; 104];
+		rng.fill_bytes(&mut sk);
+		let asset_1 = MantaAsset::sample(&commit_param, &sk, &15, &mut rng);
+		let mint_data_1 = generate_mint_payload(&asset_1);
+		mint_data_1.serialize(payload.as_mut());
+		Module::<T>::mint_private_asset(origin.clone(), payload).unwrap();
 
+		rng.fill_bytes(&mut sk);
+		let asset_2 = MantaAsset::sample(&commit_param, &sk, &25, &mut rng);
+		let mint_data_2 = generate_mint_payload(&asset_2);
+		mint_data_2.serialize(payload.as_mut());
+		Module::<T>::mint_private_asset(origin, payload).unwrap();
 
-		let receiver_1 = ReceiverData::deserialize(receiver_data_1.as_ref());
+		// build the senders
+		let sender_1 = SenderMetaData::build(hash_param.clone(), asset_1.clone(), &[asset_1.commitment]);
+		let sender_2 = SenderMetaData::build(hash_param.clone(), asset_2.clone(), &[asset_2.commitment]);
 
-		// let mut receiver_bytes_2 = [0u8; 80];
-		let receiver_data_2 = BASE64
-			.decode(b"2kH96Ae8wOdvi7nA87Cfy9f+ce0lu1YS1j27LQ1D/a1eO7lMQI14/kniLp2a2U3DLNa6EPoQL1VHEp+t5mb9uAAAAAAAAAAAAAAAAAAAAAA=")
-			.unwrap();
-		// receiver_bytes_2.copy_from_slice(receiver_data_2.as_ref());
+		// extract the receivers
+		rng.fill_bytes(&mut sk);
+		let receiver_full_1 = MantaAssetFullReceiver::sample(&commit_param, &sk, &(), &mut rng);
+		let receiver_1 = receiver_full_1.prepared.process(&10, &mut rng);
 
-		let receiver_2 = ReceiverData::deserialize(receiver_data_2.as_ref());
+		rng.fill_bytes(&mut sk);
+		let receiver_full_2 = MantaAssetFullReceiver::sample(&commit_param, &sk, &(), &mut rng);
+		let receiver_2 = receiver_full_1.prepared.process(&30, &mut rng);
 
-		// hardcoded proof
-		let mut proof = [0u8; 192];
-		let proof_data = BASE64
-			.decode(b"Knwm6dXGrOqd4gC8xvoxQGsGcHdLlY2be4XesJqny6YvUk2h/1SnGxPJ9i059PKBK0NdaCAcR3/L0YMue3/P+NPKHrPG6hqs+Bs4MNE07NWcdMQb6wU3dWGL+sW7RXQXnlnOwp93jpgADpmb2uikCbhx87ulHG5F5c1u+NDipi/IJ4URqCNod4VFYP8EZPsDXOtnD62VT0izr6eN9eVjlLkgWrdDaLTsVsQ+tBVbxe0QHmhnQFT8TwCYOYPXx8EQ")
-			.unwrap();
-		proof.copy_from_slice(proof_data.as_ref());
-
-		let transfer_data = PrivateTransferData {
+		// form the transaction payload
+		let transfer_data = generate_private_transfer_payload(
+			commit_param.clone(),
+			hash_param.clone(),
+			&pk,
 			sender_1,
 			sender_2,
-			receiver_1,
-			receiver_2,
-			proof,
-		};
-		let mut payload = [0u8; 544];
+			receiver_1.clone(),
+			receiver_2.clone(),
+			&mut rng,
+		);
+		let mut payload = [0; 608];
 		transfer_data.serialize(payload.as_mut());
 
 	}: private_transfer (
@@ -183,61 +171,76 @@ benchmarks! {
 		assert_eq!(PoolBalance::get(), 40);
 	}
 
-
 	reclaim {
 		let caller: T::AccountId = whitelisted_caller();
 		let origin: T::Origin = T::Origin::from(RawOrigin::Signed(caller.clone()));
 		<Balances<T>>::insert(&caller, 1000);
 		assert!(Module::<T>::init_asset(origin.clone(), 1000).is_ok());
 
-		mint_helper::<T>(origin);
+		let hash_param = HashParam::deserialize(HASH_PARAM.data);
+		let commit_param = CommitmentParam::deserialize(COMMIT_PARAM.data);
 
-		// hardcoded sender
-		// let mut sender_bytes_1 = [0u8; 96];
-		let sender_data_1 = BASE64
-			.decode(b"aZBj5uziP94poiR6ZGj0WQOQI7rCR1rS0v8eqNreMFNE0zyXQhhHwhHVFz4+RPOdBePDoGhV6Z2qWwyifehdnWjAvTNBr+pmM7t6lYmDOtxBw4sTQQTV6Y92+R5jVYcS")
-			.unwrap();
-		// sender_bytes_1.copy_from_slice(sender_data_1.as_ref());
-		let sender_1 = SenderData::deserialize(sender_data_1.as_ref());
+		// load the ZKP keys
+		let mut file = File::open("reclaim_pk.bin").unwrap();
+		let mut transfer_key_bytes: Vec<u8> = vec![];
+		file.read_to_end(&mut transfer_key_bytes).unwrap();
+		let buf: &[u8] = transfer_key_bytes.as_ref();
+		let pk = Groth16Pk::deserialize_unchecked(buf).unwrap();
+		let vk = pk.vk.clone();
+		let mut vk_bytes = Vec::new();
+		vk.serialize_uncompressed(&mut vk_bytes).unwrap();
+		let vk = TRANSFER_PK;
+		let vk_checksum = TransferZKPKeyChecksum::get();
+		assert_eq!(vk.get_checksum(), vk_checksum);
 
-		// let mut sender_bytes_2 = [0u8; 96];
-		let sender_data_2 = BASE64
-			.decode(b"xKFkoSlKe+p3FsiEbDsDZk89EXeq6Jevs0LodRiWLtEK+hOGmfLz2MuOyFGPcHwqFgrh4Hg5WP/X/i3KcZyHIxxmVpjr69iYzEQLTaXthBEAxfFpk7kEicm9KTQ3rzPi")
-			.unwrap();
-		// sender_bytes_2.copy_from_slice(sender_data_2.as_ref());
-		let sender_2 = SenderData::deserialize(sender_data_2.as_ref());
+		let mut rng = ChaCha20Rng::from_seed([3u8; 32]);
+		let mut sk = [0u8; 32];
 
-		// hardcoded receiver
-		// let mut receiver_bytes = [0u8; 80];
-		let receiver_data = BASE64
-			.decode(b"UvTwRWxxcRUtbfZD+6+RVdU4Y1u3+zs8NtHMhf8IUAw2nXLghBzOPfFmvkSa5c/nENmgUc/v7tCzJr7N48pY2AAAAAAAAAAAAAAAAAAAAAA=")
-			.unwrap();
-		// receiver_bytes.copy_from_slice(receiver_data.as_ref());
-		let receiver = ReceiverData::deserialize(receiver_data.as_ref());
+		// mint the tokens
+		let mut payload = [0u8; 104];
+		rng.fill_bytes(&mut sk);
+		let asset_1 = MantaAsset::sample(&commit_param, &sk, &15, &mut rng);
+		let mint_data_1 = generate_mint_payload(&asset_1);
+		mint_data_1.serialize(payload.as_mut());
+		Module::<T>::mint_private_asset(origin.clone(), payload).unwrap();
 
-		// hardcoded proof
-		let mut proof = [0u8; 192];
-		let proof_data = BASE64
-			.decode(b"MhcUuv4fdhzOF8pDQduDQymqo493r2DxnNU7GN+1qIjWJhXRLhXMzN4DSXCEp6OYqzIdUd160s6czxwoNEBDEVUJ/MATzNxex+PdO+vNfGYPdSorOYNFY1qfLg8rC4ADJPngMea763k8xF9CDPbxwplDcnq1Riq83ig22uP+ioNSgQOXb8UEElNJpGE9acIRbmfJ9ZBn+zHWyWBqVf3vvAjNvGOoJcO2dbCkgVqQyE/2zvGej2fK8YtS93Ea4KuM")
-			.unwrap();
-		proof.copy_from_slice(proof_data.as_ref());
+		rng.fill_bytes(&mut sk);
+		let asset_2 = MantaAsset::sample(&commit_param, &sk, &25, &mut rng);
+		let mint_data_2 = generate_mint_payload(&asset_2);
+		mint_data_2.serialize(payload.as_mut());
+		Module::<T>::mint_private_asset(origin, payload).unwrap();
 
-		let reclaim_data = ReclaimData {
-			reclaim_amount: 10,
-			sender_1,
-			sender_2,
+		// build the senders
+		let sender_1 = SenderMetaData::build(hash_param.clone(), asset_1.clone(), &[asset_1.commitment]);
+		let sender_2 = SenderMetaData::build(hash_param.clone(), asset_2.clone(), &[asset_2.commitment]);
+
+		// extract the receivers
+		rng.fill_bytes(&mut sk);
+		let reclaim_value = 30;
+		let receiver_full = MantaAssetFullReceiver::sample(&commit_param, &sk, &(), &mut rng);
+		let receiver = receiver_full.prepared.process(&10, &mut rng);
+
+		// form the transaction payload
+		let reclaim_data = generate_reclaim_payload(
+			commit_param.clone(),
+			hash_param.clone(),
+			&pk,
+			sender_1.clone(),
+			sender_2.clone(),
 			receiver,
-			proof,
-		};
-		let mut payload = [0u8; 472];
+			reclaim_value,
+			&mut rng,
+		);
+		let mut payload = [0; 504];
 		reclaim_data.serialize(payload.as_mut());
+
 	}: reclaim (
 		RawOrigin::Signed(caller.clone()),
 		payload)
 	verify {
 		assert_last_event::<T>(RawEvent::PrivateReclaimed(caller.clone()).into());
 		assert_eq!(TotalSupply::get(), 1000);
-		assert_eq!(PoolBalance::get(), 30);
+		assert_eq!(PoolBalance::get(), 10);
 	}
 }
 
@@ -277,10 +280,10 @@ mod tests {
 		});
 	}
 
-	// #[test]
-	// fn reclaim() {
-	// 	ExtBuilder::default().build().execute_with(|| {
-	// 		assert_ok!(test_benchmark_reclaim::<Test>());
-	// 	});
-	// }
+	#[test]
+	fn reclaim() {
+		ExtBuilder::default().build().execute_with(|| {
+			assert_ok!(test_benchmark_reclaim::<Test>());
+		});
+	}
 }

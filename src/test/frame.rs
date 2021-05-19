@@ -364,19 +364,19 @@ fn transfer_test_helper(iter: usize) {
 		assert_eq!(enc_value_list[2 * i], receiver_1.ciphertext);
 		assert_eq!(enc_value_list[2 * i + 1], receiver_2.ciphertext);
 
-		let mut ciphertext_1 = [0u8; 48];		
+		let mut ciphertext_1 = [0u8; 48];
 		ciphertext_1[0..16].copy_from_slice(receiver_1.ciphertext.as_ref());
 		ciphertext_1[16..48].copy_from_slice(receiver_1.sender_pk.as_ref());
-		let sk_1 =  receivers_full[i * 2 + 1].spend.ecsk.clone();
+		let sk_1 = receivers_full[i * 2 + 1].spend.ecsk.clone();
 		assert_eq!(
 			<MantaCrypto as Ecies>::decrypt(&sk_1, &ciphertext_1),
 			receiver_1.value
 		);
 
-		let mut ciphertext_2 = [0u8; 48];		
+		let mut ciphertext_2 = [0u8; 48];
 		ciphertext_2[0..16].copy_from_slice(receiver_2.ciphertext.as_ref());
 		ciphertext_2[16..48].copy_from_slice(receiver_2.sender_pk.as_ref());
-		let sk_2 =  receivers_full[i * 2].spend.ecsk.clone();
+		let sk_2 = receivers_full[i * 2].spend.ecsk.clone();
 		assert_eq!(
 			<MantaCrypto as Ecies>::decrypt(&sk_2, &ciphertext_2),
 			receiver_2.value
