@@ -33,7 +33,7 @@
 // --heap-pages=4096
 // --output=./weights.rs
 // --template=./frame-weight-template.hbs
-
+#![allow(clippy::unnecessary_cast)]
 #![allow(unused_parens)]
 #![allow(unused_imports)]
 

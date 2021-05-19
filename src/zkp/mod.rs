@@ -19,7 +19,7 @@
 mod circuit;
 mod gadget;
 mod keys;
-mod zkp;
+mod verifier;
 
 pub use circuit::{ReclaimCircuit, TransferCircuit};
 pub(crate) use gadget::*;

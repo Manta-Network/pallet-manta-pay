@@ -42,7 +42,7 @@
 //! * **Private asset transfer:** The action of transferring certain number of private assets from
 //! two UTXOs to another two UTXOs.
 //! * **Private asset reclaim:** The action of transferring certain number of private assets from
-//!	two UTXOs to another UTXO, and converting the remaining private assets back to public
+//! two UTXOs to another UTXO, and converting the remaining private assets back to public
 //! assets.
 //!
 //! The assets system in Manta is designed to make the following possible:
@@ -61,7 +61,7 @@
 //! the function caller's account (`origin`) to a `target` account.
 //! * `mint_private_asset` - Converting an `amount` of units of fungible asset `id` from the caller to a private UTXO.
 //! (The caller does not need to be the owner of this UTXO)
-//!	* `private_transfer` - Transfer two input UTXOs into two output UTXOs. Require that 1) the input UTXOs are
+//! * `private_transfer` - Transfer two input UTXOs into two output UTXOs. Require that 1) the input UTXOs are
 //! already in the ledger and are not spend before 2) the sum of private assets in input UTXOs matches that
 //! of the output UTXOs. The requirements are guaranteed via ZK proof.
 //! * `reclaim` - Transfer two input UTXOs into one output UTXOs, and convert the remaining assets to the
