@@ -77,6 +77,7 @@ impl frame_system::Config for Test {
 
 impl Config for Test {
 	type Event = ();
+	type WeightInfo = ();
 }
 
 pub struct ExtBuilder {}

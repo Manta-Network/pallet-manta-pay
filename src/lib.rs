@@ -113,10 +113,14 @@ mod test;
 #[macro_use]
 extern crate std;
 
+
 pub use ledger::{Shard, Shards};
 pub use manta_crypto::MantaSerDes;
 pub use payload::*;
 pub use zkp::*;
+pub mod weights;
+pub use weights::WeightInfo;
+
 
 use ark_std::vec::Vec;
 use frame_support::{decl_error, decl_event, decl_module, decl_storage, ensure};
@@ -134,6 +138,9 @@ pub struct MantaPay;
 pub trait Config: frame_system::Config {
 	/// The overarching event type.
 	type Event: From<Event<Self>> + Into<<Self as frame_system::Config>::Event>;
+
+	/// Weight information for extrinsics in this pallet.
+	type WeightInfo: WeightInfo;
 }
 
 decl_module! {
@@ -144,14 +151,13 @@ decl_module! {
 		/// Issue a new class of fungible assets. There are, and will only ever be, `total`
 		/// such assets and they'll all belong to the `origin` initially. It will have an
 		/// identifier `AssetId` instance: this will be specified in the `Issued` event.
-		/// __TODO__: check the weights is correct
 		/// # <weight>
 		/// - `O(1)`
 		/// - 1 storage mutation (codec `O(1)`).
 		/// - 2 storage writes (codec `O(1)`).
 		/// - 1 event.
 		/// # </weight>
-		#[weight = 0]
+		#[weight = T::WeightInfo::mint_private_asset()]
 		fn init_asset(origin, total: u64) {
 
 			ensure!(!Self::is_init(), <Error<T>>::AlreadyInitialized);
@@ -198,7 +204,6 @@ decl_module! {
 		}
 
 		/// Move some assets from one holder to another.
-		/// __TODO__: check the weights is correct
 		///
 		/// # <weight>
 		/// - `O(1)`
@@ -206,7 +211,7 @@ decl_module! {
 		/// - 2 storage mutations (codec `O(1)`).
 		/// - 1 event.
 		/// # </weight>
-		#[weight = 0]
+		#[weight = T::WeightInfo::transfer_asset()]
 		fn transfer_asset(origin,
 			target: <T::Lookup as StaticLookup>::Source,
 			amount: u64
@@ -225,7 +230,7 @@ decl_module! {
 		}
 
 		/// Given an amount, and relevant data, mint the token to the ledger
-		#[weight = 0]
+		#[weight = T::WeightInfo::mint_private_asset()]
 		fn mint_private_asset(origin,
 			payload: [u8; 104]
 		) {
@@ -291,7 +296,7 @@ decl_module! {
 		/// sender's private tokens into two receiver tokens. A proof is required to
 		/// make sure that this transaction is valid.
 		/// Neither the values nor the identities is leaked during this process.
-		#[weight = 0]
+		#[weight = T::WeightInfo::private_transfer()]
 		fn private_transfer(origin,
 			payload: [u8; 608],
 		) {
@@ -387,7 +392,7 @@ decl_module! {
 		/// except for the reclaimed amount.
 		/// At the moment, the reclaimed amount goes directly to `origin` account.
 		/// __TODO__: shall we use a different receiver rather than `origin`?
-		#[weight = 0]
+		#[weight = T::WeightInfo::reclaim()]
 		fn reclaim(origin,
 			payload: [u8; 504],
 		) {
