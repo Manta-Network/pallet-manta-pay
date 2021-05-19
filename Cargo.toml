@@ -43,7 +43,7 @@ generic-array = { version = "0.14.0", default-features = false }
 blake2 = { version = "0.9.1", default-features = false }
 
 # Manta Dependencies
-manta-crypto = { branch = "refactoring-pallet-manta-pay's-crypto-code", git = "https://github.com/Manta-Network/manta-crypto" }
+manta-crypto = { branch = "master", git = "https://github.com/Manta-Network/manta-crypto" }
 pallet-manta-asset = { branch = "integrate-token-from-pallet-manta-pay", git = "https://github.com/Manta-Network/pallet-manta-asset" }
 
 # binaries
