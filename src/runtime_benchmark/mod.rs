@@ -29,7 +29,6 @@ use ark_std::{
 	primitive::str,
 	rand::{RngCore, SeedableRng},
 };
-use data_encoding::BASE64;
 use frame_benchmarking::{account, benchmarks, whitelisted_caller};
 use frame_system::{EventRecord, RawOrigin};
 use pallet_manta_asset::{MantaAsset, MantaAssetFullReceiver, Process, Sampling};
@@ -78,14 +77,13 @@ benchmarks! {
 		<Balances<T>>::insert(&caller, 1000);
 		assert!(Module::<T>::init_asset(origin, 1000).is_ok());
 
-		let amount = 10u64;
-		let mut payload = [0u8; 104];
-		payload[0..8].copy_from_slice(amount.to_le_bytes().as_ref());
+		let commit_param = CommitmentParam::deserialize(COMMIT_PARAM.data);
+		let mut rng = ChaCha20Rng::from_seed([3u8; 32]);
+		let mut sk = [0u8; 32];
 
-		let mint_data =	BASE64
-			.decode(b"UdmGpEUW6WUwJZdU1nKKxUNXCRIJdqipFY7Q3WPVa3BM6DRE/LGrx0B0QY2MdxikuuHt96SFMkGleUc0GQ/b41rCMvzhnYdnO19XCVmJHDpxHziwHSOKRm2bZX/rwJwH")
-			.unwrap();
-			payload[8..104].copy_from_slice(mint_data.as_ref());
+		rng.fill_bytes(&mut sk);
+		let asset = MantaAsset::sample(&commit_param, &sk, &10, &mut rng);
+		let payload = generate_mint_payload(&asset);
 
 	}: mint_private_asset (
 		RawOrigin::Signed(caller),
@@ -122,17 +120,14 @@ benchmarks! {
 		let mut sk = [0u8; 32];
 
 		// mint the tokens
-		let mut payload = [0u8; 104];
 		rng.fill_bytes(&mut sk);
 		let asset_1 = MantaAsset::sample(&commit_param, &sk, &15, &mut rng);
-		let mint_data_1 = generate_mint_payload(&asset_1);
-		mint_data_1.serialize(payload.as_mut());
+		let payload = generate_mint_payload(&asset_1);
 		Module::<T>::mint_private_asset(origin.clone(), payload).unwrap();
 
 		rng.fill_bytes(&mut sk);
 		let asset_2 = MantaAsset::sample(&commit_param, &sk, &25, &mut rng);
-		let mint_data_2 = generate_mint_payload(&asset_2);
-		mint_data_2.serialize(payload.as_mut());
+		let payload = generate_mint_payload(&asset_2);
 		Module::<T>::mint_private_asset(origin, payload).unwrap();
 
 		// build the senders
@@ -149,7 +144,7 @@ benchmarks! {
 		let receiver_2 = receiver_full_1.prepared.process(&30, &mut rng);
 
 		// form the transaction payload
-		let transfer_data = generate_private_transfer_payload(
+		let payload = generate_private_transfer_payload(
 			commit_param.clone(),
 			hash_param.clone(),
 			&pk,
@@ -159,8 +154,6 @@ benchmarks! {
 			receiver_2.clone(),
 			&mut rng,
 		);
-		let mut payload = [0; 608];
-		transfer_data.serialize(payload.as_mut());
 
 	}: private_transfer (
 		RawOrigin::Signed(caller.clone()),
@@ -197,17 +190,14 @@ benchmarks! {
 		let mut sk = [0u8; 32];
 
 		// mint the tokens
-		let mut payload = [0u8; 104];
 		rng.fill_bytes(&mut sk);
 		let asset_1 = MantaAsset::sample(&commit_param, &sk, &15, &mut rng);
-		let mint_data_1 = generate_mint_payload(&asset_1);
-		mint_data_1.serialize(payload.as_mut());
+		let payload = generate_mint_payload(&asset_1);
 		Module::<T>::mint_private_asset(origin.clone(), payload).unwrap();
 
 		rng.fill_bytes(&mut sk);
 		let asset_2 = MantaAsset::sample(&commit_param, &sk, &25, &mut rng);
-		let mint_data_2 = generate_mint_payload(&asset_2);
-		mint_data_2.serialize(payload.as_mut());
+		let payload = generate_mint_payload(&asset_2);
 		Module::<T>::mint_private_asset(origin, payload).unwrap();
 
 		// build the senders
@@ -221,7 +211,7 @@ benchmarks! {
 		let receiver = receiver_full.prepared.process(&10, &mut rng);
 
 		// form the transaction payload
-		let reclaim_data = generate_reclaim_payload(
+		let payload = generate_reclaim_payload(
 			commit_param.clone(),
 			hash_param.clone(),
 			&pk,
@@ -231,8 +221,6 @@ benchmarks! {
 			reclaim_value,
 			&mut rng,
 		);
-		let mut payload = [0; 504];
-		reclaim_data.serialize(payload.as_mut());
 
 	}: reclaim (
 		RawOrigin::Signed(caller.clone()),

@@ -137,6 +137,7 @@ fn bench_transfer_verify(c: &mut Criterion) {
 		receiver_2,
 		&mut rng,
 	);
+	let transfer_data = PrivateTransferData::deserialize(transfer_data.as_ref());
 
 	println!("start benchmarking proof verification");
 	let mut bench_group = c.benchmark_group("private transfer");

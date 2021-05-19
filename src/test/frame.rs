@@ -118,10 +118,7 @@ fn test_mint_should_work() {
 		rng.fill_bytes(&mut sk);
 		let asset = MantaAsset::sample(&commit_param, &sk, &10, &mut rng);
 
-		let mint_data = generate_mint_payload(&asset);
-		let mut payload = [0u8; 104];
-		mint_data.serialize(payload.as_mut());
-
+		let payload = generate_mint_payload(&asset);
 		assert_ok!(Assets::mint_private_asset(Origin::signed(1), payload));
 
 		assert_eq!(TotalSupply::get(), 1000);
@@ -254,7 +251,6 @@ fn mint_tokens_helper(size: usize) -> Vec<MantaAsset> {
 	let mut rng = ChaCha20Rng::from_seed([88u8; 32]);
 	let mut pool = 0;
 	let mut sk = [0u8; 32];
-	let mut payload = [0u8; 104];
 
 	// sender tokens
 	let mut senders = Vec::new();
@@ -263,9 +259,7 @@ fn mint_tokens_helper(size: usize) -> Vec<MantaAsset> {
 		let token_value = 10 + i as u64;
 		rng.fill_bytes(&mut sk);
 		let asset = MantaAsset::sample(&commit_param, &sk, &token_value, &mut rng);
-
-		let mint_data = generate_mint_payload(&asset);
-		mint_data.serialize(payload.as_mut());
+		let payload = generate_mint_payload(&asset);
 
 		// mint a sender token
 		assert_ok!(Assets::mint_private_asset(Origin::signed(1), payload));
@@ -343,7 +337,7 @@ fn transfer_test_helper(iter: usize) {
 		let receiver_2 = receivers_processed[i * 2].clone();
 
 		// form the transaction payload
-		let transfer_data = generate_private_transfer_payload(
+		let payload = generate_private_transfer_payload(
 			commit_param.clone(),
 			hash_param.clone(),
 			&pk,
@@ -353,8 +347,6 @@ fn transfer_test_helper(iter: usize) {
 			receiver_2.clone(),
 			&mut rng,
 		);
-		let mut payload = [0; 608];
-		transfer_data.serialize(payload.as_mut());
 
 		// invoke the transfer event
 		assert_ok!(Assets::private_transfer(Origin::signed(1), payload));
@@ -446,7 +438,7 @@ fn reclaim_test_helper(iter: usize) {
 			sender_1.asset.priv_info.value + sender_2.asset.priv_info.value - receiver.value;
 
 		// form the transaction payload
-		let reclaim_data = generate_reclaim_payload(
+		let payload = generate_reclaim_payload(
 			commit_param.clone(),
 			hash_param.clone(),
 			&pk,
@@ -456,8 +448,7 @@ fn reclaim_test_helper(iter: usize) {
 			reclaim_value,
 			&mut rng,
 		);
-		let mut payload = [0; 504];
-		reclaim_data.serialize(payload.as_mut());
+
 		// invoke the reclaim event
 		assert_ok!(Assets::reclaim(Origin::signed(1), payload));
 

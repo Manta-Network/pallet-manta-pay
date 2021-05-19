@@ -73,7 +73,16 @@ pub struct ReceiverData {
 }
 
 /// Given the inputs, generate the payload for the mint_asset extrinsic.
-pub fn generate_mint_payload(asset: &MantaAsset) -> MintData {
+pub fn generate_mint_payload(asset: &MantaAsset) -> [u8; 104] {
+	let data = generate_mint_struct(asset);
+	let mut res = [0u8; 104];
+	data.serialize(res.as_mut());
+	res
+}
+
+/// Given the inputs, generate the stuct that can be passed to
+/// the mint_asset extrinsic once serialized
+fn generate_mint_struct(asset: &MantaAsset) -> MintData {
 	MintData {
 		amount: asset.priv_info.value,
 		cm: asset.commitment,
@@ -94,10 +103,50 @@ pub fn generate_mint_payload(asset: &MantaAsset) -> MintData {
 ///     - receiver_2: the other __PROCESSED__ receiver.
 ///     - rng: a random number generator.
 /// Outputs:
-///     - a data struct, once serialized, can be passed to the
+///     - the serialized payload that can be passed to the
 ///       private_transfer extrinsic.
 #[allow(clippy::too_many_arguments)]
 pub fn generate_private_transfer_payload<R: RngCore + CryptoRng>(
+	commit_param: CommitmentParam,
+	hash_param: HashParam,
+	pk: &Groth16Pk,
+	sender_1: SenderMetaData,
+	sender_2: SenderMetaData,
+	receiver_1: MantaAssetProcessedReceiver,
+	receiver_2: MantaAssetProcessedReceiver,
+	rng: &mut R,
+) -> [u8; 608] {
+	let data = generate_private_transfer_struct(
+		commit_param,
+		hash_param,
+		pk,
+		sender_1,
+		sender_2,
+		receiver_1,
+		receiver_2,
+		rng,
+	);
+	let mut res = [0u8; 608];
+	data.serialize(res.as_mut());
+	res
+}
+
+/// Given the inputs, generate the payload for the private_transfer
+/// extrinsic.
+/// Inputs:
+///     - commit_param: commitment parameters.
+///     - hash_param: hash parameters.
+///     - pk: proving key of the Groth16 proving system.
+///     - sender_1: meta data for the sender's first coin.
+///     - sender_2: meta data for the second's first coin.
+///     - receiver_1: a __PROCESSED__ receiver.
+///     - receiver_2: the other __PROCESSED__ receiver.
+///     - rng: a random number generator.
+/// Outputs:
+///     - a data struct, once serialized, can be passed to the
+///       private_transfer extrinsic.
+#[allow(clippy::too_many_arguments)]
+fn generate_private_transfer_struct<R: RngCore + CryptoRng>(
 	commit_param: CommitmentParam,
 	hash_param: HashParam,
 	pk: &Groth16Pk,
@@ -169,10 +218,49 @@ pub fn generate_private_transfer_payload<R: RngCore + CryptoRng>(
 ///     - reclaimed_value: the number of reclaimed assets.
 ///     - rng: a random number generator.
 /// Outputs:
-///     - a data struct, once serialized, can be passed to the
+///     - the serialized payload that can be passed to the
 ///       reclaim extrinsic.
 #[allow(clippy::too_many_arguments)]
 pub fn generate_reclaim_payload<R: RngCore + CryptoRng>(
+	commit_param: CommitmentParam,
+	hash_param: HashParam,
+	pk: &Groth16Pk,
+	sender_1: SenderMetaData,
+	sender_2: SenderMetaData,
+	receiver: MantaAssetProcessedReceiver,
+	reclaim_value: u64,
+	rng: &mut R,
+) -> [u8; 504] {
+	let data = generate_reclaim_struct(
+		commit_param,
+		hash_param,
+		pk,
+		sender_1,
+		sender_2,
+		receiver,
+		reclaim_value,
+		rng,
+	);
+	let mut res = [0u8; 504];
+	data.serialize(res.as_mut());
+	res
+}
+
+/// Given the inputs, generate the payload for the reclaim extrinsic.
+/// Inputs:
+///     - commit_param: commitment parameters.
+///     - hash_param: hash parameters.
+///     - pk: proving key of the Groth16 proving system.
+///     - sender_1: meta data for the sender's first coin.
+///     - sender_2: meta data for the second's first coin.
+///     - receiver: a __PROCESSED__ receiver.
+///     - reclaimed_value: the number of reclaimed assets.
+///     - rng: a random number generator.
+/// Outputs:
+///     - a data struct, once serialized, can be passed to the
+///       reclaim extrinsic.
+#[allow(clippy::too_many_arguments)]
+fn generate_reclaim_struct<R: RngCore + CryptoRng>(
 	commit_param: CommitmentParam,
 	hash_param: HashParam,
 	pk: &Groth16Pk,
