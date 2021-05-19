@@ -1722,10 +1722,8 @@ dependencies = [
 name = "pallet-manta-pay"
 version = "3.0.0"
 dependencies = [
- "aes",
  "ark-bls12-381",
  "ark-crypto-primitives",
- "ark-ec",
  "ark-ed-on-bls12-381",
  "ark-ff",
  "ark-groth16",
@@ -1734,13 +1732,11 @@ dependencies = [
  "ark-serialize",
  "ark-std",
  "bencher",
- "blake2",
  "criterion",
  "data-encoding",
  "frame-benchmarking",
  "frame-support",
  "frame-system",
- "generic-array 0.14.4",
  "hkdf",
  "manta-crypto",
  "pallet-manta-asset",
@@ -1752,7 +1748,6 @@ dependencies = [
  "sp-io",
  "sp-runtime",
  "sp-std",
- "x25519-dalek",
 ]
 
 [[package]]
