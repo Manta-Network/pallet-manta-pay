@@ -26,7 +26,7 @@ mod default;
 mod santiy;
 mod serdes;
 
-/// Input data to a mint intrinsic.
+/// Input data to a mint extrinsic.
 #[derive(Encode, Debug, Decode, Clone, Default, PartialEq)]
 pub struct MintData {
 	pub amount: u64,
@@ -35,7 +35,7 @@ pub struct MintData {
 	pub s: [u8; 32],
 }
 
-/// Input data to a private transfer intrinsic.
+/// Input data to a private transfer extrinsic.
 #[derive(Encode, Debug, Decode, Clone, PartialEq)]
 pub struct PrivateTransferData {
 	pub sender_1: SenderData,
@@ -45,7 +45,7 @@ pub struct PrivateTransferData {
 	pub proof: [u8; 192],
 }
 
-/// Input data to a reclaim intrinsic.
+/// Input data to a reclaim extrinsic.
 #[derive(Encode, Debug, Decode, Clone, PartialEq)]
 pub struct ReclaimData {
 	pub reclaim_amount: u64,
@@ -72,7 +72,7 @@ pub struct ReceiverData {
 	pub cipher: [u8; 16],
 }
 
-/// Given the inputs, generate the payload for the mint_asset intrinsic.
+/// Given the inputs, generate the payload for the mint_asset extrinsic.
 pub fn generate_mint_payload(asset: &MantaAsset) -> MintData {
 	MintData {
 		amount: asset.priv_info.value,
@@ -83,7 +83,7 @@ pub fn generate_mint_payload(asset: &MantaAsset) -> MintData {
 }
 
 /// Given the inputs, generate the payload for the private_transfer
-/// intrinsic.
+/// extrinsic.
 /// Inputs:
 ///     - commit_param: commitment parameters.
 ///     - hash_param: hash parameters.
@@ -95,7 +95,7 @@ pub fn generate_mint_payload(asset: &MantaAsset) -> MintData {
 ///     - rng: a random number generator.
 /// Outputs:
 ///     - a data struct, once serialized, can be passed to the
-///       private_transfer intrinsic.
+///       private_transfer extrinsic.
 #[allow(clippy::too_many_arguments)]
 pub fn generate_private_transfer_payload<R: RngCore + CryptoRng>(
 	commit_param: CommitmentParam,
@@ -158,7 +158,7 @@ pub fn generate_private_transfer_payload<R: RngCore + CryptoRng>(
 	}
 }
 
-/// Given the inputs, generate the payload for the reclaim intrinsic.
+/// Given the inputs, generate the payload for the reclaim extrinsic.
 /// Inputs:
 ///     - commit_param: commitment parameters.
 ///     - hash_param: hash parameters.
@@ -170,7 +170,7 @@ pub fn generate_private_transfer_payload<R: RngCore + CryptoRng>(
 ///     - rng: a random number generator.
 /// Outputs:
 ///     - a data struct, once serialized, can be passed to the
-///       reclaim intrinsic.
+///       reclaim extrinsic.
 #[allow(clippy::too_many_arguments)]
 pub fn generate_reclaim_payload<R: RngCore + CryptoRng>(
 	commit_param: CommitmentParam,
