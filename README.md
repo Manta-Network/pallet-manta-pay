@@ -46,8 +46,12 @@ open target/debug/coverage/index.html
 ## Benchmark
 * benchmark environment
 
-AMD Ryzen 9 5900X 12-Core Processor; Ubuntu 20.04; rustc 1.50.0 (cb75ad5db 2021-02-10)
-Crucial SSD P2 M.2 NVME PCIEx4; Crucial Ballistix 2x16GB
+Amazon EC2 Instance t3.large:
+Intel(R) Xeon(R) Platinum 8259CL CPU @ 2.50GHz;
+NVMe device Amazon Elastic Block Store;
+8GB RAM;
+Ubuntu 20.04;
+rustc 1.52.1 (9bc8c42bb 2021-05-09);
 
   * with `criterion` (take some time)
 
