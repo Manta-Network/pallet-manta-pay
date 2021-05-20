@@ -37,7 +37,7 @@ use ark_relations::r1cs::ConstraintSystemRef;
 use ark_serialize::CanonicalDeserialize;
 use ark_std::vec::Vec;
 use manta_crypto::*;
-use pallet_manta_asset::*;
+use manta_asset::*;
 
 // =============================
 // circuit for the following statements

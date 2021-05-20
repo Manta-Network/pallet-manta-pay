@@ -15,7 +15,7 @@
 // along with pallet-manta-pay.  If not, see <http://www.gnu.org/licenses/>.
 
 use super::*;
-use pallet_manta_asset::SanityCheck;
+use manta_asset::SanityCheck;
 
 impl SanityCheck for MintData {
 	type Param = CommitmentParam;

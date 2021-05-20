@@ -23,7 +23,7 @@ use ark_relations::r1cs::{ConstraintSynthesizer, ConstraintSystem};
 use ark_serialize::CanonicalDeserialize;
 use ark_std::rand::{RngCore, SeedableRng};
 use manta_crypto::*;
-use pallet_manta_asset::*;
+use manta_asset::*;
 use rand_chacha::ChaCha20Rng;
 
 /// this is a local test on zero knowledge proof generation and verifications

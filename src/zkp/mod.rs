@@ -31,7 +31,7 @@ use ark_groth16::verify_proof;
 use ark_serialize::CanonicalDeserialize;
 use ark_std::vec::Vec;
 use manta_crypto::*;
-use pallet_manta_asset::*;
+use manta_asset::*;
 
 /// A `SenderMetaData` is the data that a sender assembles from its `MantaAsset`
 /// and the current state of the ledger. This struct is an input to both

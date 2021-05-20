@@ -20,7 +20,7 @@ use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
 use ark_std::rand::{RngCore, SeedableRng};
 use frame_support::{assert_noop, assert_ok, parameter_types};
 use manta_crypto::*;
-use pallet_manta_asset::*;
+use manta_asset::*;
 use rand_chacha::ChaCha20Rng;
 use sp_core::H256;
 use sp_runtime::{

@@ -24,7 +24,7 @@ use ark_serialize::CanonicalSerialize;
 use ark_std::rand::{RngCore, SeedableRng};
 use hkdf::Hkdf;
 use manta_crypto::*;
-use pallet_manta_asset::*;
+use manta_asset::*;
 use rand_chacha::ChaCha20Rng;
 use sha2::Sha512Trunc256;
 use std::{fs::File, io::prelude::*};

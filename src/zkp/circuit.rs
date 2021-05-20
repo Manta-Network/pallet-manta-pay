@@ -19,7 +19,7 @@ use ark_ed_on_bls12_381::{constraints::FqVar, Fq};
 use ark_r1cs_std::{alloc::AllocVar, prelude::*};
 use ark_relations::r1cs::{ConstraintSynthesizer, ConstraintSystemRef, SynthesisError};
 use manta_crypto::*;
-use pallet_manta_asset::*;
+use manta_asset::*;
 
 // =============================
 /// ZK circuit for the __transfer__ statements.

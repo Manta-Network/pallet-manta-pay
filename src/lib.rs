@@ -125,7 +125,7 @@ use frame_support::{decl_error, decl_event, decl_module, decl_storage, ensure};
 use frame_system::ensure_signed;
 use ledger::LedgerSharding;
 use manta_crypto::*;
-use pallet_manta_asset::{AssetId, SanityCheck};
+use manta_asset::{AssetId, SanityCheck};
 use sp_runtime::traits::{StaticLookup, Zero};
 use sp_std::prelude::*;
 

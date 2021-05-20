@@ -31,7 +31,7 @@ use ark_std::{
 };
 use frame_benchmarking::{account, benchmarks, whitelisted_caller};
 use frame_system::{EventRecord, RawOrigin};
-use pallet_manta_asset::{MantaAsset, MantaAssetFullReceiver, Process, Sampling};
+use manta_asset::{MantaAsset, MantaAssetFullReceiver, Process, Sampling};
 use rand_chacha::ChaCha20Rng;
 use std::{fs::File, io::Read};
 

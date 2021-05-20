@@ -20,7 +20,7 @@ use ark_serialize::CanonicalSerialize;
 use ark_std::rand::{CryptoRng, RngCore};
 use frame_support::codec::{Decode, Encode};
 use manta_crypto::*;
-use pallet_manta_asset::*;
+use manta_asset::*;
 
 mod default;
 mod santiy;
