@@ -251,25 +251,25 @@ decl_module! {
 		/// Given an amount, and relevant data, mint the token to the ledger
 		#[weight = T::WeightInfo::mint_private_asset()]
 		fn mint_private_asset(origin,
-			asset_id: AssetId,
 			payload: [u8; 112]
 		) {
 			// todo: Implement the fix denomination method
 
+			// parse the input_data into input
+			let input = MintData::deserialize(payload.as_ref());
+
 			// if the asset_id has a total suply == 0, then this asset is initialized
 			ensure!(
-				TotalSupply::get(&asset_id) != 0,
+				TotalSupply::get(&input.asset_id) != 0,
 				<Error<T>>::BasecoinNotInit
 			);
 
-			// parse the input_data into input
-			let input = MintData::deserialize(payload.as_ref());
 
 			// get the original balance
 			let origin = ensure_signed(origin)?;
 			let origin_account = origin.clone();
 			ensure!(!input.amount.is_zero(), Error::<T>::AmountZero);
-			let origin_balance = <Balances<T>>::get(&origin_account, asset_id);
+			let origin_balance = <Balances<T>>::get(&origin_account, input.asset_id);
 			ensure!(origin_balance >= input.amount, Error::<T>::BalanceLow);
 
 			// get the parameter checksum from the ledger
@@ -311,14 +311,14 @@ decl_module! {
 			Self::deposit_event(RawEvent::Minted(origin, input.amount));
 			CoinShards::put(coin_shards);
 
-			let old_pool_balance = PoolBalance::get(asset_id);
+			let old_pool_balance = PoolBalance::get(input.asset_id);
 			PoolBalance::mutate(
-				asset_id,
+				input.asset_id,
 				|balance| *balance = old_pool_balance + input.amount
 			);
 			<Balances<T>>::mutate(
 				origin_account,
-				asset_id,
+				input.asset_id,
 				|balance| *balance =  origin_balance - input.amount
 			);
 		}
@@ -428,21 +428,22 @@ decl_module! {
 		/// __TODO__: shall we use a different receiver rather than `origin`?
 		#[weight = T::WeightInfo::reclaim()]
 		fn reclaim(origin,
-			asset_id: AssetId,
 			payload: [u8; 512],
 		) {
 
-			// if the asset_id has a total suply == 0, then this asset is initialized
-			ensure!(
-				TotalSupply::get(&asset_id) != 0,
-				<Error<T>>::BasecoinNotInit
-			);
+
 
 			let data = ReclaimData::deserialize(payload.as_ref());
 
+			// if the asset_id has a total suply == 0, then this asset is initialized
+			ensure!(
+				TotalSupply::get(&data.asset_id) != 0,
+				<Error<T>>::BasecoinNotInit
+			);
+
 			let origin = ensure_signed(origin)?;
 			let origin_account = origin.clone();
-			let origin_balance = <Balances<T>>::get(&origin, asset_id);
+			let origin_balance = <Balances<T>>::get(&origin, data.asset_id);
 
 			// get the parameter checksum from the ledger
 			// and make sure the parameters match
@@ -456,7 +457,7 @@ decl_module! {
 			let hash_param = HashParam::deserialize(HASH_PARAM.data);
 
 			// check the balance is greater than amount
-			let mut pool = PoolBalance::get(asset_id);
+			let mut pool = PoolBalance::get(data.asset_id);
 			ensure!(pool>=data.reclaim_amount, <Error<T>>::PoolOverdrawn);
 			pool -= data.reclaim_amount;
 
@@ -518,11 +519,11 @@ decl_module! {
 
 			Self::deposit_event(RawEvent::PrivateReclaimed(origin));
 			VNList::put(sn_list);
-			PoolBalance::mutate(asset_id, |balance| *balance = pool);
+			PoolBalance::mutate(data.asset_id, |balance| *balance = pool);
 			EncValueList::put(enc_value_list);
 			<Balances<T>>::mutate(
 				origin_account,
-				asset_id,
+				data.asset_id,
 				|balance| *balance = origin_balance + data.reclaim_amount
 			);
 		}

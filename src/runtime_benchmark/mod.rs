@@ -49,33 +49,32 @@ benchmarks! {
 	init_asset {
 		let caller: T::AccountId = whitelisted_caller();
 		let total = 1000u64;
-	}: init_asset (RawOrigin::Signed(caller.clone()), total)
+	}: init_asset (RawOrigin::Signed(caller.clone()), AssetId::TestAsset, total)
 	verify {
 		assert_last_event::<T>(RawEvent::Issued(caller.clone(), total).into());
-		assert_eq!(<TotalSupply>::get(), total);
+		assert_eq!(<TotalSupply>::get(AssetId::TestAsset), total);
 	}
 
 	transfer_asset {
 		let caller: T::AccountId = whitelisted_caller();
 		let origin: T::Origin = T::Origin::from(RawOrigin::Signed(caller.clone()));
-		<Balances<T>>::insert(&caller, 1_000);
-		assert!(Module::<T>::init_asset(origin, 1_000).is_ok());
+		<Balances<T>>::insert(&caller, AssetId::TestAsset, 1_000);
+		assert!(Module::<T>::init_asset(origin, AssetId::TestAsset, 1_000).is_ok());
 		let recipient: T::AccountId = account("recipient", 0, SEED);
 		let recipient_lookup: <T::Lookup as StaticLookup>::Source = T::Lookup::unlookup(recipient.clone());
 		let transfer_amount = 10;
-		Init::put(true);
-	}: transfer_asset(RawOrigin::Signed(caller.clone()), recipient_lookup, transfer_amount)
+	}: transfer_asset(RawOrigin::Signed(caller.clone()), recipient_lookup, AssetId::TestAsset, transfer_amount)
 	verify {
 		assert_last_event::<T>(RawEvent::Transferred(caller.clone(), recipient.clone(), transfer_amount).into());
-		assert_eq!(Balances::<T>::get(&recipient), transfer_amount);
+		assert_eq!(Balances::<T>::get(&recipient, AssetId::TestAsset), transfer_amount);
 	}
 
 
 	mint_private_asset {
 		let caller: T::AccountId = whitelisted_caller();
 		let origin: T::Origin = T::Origin::from(RawOrigin::Signed(caller.clone()));
-		<Balances<T>>::insert(&caller, 1000);
-		assert!(Module::<T>::init_asset(origin, 1000).is_ok());
+		<Balances<T>>::insert(&caller, AssetId::TestAsset, 1000);
+		assert!(Module::<T>::init_asset(origin, AssetId::TestAsset, 1000).is_ok());
 
 		let commit_param = CommitmentParam::deserialize(COMMIT_PARAM.data);
 		let mut rng = ChaCha20Rng::from_seed([3u8; 32]);
@@ -89,16 +88,16 @@ benchmarks! {
 		RawOrigin::Signed(caller),
 		payload)
 	verify {
-		assert_eq!(TotalSupply::get(), 1000);
-		assert_eq!(PoolBalance::get(), 10);
+		assert_eq!(TotalSupply::get(AssetId::TestAsset), 1000);
+		assert_eq!(PoolBalance::get(AssetId::TestAsset), 10);
 	}
 
 
 	private_transfer {
 		let caller: T::AccountId = whitelisted_caller();
 		let origin: T::Origin = T::Origin::from(RawOrigin::Signed(caller.clone()));
-		<Balances<T>>::insert(&caller, 1000);
-		assert!(Module::<T>::init_asset(origin.clone(), 1000).is_ok());
+		<Balances<T>>::insert(&caller, AssetId::TestAsset, 1000);
+		assert!(Module::<T>::init_asset(origin.clone(), AssetId::TestAsset, 1000).is_ok());
 
 		let hash_param = HashParam::deserialize(HASH_PARAM.data);
 		let commit_param = CommitmentParam::deserialize(COMMIT_PARAM.data);
@@ -121,12 +120,12 @@ benchmarks! {
 
 		// mint the tokens
 		rng.fill_bytes(&mut sk);
-		let asset_1 = MantaAsset::sample(&commit_param, &sk,&AssetId::TestAsset, &15, &mut rng);
+		let asset_1 = MantaAsset::sample(&commit_param, &sk, &AssetId::TestAsset, &15, &mut rng);
 		let payload = generate_mint_payload(&asset_1);
 		Module::<T>::mint_private_asset(origin.clone(), payload).unwrap();
 
 		rng.fill_bytes(&mut sk);
-		let asset_2 = MantaAsset::sample(&commit_param, &sk,&AssetId::TestAsset, &25, &mut rng);
+		let asset_2 = MantaAsset::sample(&commit_param, &sk, &AssetId::TestAsset, &25, &mut rng);
 		let payload = generate_mint_payload(&asset_2);
 		Module::<T>::mint_private_asset(origin, payload).unwrap();
 
@@ -136,11 +135,11 @@ benchmarks! {
 
 		// extract the receivers
 		rng.fill_bytes(&mut sk);
-		let receiver_full_1 = MantaAssetFullReceiver::sample(&commit_param, &sk,&AssetId::TestAsset, &(), &mut rng);
+		let receiver_full_1 = MantaAssetFullReceiver::sample(&commit_param, &sk, &AssetId::TestAsset, &(), &mut rng);
 		let receiver_1 = receiver_full_1.prepared.process(&10, &mut rng);
 
 		rng.fill_bytes(&mut sk);
-		let receiver_full_2 = MantaAssetFullReceiver::sample(&commit_param, &sk,&AssetId::TestAsset, &(), &mut rng);
+		let receiver_full_2 = MantaAssetFullReceiver::sample(&commit_param, &sk, &AssetId::TestAsset, &(), &mut rng);
 		let receiver_2 = receiver_full_1.prepared.process(&30, &mut rng);
 
 		// form the transaction payload
@@ -160,15 +159,15 @@ benchmarks! {
 		payload)
 	verify {
 		assert_last_event::<T>(RawEvent::PrivateTransferred(caller.clone()).into());
-		assert_eq!(TotalSupply::get(), 1000);
-		assert_eq!(PoolBalance::get(), 40);
+		assert_eq!(TotalSupply::get(AssetId::TestAsset), 1000);
+		assert_eq!(PoolBalance::get(AssetId::TestAsset), 40);
 	}
 
 	reclaim {
 		let caller: T::AccountId = whitelisted_caller();
 		let origin: T::Origin = T::Origin::from(RawOrigin::Signed(caller.clone()));
-		<Balances<T>>::insert(&caller, 1000);
-		assert!(Module::<T>::init_asset(origin.clone(), 1000).is_ok());
+		<Balances<T>>::insert(&caller, AssetId::TestAsset, 1000);
+		assert!(Module::<T>::init_asset(origin.clone(), AssetId::TestAsset, 1000).is_ok());
 
 		let hash_param = HashParam::deserialize(HASH_PARAM.data);
 		let commit_param = CommitmentParam::deserialize(COMMIT_PARAM.data);
@@ -227,8 +226,8 @@ benchmarks! {
 		payload)
 	verify {
 		assert_last_event::<T>(RawEvent::PrivateReclaimed(caller.clone()).into());
-		assert_eq!(TotalSupply::get(), 1000);
-		assert_eq!(PoolBalance::get(), 10);
+		assert_eq!(TotalSupply::get(AssetId::TestAsset), 1000);
+		assert_eq!(PoolBalance::get(AssetId::TestAsset), 10);
 	}
 }
 

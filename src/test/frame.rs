@@ -128,11 +128,7 @@ fn test_mint_should_work() {
 		let asset = MantaAsset::sample(&commit_param, &sk, &AssetId::TestAsset, &10, &mut rng);
 
 		let payload = generate_mint_payload(&asset);
-		assert_ok!(Assets::mint_private_asset(
-			Origin::signed(1),
-			AssetId::TestAsset,
-			payload
-		));
+		assert_ok!(Assets::mint_private_asset(Origin::signed(1), payload));
 
 		assert_eq!(TotalSupply::get(AssetId::TestAsset), 1000);
 		assert_eq!(PoolBalance::get(AssetId::TestAsset), 10);
@@ -333,11 +329,7 @@ fn mint_tokens_helper(size: usize) -> Vec<MantaAsset> {
 		let payload = generate_mint_payload(&asset);
 
 		// mint a sender token
-		assert_ok!(Assets::mint_private_asset(
-			Origin::signed(1),
-			AssetId::TestAsset,
-			payload
-		));
+		assert_ok!(Assets::mint_private_asset(Origin::signed(1), payload));
 
 		pool += token_value;
 
@@ -535,11 +527,7 @@ fn reclaim_test_helper(iter: usize) {
 		);
 
 		// invoke the reclaim event
-		assert_ok!(Assets::reclaim(
-			Origin::signed(1),
-			AssetId::TestAsset,
-			payload
-		));
+		assert_ok!(Assets::reclaim(Origin::signed(1), payload));
 
 		// check the resulting status of the ledger storage
 		assert_eq!(TotalSupply::get(AssetId::TestAsset), 10_000_000);
