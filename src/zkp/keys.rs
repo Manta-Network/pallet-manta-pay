@@ -27,6 +27,8 @@ use manta_crypto::*;
 use manta_asset::*;
 use rand_chacha::ChaCha20Rng;
 use sha2::Sha512Trunc256;
+
+#[cfg(feature = "std")]
 use std::{fs::File, io::prelude::*};
 
 pub const TRANSFER_PK: VerificationKey = VerificationKey {
