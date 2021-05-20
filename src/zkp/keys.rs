@@ -39,6 +39,7 @@ pub const RECLAIM_PK: VerificationKey = VerificationKey {
 
 /// Generate the ZKP keys with a default seed, and write to
 /// `transfer_pk.bin` and `reclaim_pk.bin`.
+#[cfg(feature = "std")]
 pub fn write_zkp_keys() {
 	let hash_param_seed = [1u8; 32];
 	let commit_param_seed = [2u8; 32];
@@ -66,6 +67,7 @@ pub fn write_zkp_keys() {
 }
 
 // Generate ZKP keys for `private_transfer` circuit.
+#[cfg(feature = "std")]
 fn manta_transfer_zkp_key_gen(
 	hash_param_seed: &[u8; 32],
 	commit_param_seed: &[u8; 32],
@@ -144,6 +146,7 @@ fn manta_transfer_zkp_key_gen(
 	let mut vk_buf: Vec<u8> = vec![];
 	let transfer_vk = &pk.vk;
 	transfer_vk.serialize_uncompressed(&mut vk_buf).unwrap();
+	#[cfg(features = "std")]
 	println!("pk_uncompressed len {}", transfer_pk_bytes.len());
 	println!("vk: {:?}", vk_buf);
 
@@ -152,6 +155,7 @@ fn manta_transfer_zkp_key_gen(
 }
 
 // Generate ZKP keys for `reclaim` circuit.
+#[cfg(feature = "std")]
 fn manta_reclaim_zkp_key_gen(
 	hash_param_seed: &[u8; 32],
 	commit_param_seed: &[u8; 32],
