@@ -211,7 +211,7 @@ decl_module! {
 			VNList::put(Vec::<[u8; 32]>::new());
 			EncValueList::put(Vec::<[u8; 16]>::new());
 
-			Self::deposit_event(RawEvent::Issued(origin, total));
+			Self::deposit_event(RawEvent::Issued(asset_id, origin, total));
 		}
 
 		/// Move some assets from one holder to another.
@@ -241,7 +241,9 @@ decl_module! {
 			let target = T::Lookup::lookup(target)?;
 			ensure!(!amount.is_zero(), Error::<T>::AmountZero);
 			ensure!(origin_balance >= amount, Error::<T>::BalanceLow);
-			Self::deposit_event(RawEvent::Transferred(origin, target.clone(), amount));
+			Self::deposit_event(
+				RawEvent::Transferred(asset_id, origin, target.clone(), amount)
+			);
 
 			// todo: figure out the different between insert and mutate.
 			<Balances<T>>::insert(origin_account, asset_id, origin_balance - amount);
@@ -308,7 +310,9 @@ decl_module! {
 			coin_shards.update(&input.cm, hash_param);
 
 			// write back to ledger storage
-			Self::deposit_event(RawEvent::Minted(origin, input.amount));
+			Self::deposit_event(
+				RawEvent::Minted(input.asset_id, origin, input.amount)
+			);
 			CoinShards::put(coin_shards);
 
 			let old_pool_balance = PoolBalance::get(input.asset_id);
@@ -517,7 +521,9 @@ decl_module! {
 			coin_shards.update(&data.receiver.cm, hash_param);
 			CoinShards::put(coin_shards);
 
-			Self::deposit_event(RawEvent::PrivateReclaimed(origin));
+			Self::deposit_event(
+				RawEvent::PrivateReclaimed(data.asset_id, origin, data.reclaim_amount)
+			);
 			VNList::put(sn_list);
 			PoolBalance::mutate(data.asset_id, |balance| *balance = pool);
 			EncValueList::put(enc_value_list);
@@ -534,16 +540,16 @@ decl_event! {
 	pub enum Event<T> where
 		<T as frame_system::Config>::AccountId,
 	{
-		/// The asset was issued. \[owner, total_supply\]
-		Issued(AccountId, u64),
+		/// The asset was issued. \[asset_id, owner, total_supply\]
+		Issued(AssetId, AccountId, u64),
 		/// The asset was transferred. \[from, to, amount\]
-		Transferred(AccountId, AccountId, u64),
+		Transferred(AssetId, AccountId, AccountId, u64),
 		/// The asset was minted to private
-		Minted(AccountId, u64),
+		Minted(AssetId, AccountId, u64),
 		/// Private transfer
 		PrivateTransferred(AccountId),
 		/// The assets was reclaimed
-		PrivateReclaimed(AccountId),
+		PrivateReclaimed(AssetId, AccountId, u64),
 	}
 }
 

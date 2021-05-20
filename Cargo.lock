@@ -1704,7 +1704,7 @@ checksum = "624a8340c38c1b80fd549087862da4ba43e08858af025b236e509b6649fc13d5"
 [[package]]
 name = "pallet-manta-asset"
 version = "3.0.0"
-source = "git+https://github.com/Manta-Network/pallet-manta-asset?branch=impl-asset-id#eae133b9898ae0389925eb19fd473fba773ffddf"
+source = "git+https://github.com/Manta-Network/pallet-manta-asset?branch=impl-asset-id#54245c7d8fdc95d88438043b75b0474b16591ce1"
 dependencies = [
  "ark-crypto-primitives",
  "ark-ed-on-bls12-381",

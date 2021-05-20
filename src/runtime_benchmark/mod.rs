@@ -51,7 +51,7 @@ benchmarks! {
 		let total = 1000u64;
 	}: init_asset (RawOrigin::Signed(caller.clone()), AssetId::TestAsset, total)
 	verify {
-		assert_last_event::<T>(RawEvent::Issued(caller.clone(), total).into());
+		assert_last_event::<T>(RawEvent::Issued(AssetId::TestAsset, caller.clone(), total).into());
 		assert_eq!(<TotalSupply>::get(AssetId::TestAsset), total);
 	}
 
@@ -63,9 +63,15 @@ benchmarks! {
 		let recipient: T::AccountId = account("recipient", 0, SEED);
 		let recipient_lookup: <T::Lookup as StaticLookup>::Source = T::Lookup::unlookup(recipient.clone());
 		let transfer_amount = 10;
-	}: transfer_asset(RawOrigin::Signed(caller.clone()), recipient_lookup, AssetId::TestAsset, transfer_amount)
+	}: transfer_asset(
+		RawOrigin::Signed(caller.clone()),
+		recipient_lookup,
+		AssetId::TestAsset,
+		transfer_amount)
 	verify {
-		assert_last_event::<T>(RawEvent::Transferred(caller.clone(), recipient.clone(), transfer_amount).into());
+		assert_last_event::<T>(
+			RawEvent::Transferred(AssetId::TestAsset, caller.clone(), recipient.clone(), transfer_amount).into()
+		);
 		assert_eq!(Balances::<T>::get(&recipient, AssetId::TestAsset), transfer_amount);
 	}
 
@@ -225,7 +231,9 @@ benchmarks! {
 		RawOrigin::Signed(caller.clone()),
 		payload)
 	verify {
-		assert_last_event::<T>(RawEvent::PrivateReclaimed(caller.clone()).into());
+		assert_last_event::<T>(
+			RawEvent::PrivateReclaimed(AssetId::TestAsset, caller.clone(), reclaim_value).into()
+		);
 		assert_eq!(TotalSupply::get(AssetId::TestAsset), 1000);
 		assert_eq!(PoolBalance::get(AssetId::TestAsset), 10);
 	}
