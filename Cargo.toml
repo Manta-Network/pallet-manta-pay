@@ -71,4 +71,5 @@ std = [
 	"frame-benchmarking/std",
 	"frame-support/std",
 	"frame-system/std",
+	"pallet-manta-asset/std",
 ]
