@@ -15,11 +15,12 @@
 // along with pallet-manta-pay.  If not, see <http://www.gnu.org/licenses/>.
 
 use crate as pallet_manta_pay;
-use crate::{coin::*, param::Groth16Pk, serdes::*, *};
-use ark_groth16::create_random_proof;
+use crate::*;
 use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
 use ark_std::rand::{RngCore, SeedableRng};
 use frame_support::{assert_noop, assert_ok, parameter_types};
+use manta_crypto::*;
+use pallet_manta_asset::*;
 use rand_chacha::ChaCha20Rng;
 use sp_core::H256;
 use sp_runtime::{
@@ -27,7 +28,6 @@ use sp_runtime::{
 	traits::{BlakeTwo256, IdentityLookup},
 };
 use std::{boxed::Box, fs::File, io::prelude::*, string::String};
-use x25519_dalek::{PublicKey, StaticSecret};
 
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Test>;
 type Block = frame_system::mocking::MockBlock<Test>;
@@ -110,24 +110,20 @@ fn test_mint_should_work() {
 		assert_ok!(Assets::init_asset(Origin::signed(1), 1000));
 		assert_eq!(Assets::balance(1), 1000);
 		assert_eq!(PoolBalance::get(), 0);
+
 		let commit_param = CommitmentParam::deserialize(COMMIT_PARAM.data);
 		let mut rng = ChaCha20Rng::from_seed([3u8; 32]);
 		let mut sk = [0u8; 32];
 		rng.fill_bytes(&mut sk);
-		let (coin, pub_info, _priv_info) = make_coin(&commit_param, sk, 10, &mut rng);
-		let mut mint_data = [0u8; 96];
-		mint_data.copy_from_slice(
-			[coin.cm_bytes.clone(), pub_info.k, pub_info.s]
-				.concat()
-				.as_ref(),
-		);
+		let asset = MantaAsset::sample(&commit_param, &sk, &10, &mut rng);
 
-		assert_ok!(Assets::mint_private_asset(Origin::signed(1), 10, mint_data));
+		let payload = generate_mint_payload(&asset);
+		assert_ok!(Assets::mint_private_asset(Origin::signed(1), payload));
 
 		assert_eq!(TotalSupply::get(), 1000);
 		assert_eq!(PoolBalance::get(), 10);
 		let coin_shards = CoinShards::get();
-		assert!(coin_shards.exist(&coin.cm_bytes));
+		assert!(coin_shards.exist(&asset.commitment));
 		let sn_list = VNList::get();
 		assert_eq!(sn_list.len(), 0);
 	});
@@ -248,7 +244,7 @@ fn cannot_init_twice() {
 	});
 }
 
-fn mint_tokens(size: usize) -> Vec<(MantaCoin, MantaCoinPubInfo, MantaCoinPrivInfo)> {
+fn mint_tokens_helper(size: usize) -> Vec<MantaAsset> {
 	let commit_param = CommitmentParam::deserialize(COMMIT_PARAM.data);
 
 	let mut rng = ChaCha20Rng::from_seed([88u8; 32]);
@@ -261,34 +257,19 @@ fn mint_tokens(size: usize) -> Vec<(MantaCoin, MantaCoinPubInfo, MantaCoinPrivIn
 		// build a sender token
 		let token_value = 10 + i as u64;
 		rng.fill_bytes(&mut sk);
-		let (sender, sender_pub_info, sender_priv_info) =
-			make_coin(&commit_param, sk, token_value, &mut rng);
-
-		let mut mint_data = [0u8; 96];
-		mint_data.copy_from_slice(
-			[
-				sender.cm_bytes.clone(),
-				sender_pub_info.k,
-				sender_pub_info.s,
-			]
-			.concat()
-			.as_ref(),
-		);
+		let asset = MantaAsset::sample(&commit_param, &sk, &token_value, &mut rng);
+		let payload = generate_mint_payload(&asset);
 
 		// mint a sender token
-		assert_ok!(Assets::mint_private_asset(
-			Origin::signed(1),
-			token_value,
-			mint_data
-		));
+		assert_ok!(Assets::mint_private_asset(Origin::signed(1), payload));
 
 		pool += token_value;
 
 		// sanity checks
 		assert_eq!(PoolBalance::get(), pool);
 		let coin_shards = CoinShards::get();
-		assert!(coin_shards.exist(&sender.cm_bytes));
-		senders.push((sender, sender_pub_info, sender_priv_info));
+		assert!(coin_shards.exist(&asset.commitment));
+		senders.push(asset);
 	}
 	senders
 }
@@ -319,173 +300,79 @@ fn transfer_test_helper(iter: usize) {
 	let mut sk = [0u8; 32];
 
 	let size = iter << 1;
-	let senders = mint_tokens(size);
+	let senders = mint_tokens_helper(size);
 	let pool = PoolBalance::get();
 
 	let sn_list = VNList::get();
 	assert_eq!(sn_list.len(), 0);
 
 	// build receivers
-	let mut receivers = Vec::new();
+	let mut receivers_full = Vec::new();
+	let mut receivers_processed = Vec::new();
 	for i in 0usize..size {
 		// build a receiver token
 		rng.fill_bytes(&mut sk);
-		let (receiver, receiver_pub_info, receiver_priv_info) =
-			make_coin(&commit_param, sk, 10 + i as u64, &mut rng);
-		receivers.push((receiver, receiver_pub_info, receiver_priv_info));
+		let receiver_full = MantaAssetFullReceiver::sample(&commit_param, &sk, &(), &mut rng);
+		let receiver = receiver_full.prepared.process(&(i as u64 + 10), &mut rng);
+		receivers_full.push(receiver_full);
+		receivers_processed.push(receiver);
 	}
 
 	for i in 0usize..iter {
 		let coin_shards = CoinShards::get();
+
+		// build sender mata data
 		let sender_1 = senders[i * 2].clone();
 		let sender_2 = senders[i * 2 + 1].clone();
-		let receiver_1 = receivers[i * 2 + 1].clone();
-		let receiver_2 = receivers[i * 2].clone();
-
-		let shard_index_1 = sender_1.0.cm_bytes[0] as usize;
-		let shard_index_2 = sender_2.0.cm_bytes[0] as usize;
-
-		// generate the merkle trees
+		let shard_index_1 = sender_1.commitment[0] as usize;
+		let shard_index_2 = sender_2.commitment[0] as usize;
 		let list_1 = coin_shards.shard[shard_index_1].list.clone();
-		let tree_1 = param::LedgerMerkleTree::new(hash_param.clone(), &list_1).unwrap();
-		let merkle_root_1 = tree_1.root();
-
-		let index_1 = list_1
-			.iter()
-			.position(|x| *x == sender_1.0.cm_bytes)
-			.unwrap();
-		let path_1 = tree_1
-			.generate_proof(index_1, &sender_1.0.cm_bytes)
-			.unwrap();
-
+		let sender_1 = SenderMetaData::build(hash_param.clone(), sender_1, &list_1);
 		let list_2 = coin_shards.shard[shard_index_2].list.clone();
-		let tree_2 = param::LedgerMerkleTree::new(hash_param.clone(), &list_2).unwrap();
-		let merkle_root_2 = tree_2.root();
+		let sender_2 = SenderMetaData::build(hash_param.clone(), sender_2, &list_2);
 
-		let index_2 = list_2
-			.iter()
-			.position(|x| *x == sender_2.0.cm_bytes)
-			.unwrap();
-		let path_2 = tree_2
-			.generate_proof(index_2, &sender_2.0.cm_bytes)
-			.unwrap();
+		// extract the receivers
+		let receiver_1 = receivers_processed[i * 2 + 1].clone();
+		let receiver_2 = receivers_processed[i * 2].clone();
 
-		// generate circuit
-		let circuit = crypto::TransferCircuit {
-			commit_param: commit_param.clone(),
-			hash_param: hash_param.clone(),
-
-			sender_coin_1: sender_1.0.clone(),
-			sender_pub_info_1: sender_1.1.clone(),
-			sender_priv_info_1: sender_1.2.clone(),
-			sender_membership_1: path_1,
-			root_1: merkle_root_1,
-
-			sender_coin_2: sender_2.0.clone(),
-			sender_pub_info_2: sender_2.1.clone(),
-			sender_priv_info_2: sender_2.2.clone(),
-			sender_membership_2: path_2,
-			root_2: merkle_root_2,
-
-			receiver_coin_1: receiver_1.0.clone(),
-			receiver_k_1: receiver_1.1.k,
-			receiver_s_1: receiver_1.1.s,
-			receiver_value_1: receiver_1.2.value,
-
-			receiver_coin_2: receiver_2.0.clone(),
-			receiver_k_2: receiver_2.1.k,
-			receiver_s_2: receiver_2.1.s,
-			receiver_value_2: receiver_2.2.value,
-		};
-
-		// generate ZKP
-		let proof = create_random_proof(circuit, &pk, &mut rng).unwrap();
-		let mut proof_bytes = [0u8; 192];
-		proof.serialize(proof_bytes.as_mut()).unwrap();
-
-		// ciphertexts
-		let receiver_sk_1 = StaticSecret::new(&mut rng);
-		let receiver_pk_1 = PublicKey::from(&receiver_sk_1);
-		let receiver_pk_bytes_1 = receiver_pk_1.to_bytes();
-		let receiver_sk_bytes_1 = receiver_sk_1.to_bytes();
-		let (sender_pk_bytes_1, cipher_1) =
-			crypto::manta_dh_enc(&receiver_pk_bytes_1, receiver_1.2.value, &mut rng);
-
-		let receiver_sk_2 = StaticSecret::new(&mut rng);
-		let receiver_pk_2 = PublicKey::from(&receiver_sk_2);
-		let receiver_pk_bytes_2 = receiver_pk_2.to_bytes();
-		let receiver_sk_bytes_2 = receiver_sk_2.to_bytes();
-		let (sender_pk_bytes_2, cipher_2) =
-			crypto::manta_dh_enc(&receiver_pk_bytes_2, receiver_2.2.value, &mut rng);
-
-		// make the transfer inputs
-		let mut sender_data_1 = [0u8; 96];
-		sender_data_1.copy_from_slice(
-			[
-				sender_1.1.k,
-				sender_1.2.sn,
-				coin_shards.shard[shard_index_1].root,
-			]
-			.concat()
-			.as_ref(),
+		// form the transaction payload
+		let payload = generate_private_transfer_payload(
+			commit_param.clone(),
+			hash_param.clone(),
+			&pk,
+			sender_1,
+			sender_2,
+			receiver_1.clone(),
+			receiver_2.clone(),
+			&mut rng,
 		);
 
-		let mut sender_data_2 = [0u8; 96];
-		sender_data_2.copy_from_slice(
-			[
-				sender_2.1.k,
-				sender_2.2.sn,
-				coin_shards.shard[shard_index_2].root,
-			]
-			.concat()
-			.as_ref(),
-		);
-
-		let mut receiver_data_1 = [0u8; 80];
-		receiver_data_1.copy_from_slice(
-			[
-				receiver_1.1.k.as_ref(),
-				receiver_1.0.cm_bytes.as_ref(),
-				cipher_1.as_ref(),
-			]
-			.concat()
-			.as_ref(),
-		);
-
-		let mut receiver_data_2 = [0u8; 80];
-		receiver_data_2.copy_from_slice(
-			[
-				receiver_2.1.k.as_ref(),
-				receiver_2.0.cm_bytes.as_ref(),
-				cipher_2.as_ref(),
-			]
-			.concat()
-			.as_ref(),
-		);
 		// invoke the transfer event
-		assert_ok!(Assets::private_transfer(
-			Origin::signed(1),
-			sender_data_1,
-			sender_data_2,
-			receiver_data_1,
-			receiver_data_2,
-			proof_bytes,
-		));
+		assert_ok!(Assets::private_transfer(Origin::signed(1), payload));
 
 		// check the ciphertexts
 		let enc_value_list = EncValueList::get();
 		assert_eq!(enc_value_list.len(), 2 * (i + 1));
-		assert_eq!(enc_value_list[2 * i], cipher_1);
-		assert_eq!(enc_value_list[2 * i + 1], cipher_2);
+		assert_eq!(enc_value_list[2 * i], receiver_1.ciphertext);
+		assert_eq!(enc_value_list[2 * i + 1], receiver_2.ciphertext);
+
+		let mut ciphertext_1 = [0u8; 48];
+		ciphertext_1[0..16].copy_from_slice(receiver_1.ciphertext.as_ref());
+		ciphertext_1[16..48].copy_from_slice(receiver_1.sender_pk.as_ref());
+		let sk_1 = receivers_full[i * 2 + 1].spend.ecsk.clone();
 		assert_eq!(
-			crypto::manta_dh_dec(&cipher_1, &sender_pk_bytes_1, &receiver_sk_bytes_1),
-			receiver_1.2.value
-		);
-		assert_eq!(
-			crypto::manta_dh_dec(&cipher_2, &sender_pk_bytes_2, &receiver_sk_bytes_2),
-			receiver_2.2.value
+			<MantaCrypto as Ecies>::decrypt(&sk_1, &ciphertext_1),
+			receiver_1.value
 		);
 
+		let mut ciphertext_2 = [0u8; 48];
+		ciphertext_2[0..16].copy_from_slice(receiver_2.ciphertext.as_ref());
+		ciphertext_2[16..48].copy_from_slice(receiver_2.sender_pk.as_ref());
+		let sk_2 = receivers_full[i * 2].spend.ecsk.clone();
+		assert_eq!(
+			<MantaCrypto as Ecies>::decrypt(&sk_2, &ciphertext_2),
+			receiver_2.value
+		);
 		assert_eq!(PoolBalance::get(), pool);
 	}
 
@@ -494,9 +381,9 @@ fn transfer_test_helper(iter: usize) {
 	let coin_shards = CoinShards::get();
 	let sn_list = VNList::get();
 	for i in 0usize..size {
-		assert!(coin_shards.exist(&senders[i].0.cm_bytes));
-		assert!(coin_shards.exist(&receivers[i].0.cm_bytes));
-		assert_eq!(sn_list[i], senders[i].2.sn);
+		assert!(coin_shards.exist(&senders[i].commitment));
+		assert!(coin_shards.exist(&receivers_processed[i].commitment));
+		assert_eq!(sn_list[i], senders[i].void_number);
 	}
 }
 
@@ -510,7 +397,7 @@ fn reclaim_test_helper(iter: usize) {
 	let commit_param = CommitmentParam::deserialize(COMMIT_PARAM.data);
 
 	let size = iter << 1;
-	let senders = mint_tokens(size);
+	let senders = mint_tokens_helper(size);
 	let mut pool = PoolBalance::get();
 
 	let mut rng = ChaCha20Rng::from_seed([3u8; 32]);
@@ -531,131 +418,48 @@ fn reclaim_test_helper(iter: usize) {
 
 	for i in 0usize..iter {
 		let coin_shards = CoinShards::get();
+
+		// build sender mata data
 		let sender_1 = senders[i * 2].clone();
 		let sender_2 = senders[i * 2 + 1].clone();
-
-		let shard_index_1 = sender_1.0.cm_bytes[0] as usize;
-		let shard_index_2 = sender_2.0.cm_bytes[0] as usize;
-
-		// generate the merkle trees
+		let shard_index_1 = sender_1.commitment[0] as usize;
+		let shard_index_2 = sender_2.commitment[0] as usize;
 		let list_1 = coin_shards.shard[shard_index_1].list.clone();
-		let tree_1 = param::LedgerMerkleTree::new(hash_param.clone(), &list_1).unwrap();
-		let merkle_root_1 = tree_1.root();
-
-		let index_1 = list_1
-			.iter()
-			.position(|x| *x == sender_1.0.cm_bytes)
-			.unwrap();
-		let path_1 = tree_1
-			.generate_proof(index_1, &sender_1.0.cm_bytes)
-			.unwrap();
-
+		let sender_1 = SenderMetaData::build(hash_param.clone(), sender_1, &list_1);
 		let list_2 = coin_shards.shard[shard_index_2].list.clone();
-		let tree_2 = param::LedgerMerkleTree::new(hash_param.clone(), &list_2).unwrap();
-		let merkle_root_2 = tree_2.root();
-
-		let index_2 = list_2
-			.iter()
-			.position(|x| *x == sender_2.0.cm_bytes)
-			.unwrap();
-		let path_2 = tree_2
-			.generate_proof(index_2, &sender_2.0.cm_bytes)
-			.unwrap();
+		let sender_2 = SenderMetaData::build(hash_param.clone(), sender_2, &list_2);
 
 		rng.fill_bytes(&mut sk);
-		let receiver = make_coin(&commit_param, sk, 20 + i as u64, &mut rng);
+		let receiver_full = MantaAssetFullReceiver::sample(&commit_param, &sk, &(), &mut rng);
+		let receiver = receiver_full.prepared.process(&10, &mut rng);
 
-		let token_value = sender_1.2.value + sender_2.2.value - receiver.2.value;
+		let reclaim_value =
+			sender_1.asset.priv_info.value + sender_2.asset.priv_info.value - receiver.value;
 
-		// generate circuit
-		let circuit = crypto::ReclaimCircuit {
-			commit_param: commit_param.clone(),
-			hash_param: hash_param.clone(),
-
-			sender_coin_1: sender_1.0.clone(),
-			sender_pub_info_1: sender_1.1.clone(),
-			sender_priv_info_1: sender_1.2.clone(),
-			sender_membership_1: path_1,
-			root_1: merkle_root_1,
-
-			sender_coin_2: sender_2.0.clone(),
-			sender_pub_info_2: sender_2.1.clone(),
-			sender_priv_info_2: sender_2.2.clone(),
-			sender_membership_2: path_2,
-			root_2: merkle_root_2,
-
-			receiver_coin: receiver.0.clone(),
-			receiver_k: receiver.1.k,
-			receiver_s: receiver.1.s,
-			receiver_value: receiver.2.value,
-
-			reclaim_value: token_value,
-		};
-
-		// generate ZKP
-		let proof = create_random_proof(circuit, &pk, &mut rng).unwrap();
-		let mut proof_bytes = [0u8; 192];
-		proof.serialize(proof_bytes.as_mut()).unwrap();
-
-		// ciphertexts
-		let receiver_sk = StaticSecret::new(&mut rng);
-		let receiver_pk = PublicKey::from(&receiver_sk);
-		let receiver_pk_bytes = receiver_pk.to_bytes();
-		let (_sender_pk_bytes, cipher) =
-			crypto::manta_dh_enc(&receiver_pk_bytes, receiver.2.value, &mut rng);
-
-		// make the reclaim inputs
-		let mut sender_data_1 = [0u8; 96];
-		sender_data_1.copy_from_slice(
-			[
-				sender_1.1.k,
-				sender_1.2.sn,
-				coin_shards.shard[shard_index_1].root,
-			]
-			.concat()
-			.as_ref(),
+		// form the transaction payload
+		let payload = generate_reclaim_payload(
+			commit_param.clone(),
+			hash_param.clone(),
+			&pk,
+			sender_1.clone(),
+			sender_2.clone(),
+			receiver,
+			reclaim_value,
+			&mut rng,
 		);
 
-		let mut sender_data_2 = [0u8; 96];
-		sender_data_2.copy_from_slice(
-			[
-				sender_2.1.k,
-				sender_2.2.sn,
-				coin_shards.shard[shard_index_2].root,
-			]
-			.concat()
-			.as_ref(),
-		);
-
-		let mut receiver_data = [0u8; 80];
-		receiver_data.copy_from_slice(
-			[
-				receiver.1.k.as_ref(),
-				receiver.0.cm_bytes.as_ref(),
-				cipher.as_ref(),
-			]
-			.concat()
-			.as_ref(),
-		);
 		// invoke the reclaim event
-		assert_ok!(Assets::reclaim(
-			Origin::signed(1),
-			token_value,
-			sender_data_1,
-			sender_data_2,
-			receiver_data,
-			proof_bytes,
-		));
+		assert_ok!(Assets::reclaim(Origin::signed(1), payload));
 
 		// check the resulting status of the ledger storage
 		assert_eq!(TotalSupply::get(), 10_000_000);
-		pool -= token_value;
+		pool -= reclaim_value;
 		assert_eq!(PoolBalance::get(), pool);
 
 		let sn_list = VNList::get();
 		assert_eq!(sn_list.len(), 2 * (i + 1));
-		assert_eq!(sn_list[i * 2], sender_1.2.sn);
-		assert_eq!(sn_list[i * 2 + 1], sender_2.2.sn);
+		assert_eq!(sn_list[i * 2], sender_1.asset.void_number);
+		assert_eq!(sn_list[i * 2 + 1], sender_2.asset.void_number);
 	}
 	let enc_value_list = EncValueList::get();
 	assert_eq!(enc_value_list.len(), iter);

@@ -48,10 +48,10 @@ jobs:
           rustup component add rustfmt
       - name: Check Formatting
         run: |
-          cargo fmt --all -- --check
+          cargo +nightly fmt --all -- --check
       - name: Check Clippy
         run: |
-          cargo clippy --release
+          cargo clippy --release --all
       - name: Check Build
         run: |
           cargo check --release

@@ -16,7 +16,7 @@
 
 //! # Manta pay Module
 //!
-//! A simple, secure module for manta anonymous payment
+//! A simple, secure module for manta pay: an anonymous transfer protocol
 //!
 //! ## Overview
 //!
@@ -25,9 +25,11 @@
 //!
 //! * Asset Issuance
 //! * Asset Transfer
+//! * Private Asset Mint
+//! * Private Asset Transfer
+//! * Private Asset Reclaim
 //!
-//!
-//! To use it in your runtime, you need to implement the assets [`Trait`](./trait.Trait.html).
+//! To use it in your runtime, you need to implement the assets [`Config`](./config.Config.html).
 //!
 //! The supported dispatchable functions are documented in the [`Call`](./enum.Call.html) enum.
 //!
@@ -35,30 +37,47 @@
 //!
 //! * **Asset issuance:** The creation of the asset (note: this asset can only be created once)
 //! * **Asset transfer:** The action of transferring assets from one account to another.
-//! * **Asset destruction:** The process of an account removing its entire holding of an asset.
+//! * **Private asset mint:** The action of converting certain number of `Asset`s into an UTXO
+//! that holds same number of private assets.
+//! * **Private asset transfer:** The action of transferring certain number of private assets from
+//! two UTXOs to another two UTXOs.
+//! * **Private asset reclaim:** The action of transferring certain number of private assets from
+//! two UTXOs to another UTXO, and converting the remaining private assets back to public
+//! assets.
 //!
-//! The assets system in Substrate is designed to make the following possible:
+//! The assets system in Manta is designed to make the following possible:
 //!
-//! * Issue a unique asset to its creator's account.
-//! * Move assets between accounts.
+//! * Issue a public asset to its creator's account.
+//! * Move public assets between accounts.
+//! * Converting public assets to private assets, and vice versa.
+//! * Move private assets between accounts (in UTXO model).
 //!
 //! ## Interface
 //!
 //! ### Dispatchable Functions
 //!
-//! * `issue` - Issues the total supply of a new fungible asset to the account of the caller of the function.
-//! * `transfer` - Transfers an `amount` of units of fungible asset `id` from the balance of
+//! * `init_asset` - Issues the total supply of a new fungible asset to the account of the caller of the function.
+//! * `transfer_asset` - Transfers an `amount` of units of fungible asset `id` from the balance of
 //! the function caller's account (`origin`) to a `target` account.
-//! * `destroy` - Destroys the entire holding of a fungible asset `id` associated with the account
-//! that called the function.
+//! * `mint_private_asset` - Converting an `amount` of units of fungible asset `id` from the caller to a private UTXO.
+//! (The caller does not need to be the owner of this UTXO)
+//! * `private_transfer` - Transfer two input UTXOs into two output UTXOs. Require that 1) the input UTXOs are
+//! already in the ledger and are not spend before 2) the sum of private assets in input UTXOs matches that
+//! of the output UTXOs. The requirements are guaranteed via ZK proof.
+//! * `reclaim` - Transfer two input UTXOs into one output UTXOs, and convert the remaining assets to the
+//! public assets. Require that 1) the input UTXOs are already in the ledger and are not spend before; 2) the
+//! sum of private assets in input UTXOs matches that of the output UTXO + the reclaimed amount. The
+//! requirements are guaranteed via ZK proof.
 //!
-//! Please refer to the [`Call`](./enum.Call.html) enum and its associated variants for documentation on each function.
+//! Please refer to the [`Call`](./enum.Call.html) enum and its associated variants for documentation on each
+//! function.
 //!
 //! ### Public Functions
 //! <!-- Original author of descriptions: @gavofyork -->
 //!
 //! * `balance` - Get the asset balance of `who`.
 //! * `total_supply` - Get the total supply of an asset `id`.
+//! * `pool_balance` - Get the total number of private asset.
 //!
 //! Please refer to the [`Module`](./struct.Module.html) struct for details on publicly available functions.
 //!
@@ -69,6 +88,7 @@
 //! * Initiate the fungible asset for a token distribution event (airdrop).
 //! * Query the fungible asset holding balance of an account.
 //! * Query the total supply of a fungible asset that has been issued.
+//! * Query the total number of private fungible asset that has been minted and not reclaimed.
 //!
 //! ### Prerequisites
 //!
@@ -82,44 +102,35 @@
 // Ensure we're `no_std` when compiling for Wasm.
 #![cfg_attr(not(feature = "std"), no_std)]
 
-mod benchmark;
-mod checksum;
-mod coin;
-mod constants;
-mod crypto;
-mod param;
-mod serdes;
-mod shard;
+mod ledger;
+mod payload;
+mod runtime_benchmark;
+mod zkp;
 
-#[cfg(test)]
-mod bench_composite;
 #[cfg(test)]
 mod test;
 #[cfg(test)]
 #[macro_use]
 extern crate std;
 
+pub use ledger::{Shard, Shards};
+pub use manta_crypto::MantaSerDes;
+pub use payload::*;
+pub use zkp::*;
 pub mod weights;
 pub use weights::WeightInfo;
 
-pub use coin::*;
-pub use constants::{COMMIT_PARAM, HASH_PARAM, RECLAIM_PK, TRANSFER_PK};
-pub use param::*;
-pub use serdes::MantaSerDes;
-pub use shard::{Shard, Shards};
-
-// TODO: this interface is only exposed for benchmarking
-// use a feature gate to control this expose
-#[allow(unused_imports)]
-pub use crypto::*;
-
 use ark_std::vec::Vec;
-use checksum::Checksum;
 use frame_support::{decl_error, decl_event, decl_module, decl_storage, ensure};
 use frame_system::ensure_signed;
-use shard::LedgerSharding;
+use ledger::LedgerSharding;
+use manta_crypto::*;
+use pallet_manta_asset::SanityCheck;
 use sp_runtime::traits::{StaticLookup, Zero};
 use sp_std::prelude::*;
+
+/// An abstract struct for manta-pay.
+pub struct MantaPay;
 
 /// The module configuration trait.
 pub trait Config: frame_system::Config {
@@ -219,21 +230,20 @@ decl_module! {
 		/// Given an amount, and relevant data, mint the token to the ledger
 		#[weight = T::WeightInfo::mint_private_asset()]
 		fn mint_private_asset(origin,
-			amount: u64,
-			input_data: [u8; 96]
+			payload: [u8; 104]
 		) {
 			// todo: Implement the fix denomination method
 
 			// parse the input_data into input
-			let input = MintData::deserialize(input_data.as_ref());
+			let input = MintData::deserialize(payload.as_ref());
 
 			// get the original balance
 			ensure!(Self::is_init(), <Error<T>>::BasecoinNotInit);
 			let origin = ensure_signed(origin)?;
 			let origin_account = origin.clone();
-			ensure!(!amount.is_zero(), Error::<T>::AmountZero);
+			ensure!(!input.amount.is_zero(), Error::<T>::AmountZero);
 			let origin_balance = <Balances<T>>::get(&origin_account);
-			ensure!(origin_balance >= amount, Error::<T>::BalanceLow);
+			ensure!(origin_balance >= input.amount, Error::<T>::BalanceLow);
 
 			// get the parameter checksum from the ledger
 			// and make sure the parameters match
@@ -256,7 +266,7 @@ decl_module! {
 
 			// check the validity of the commitment
 			ensure!(
-				input.sanity_check(amount, &commit_param),
+				input.sanity(&commit_param),
 				<Error<T>>::MintFail
 			);
 
@@ -271,12 +281,12 @@ decl_module! {
 			coin_shards.update(&input.cm, hash_param);
 
 			// write back to ledger storage
-			Self::deposit_event(RawEvent::Minted(origin, amount));
+			Self::deposit_event(RawEvent::Minted(origin, input.amount));
 			CoinShards::put(coin_shards);
 
 			let old_pool_balance = PoolBalance::get();
-			PoolBalance::put(old_pool_balance + amount);
-			<Balances<T>>::insert(origin_account, origin_balance - amount);
+			PoolBalance::put(old_pool_balance + input.amount);
+			<Balances<T>>::insert(origin_account, origin_balance - input.amount);
 		}
 
 
@@ -286,17 +296,9 @@ decl_module! {
 		/// Neither the values nor the identities is leaked during this process.
 		#[weight = T::WeightInfo::private_transfer()]
 		fn private_transfer(origin,
-			sender_data_1: [u8; 96],
-			sender_data_2: [u8; 96],
-			receiver_data_1: [u8; 80],
-			receiver_data_2: [u8; 80],
-			proof: [u8; 192],
+			payload: [u8; 608],
 		) {
-
-			let sender_data_1 = SenderData::deserialize(sender_data_1.as_ref());
-			let sender_data_2 = SenderData::deserialize(sender_data_2.as_ref());
-			let receiver_data_1 = ReceiverData::deserialize(receiver_data_1.as_ref());
-			let receiver_data_2 = ReceiverData::deserialize(receiver_data_2.as_ref());
+			let data = PrivateTransferData::deserialize(payload.as_ref());
 			ensure!(Self::is_init(), <Error<T>>::BasecoinNotInit);
 			let origin = ensure_signed(origin)?;
 
@@ -314,25 +316,25 @@ decl_module! {
 			// check if vn_old already spent
 			let mut sn_list = VNList::get();
 			ensure!(
-				!sn_list.contains(&sender_data_1.sn),
+				!sn_list.contains(&data.sender_1.void_number),
 				<Error<T>>::MantaCoinSpent
 			);
-			sn_list.push(sender_data_1.sn);
+			sn_list.push(data.sender_1.void_number);
 			ensure!(
-				!sn_list.contains(&sender_data_2.sn),
+				!sn_list.contains(&data.sender_2.void_number),
 				<Error<T>>::MantaCoinSpent
 			);
-			sn_list.push(sender_data_2.sn);
+			sn_list.push(data.sender_2.void_number);
 
 			// get the ledger state from the ledger
 			// and check the validity of the state
 			let mut coin_shards = CoinShards::get();
 			ensure!(
-				coin_shards.check_root(&sender_data_1.root),
+				coin_shards.check_root(&data.sender_1.root),
 				<Error<T>>::InvalidLedgerState
 			);
 			ensure!(
-				coin_shards.check_root(&sender_data_2.root),
+				coin_shards.check_root(&data.sender_2.root),
 				<Error<T>>::InvalidLedgerState
 			);
 
@@ -341,15 +343,15 @@ decl_module! {
 			// with sharding, there is no point to batch update
 			// since the commitments are likely to go to different shards
 			ensure!(
-				!coin_shards.exist(&receiver_data_1.cm),
+				!coin_shards.exist(&data.receiver_1.cm),
 				<Error<T>>::MantaCoinExist
 			);
-			coin_shards.update(&receiver_data_1.cm, hash_param.clone());
+			coin_shards.update(&data.receiver_1.cm, hash_param.clone());
 			ensure!(
-				!coin_shards.exist(&receiver_data_2.cm),
+				!coin_shards.exist(&data.receiver_2.cm),
 				<Error<T>>::MantaCoinExist
 			);
-			coin_shards.update(&receiver_data_2.cm, hash_param);
+			coin_shards.update(&data.receiver_2.cm, hash_param);
 
 			// get the verification key from the ledger
 			let transfer_vk_checksum = TransferZKPKeyChecksum::get();
@@ -362,13 +364,7 @@ decl_module! {
 
 			// check validity of zkp
 			ensure!(
-				crypto::manta_verify_transfer_zkp(
-					&transfer_vk,
-					&proof,
-					&sender_data_1,
-					&sender_data_2,
-					&receiver_data_1,
-					&receiver_data_2),
+				data.verify(&transfer_vk),
 				<Error<T>>::ZkpVerificationFail,
 			);
 
@@ -376,8 +372,8 @@ decl_module! {
 
 			// update ledger storage
 			let mut enc_value_list = EncValueList::get();
-			enc_value_list.push(receiver_data_1.cipher);
-			enc_value_list.push(receiver_data_2.cipher);
+			enc_value_list.push(data.receiver_1.cipher);
+			enc_value_list.push(data.receiver_2.cipher);
 
 			Self::deposit_event(RawEvent::PrivateTransferred(origin));
 			CoinShards::put(coin_shards);
@@ -396,16 +392,9 @@ decl_module! {
 		/// __TODO__: shall we use a different receiver rather than `origin`?
 		#[weight = T::WeightInfo::reclaim()]
 		fn reclaim(origin,
-			amount: u64,
-			sender_data_1: [u8; 96],
-			sender_data_2: [u8; 96],
-			receiver_data: [u8; 80],
-			proof: [u8; 192],
+			payload: [u8; 504],
 		) {
-
-			let sender_data_1 = SenderData::deserialize(sender_data_1.as_ref());
-			let sender_data_2 = SenderData::deserialize(sender_data_2.as_ref());
-			let receiver_data = ReceiverData::deserialize(receiver_data.as_ref());
+			let data = ReclaimData::deserialize(payload.as_ref());
 
 			let origin = ensure_signed(origin)?;
 			let origin_account = origin.clone();
@@ -426,21 +415,21 @@ decl_module! {
 
 			// check the balance is greater than amount
 			let mut pool = PoolBalance::get();
-			ensure!(pool>=amount, <Error<T>>::PoolOverdrawn);
-			pool -= amount;
+			ensure!(pool>=data.reclaim_amount, <Error<T>>::PoolOverdrawn);
+			pool -= data.reclaim_amount;
 
 			// check if sn_old already spent
 			let mut sn_list = VNList::get();
 			ensure!(
-				!sn_list.contains(&sender_data_1.sn),
+				!sn_list.contains(&data.sender_1.void_number),
 				<Error<T>>::MantaCoinSpent
 			);
-			sn_list.push(sender_data_1.sn);
+			sn_list.push(data.sender_1.void_number);
 			ensure!(
-				!sn_list.contains(&sender_data_2.sn),
+				!sn_list.contains(&data.sender_2.void_number),
 				<Error<T>>::MantaCoinSpent
 			);
-			sn_list.push(sender_data_2.sn);
+			sn_list.push(data.sender_2.void_number);
 
 			// get the coin list
 			let mut coin_shards = CoinShards::get();
@@ -455,29 +444,23 @@ decl_module! {
 			// get the ledger state from the ledger
 			// and check the validity of the state
 			ensure!(
-				coin_shards.check_root(&sender_data_1.root),
+				coin_shards.check_root(&data.sender_1.root),
 				<Error<T>>::InvalidLedgerState
 			);
 			ensure!(
-				coin_shards.check_root(&sender_data_2.root),
+				coin_shards.check_root(&data.sender_2.root),
 				<Error<T>>::InvalidLedgerState
 			);
 			// check the commitment are not in the list already
 			ensure!(
-				!coin_shards.exist(&receiver_data.cm),
+				!coin_shards.exist(&data.receiver.cm),
 				<Error<T>>::MantaCoinSpent
 			);
 
 
 			// check validity of zkp
 			ensure!(
-				crypto::manta_verify_reclaim_zkp(
-					&reclaim_vk,
-					amount,
-					&proof,
-					&sender_data_1,
-					&sender_data_2,
-					&receiver_data),
+				data.verify(&reclaim_vk),
 				<Error<T>>::ZkpVerificationFail,
 			);
 
@@ -485,17 +468,17 @@ decl_module! {
 
 			// update ledger storage
 			let mut enc_value_list = EncValueList::get();
-			enc_value_list.push(receiver_data.cipher);
+			enc_value_list.push(data.receiver.cipher);
 
 
-			coin_shards.update(&receiver_data.cm, hash_param);
+			coin_shards.update(&data.receiver.cm, hash_param);
 			CoinShards::put(coin_shards);
 
 			Self::deposit_event(RawEvent::PrivateReclaimed(origin));
 			VNList::put(sn_list);
 			PoolBalance::put(pool);
 			EncValueList::put(enc_value_list);
-			<Balances<T>>::insert(origin_account, origin_balance + amount);
+			<Balances<T>>::insert(origin_account, origin_balance + data.reclaim_amount);
 		}
 	}
 }

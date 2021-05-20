@@ -14,7 +14,9 @@
 // You should have received a copy of the GNU General Public License
 // along with pallet-manta-pay.  If not, see <http://www.gnu.org/licenses/>.
 
-//! Test utilities
+//! Test utilities.
+//! Most of the code in this repo follows from
+//! https://github.com/paritytech/substrate/blob/master/frame/balances/src/tests_composite.rs
 
 #![cfg(feature = "runtime-benchmarks")]
 

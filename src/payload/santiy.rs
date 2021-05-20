@@ -14,5 +14,14 @@
 // You should have received a copy of the GNU General Public License
 // along with pallet-manta-pay.  If not, see <http://www.gnu.org/licenses/>.
 
-mod crypto;
-mod frame;
+use super::*;
+use pallet_manta_asset::SanityCheck;
+
+impl SanityCheck for MintData {
+	type Param = CommitmentParam;
+
+	fn sanity(&self, param: &Self::Param) -> bool {
+		let payload = [self.amount.to_le_bytes().as_ref(), self.k.as_ref()].concat();
+		<MantaCrypto as Commitment>::check_commitment(&param, &payload, &self.s, &self.cm)
+	}
+}

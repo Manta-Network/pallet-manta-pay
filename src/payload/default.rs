@@ -14,18 +14,28 @@
 // You should have received a copy of the GNU General Public License
 // along with pallet-manta-pay.  If not, see <http://www.gnu.org/licenses/>.
 
-mod aux;
-mod dh;
-mod reclaim;
-mod transfer;
-mod zkp;
+use super::*;
 
-pub(crate) use aux::comm_open;
-pub use aux::merkle_root;
-#[allow(unused_imports)]
-pub use reclaim::ReclaimCircuit;
-#[allow(unused_imports)]
-pub use transfer::TransferCircuit;
-pub use zkp::{manta_verify_reclaim_zkp, manta_verify_transfer_zkp};
+impl Default for PrivateTransferData {
+	fn default() -> Self {
+		Self {
+			sender_1: SenderData::default(),
+			sender_2: SenderData::default(),
+			receiver_1: ReceiverData::default(),
+			receiver_2: ReceiverData::default(),
+			proof: [0u8; 192],
+		}
+	}
+}
 
-pub use dh::{manta_dh_dec, manta_dh_enc};
+impl Default for ReclaimData {
+	fn default() -> Self {
+		Self {
+			reclaim_amount: 0,
+			sender_1: SenderData::default(),
+			sender_2: SenderData::default(),
+			receiver: ReceiverData::default(),
+			proof: [0u8; 192],
+		}
+	}
+}
