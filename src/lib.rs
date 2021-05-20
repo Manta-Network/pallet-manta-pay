@@ -230,7 +230,7 @@ decl_module! {
 		/// Given an amount, and relevant data, mint the token to the ledger
 		#[weight = T::WeightInfo::mint_private_asset()]
 		fn mint_private_asset(origin,
-			payload: [u8; 104]
+			payload: [u8; 112]
 		) {
 			// todo: Implement the fix denomination method
 
@@ -392,7 +392,7 @@ decl_module! {
 		/// __TODO__: shall we use a different receiver rather than `origin`?
 		#[weight = T::WeightInfo::reclaim()]
 		fn reclaim(origin,
-			payload: [u8; 504],
+			payload: [u8; 512],
 		) {
 			let data = ReclaimData::deserialize(payload.as_ref());
 

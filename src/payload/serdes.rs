@@ -21,6 +21,9 @@ impl MantaSerDes for MintData {
 	/// Serialize the mint data into an array of 104 bytes.
 	fn serialize<W: Write>(&self, mut writer: W) {
 		writer
+			.write_all(&(self.asset_id as u64).to_le_bytes())
+			.unwrap();
+		writer
 			.write_all(self.amount.to_le_bytes().as_ref())
 			.unwrap();
 		writer.write_all(&self.cm).unwrap();
@@ -33,7 +36,10 @@ impl MantaSerDes for MintData {
 		let mut data = MintData::default();
 
 		let mut buf = [0u8; 8];
-		reader.read_exact(&mut buf).unwrap();
+		reader.read_exact(buf.as_mut()).unwrap();
+		data.asset_id = u64::from_le_bytes(buf).into();
+
+		reader.read_exact(buf.as_mut()).unwrap();
 		data.amount = u64::from_le_bytes(buf);
 
 		reader.read_exact(&mut data.cm).unwrap();
@@ -77,6 +83,9 @@ impl MantaSerDes for ReclaimData {
 	/// Serialize the private transfer data
 	fn serialize<W: Write>(&self, mut writer: W) {
 		writer
+			.write_all(&(self.asset_id as u64).to_le_bytes())
+			.unwrap();
+		writer
 			.write_all(self.reclaim_amount.to_le_bytes().as_ref())
 			.unwrap();
 		self.sender_1.serialize(&mut writer);
@@ -90,7 +99,10 @@ impl MantaSerDes for ReclaimData {
 		let mut data = ReclaimData::default();
 
 		let mut buf = [0u8; 8];
-		reader.read_exact(&mut buf).unwrap();
+		reader.read_exact(buf.as_mut()).unwrap();
+		data.asset_id = u64::from_le_bytes(buf).into();
+
+		reader.read_exact(buf.as_mut()).unwrap();
 		data.reclaim_amount = u64::from_le_bytes(buf);
 
 		data.sender_1 = SenderData::deserialize(&mut reader);

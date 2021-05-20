@@ -29,6 +29,7 @@ mod serdes;
 /// Input data to a mint extrinsic.
 #[derive(Encode, Debug, Decode, Clone, Default, PartialEq)]
 pub struct MintData {
+	pub asset_id: AssetId,
 	pub amount: u64,
 	pub cm: [u8; 32],
 	pub k: [u8; 32],
@@ -48,6 +49,7 @@ pub struct PrivateTransferData {
 /// Input data to a reclaim extrinsic.
 #[derive(Encode, Debug, Decode, Clone, PartialEq)]
 pub struct ReclaimData {
+	pub asset_id: AssetId,
 	pub reclaim_amount: u64,
 	pub sender_1: SenderData,
 	pub sender_2: SenderData,
@@ -73,9 +75,9 @@ pub struct ReceiverData {
 }
 
 /// Given the inputs, generate the payload for the mint_asset extrinsic.
-pub fn generate_mint_payload(asset: &MantaAsset) -> [u8; 104] {
+pub fn generate_mint_payload(asset: &MantaAsset) -> [u8; 112] {
 	let data = generate_mint_struct(asset);
-	let mut res = [0u8; 104];
+	let mut res = [0u8; 112];
 	data.serialize(res.as_mut());
 	res
 }
@@ -84,6 +86,7 @@ pub fn generate_mint_payload(asset: &MantaAsset) -> [u8; 104] {
 /// the mint_asset extrinsic once serialized
 fn generate_mint_struct(asset: &MantaAsset) -> MintData {
 	MintData {
+		asset_id: asset.asset_id,
 		amount: asset.priv_info.value,
 		cm: asset.commitment,
 		k: asset.pub_info.k,
@@ -230,7 +233,7 @@ pub fn generate_reclaim_payload<R: RngCore + CryptoRng>(
 	receiver: MantaAssetProcessedReceiver,
 	reclaim_value: u64,
 	rng: &mut R,
-) -> [u8; 504] {
+) -> [u8; 512] {
 	let data = generate_reclaim_struct(
 		commit_param,
 		hash_param,
@@ -241,7 +244,7 @@ pub fn generate_reclaim_payload<R: RngCore + CryptoRng>(
 		reclaim_value,
 		rng,
 	);
-	let mut res = [0u8; 504];
+	let mut res = [0u8; 512];
 	data.serialize(res.as_mut());
 	res
 }
@@ -270,6 +273,16 @@ fn generate_reclaim_struct<R: RngCore + CryptoRng>(
 	reclaim_value: u64,
 	rng: &mut R,
 ) -> ReclaimData {
+	// check the asset_ids match
+	assert_eq!(
+		sender_1.asset.asset_id, sender_2.asset.asset_id,
+		"Asset_ids do not match"
+	);
+	assert_eq!(
+		sender_1.asset.asset_id, receiver.prepared_data.asset_id,
+		"Asset_ids do not match"
+	);
+
 	// generate circuit
 	let circuit = ReclaimCircuit {
 		commit_param,
@@ -280,6 +293,7 @@ fn generate_reclaim_struct<R: RngCore + CryptoRng>(
 
 		receiver: receiver.clone(),
 
+		asset_id: sender_1.asset.asset_id,
 		reclaim_value,
 	};
 
@@ -296,6 +310,7 @@ fn generate_reclaim_struct<R: RngCore + CryptoRng>(
 	sender_2.root.serialize(root_2.as_mut()).unwrap();
 
 	ReclaimData {
+		asset_id: sender_1.asset.asset_id,
 		reclaim_amount: reclaim_value,
 		sender_1: SenderData {
 			k: sender_1.asset.pub_info.k,

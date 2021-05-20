@@ -323,7 +323,7 @@ fn test_reclaim_zkp_local() {
 		sender_2: sender_2.clone(),
 
 		receiver: receiver,
-
+		asset_id: sender_1.asset.asset_id,
 		reclaim_value: 260,
 	};
 
@@ -467,7 +467,7 @@ fn test_reclaim_helper(
 		sender_2: sender_2.clone(),
 
 		receiver: receiver.clone(),
-
+		asset_id: sender_1.asset.asset_id,
 		reclaim_value,
 	};
 
@@ -497,6 +497,7 @@ fn test_reclaim_helper(
 		ToConstraintField::<Fq>::to_field_elements(sender_2.asset.void_number.as_ref()).unwrap();
 	let mr: Vec<Fq> = ToConstraintField::<Fq>::to_field_elements(&sender_1.root).unwrap();
 	let reclaim_value_fq = Fq::from(reclaim_value);
+	let asset_id_fq = Fq::from(sender_1.asset.asset_id as u64);
 	inputs = [
 		inputs[..].as_ref(),
 		sn_1.as_ref(),
@@ -504,6 +505,7 @@ fn test_reclaim_helper(
 		mr.as_ref(),
 		mr.as_ref(),
 		&[reclaim_value_fq],
+		&[asset_id_fq],
 	]
 	.concat();
 	let pvk = Groth16Pvk::from(pk.vk.clone());

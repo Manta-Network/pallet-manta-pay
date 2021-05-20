@@ -59,7 +59,7 @@ pub struct TransferCircuit {
 /// # <weight>
 /// 1. sender's coin is well-formed:
 ///   * `k = com(pk||rho, r)`
-///   * `cm = com(v||k, s)`
+///   * `cm = com(asset_id||v||k, s)`
 /// where only k is public.
 /// 2. receiver's coin is well-formed:
 ///   * `cm = com(v||k, s)`
@@ -86,6 +86,7 @@ pub struct ReclaimCircuit {
 	pub receiver: MantaAssetProcessedReceiver,
 
 	// reclaimed amount
+	pub asset_id: AssetId,
 	pub reclaim_value: u64,
 }
 
@@ -94,8 +95,8 @@ impl ConstraintSynthesizer<Fq> for TransferCircuit {
 	/// add it to `cs`.
 	fn generate_constraints(self, cs: ConstraintSystemRef<Fq>) -> Result<(), SynthesisError> {
 		// 1. both sender's and receiver's coins are well-formed
-		//  k = com(pk||rho, r)
-		//  cm = com(v||k, s)
+		//  k = com( pk || rho, r)
+		//  cm = com( asset_id || v || k, s)
 
 		// parameters
 		let parameters_var =
@@ -141,7 +142,7 @@ impl ConstraintSynthesizer<Fq> for TransferCircuit {
 			cs.clone(),
 		);
 
-		// 3. sender's commitment is in List_all
+		// 3. sender's commitment is on the list
 		// Allocate Parameters for CRH
 		let param_var = HashParamVar::new_constant(
 			ark_relations::ns!(cs, "new_parameter"),
@@ -196,6 +197,43 @@ impl ConstraintSynthesizer<Fq> for TransferCircuit {
 		receiver_value_sum += receiver_value_2_var;
 
 		sender_value_sum.enforce_equal(&receiver_value_sum).unwrap();
+
+		// 5. check that the asset ids match
+		let sender_1_asset_id_fq = Fq::from(self.sender_1.asset.asset_id as u64);
+		let sender_2_asset_id_fq = Fq::from(self.sender_2.asset.asset_id as u64);
+		let receiver_1_asset_id_fq = Fq::from(self.receiver_1.prepared_data.asset_id as u64);
+		let receiver_2_asset_id_fq = Fq::from(self.receiver_2.prepared_data.asset_id as u64);
+
+		let sender_1_asset_id_fq_var =
+			FqVar::new_witness(ark_relations::ns!(cs, "sender asset id"), || {
+				Ok(&sender_1_asset_id_fq)
+			})
+			.unwrap();
+		let sender_2_asset_id_fq_var =
+			FqVar::new_witness(ark_relations::ns!(cs, "sender asset id"), || {
+				Ok(&sender_2_asset_id_fq)
+			})
+			.unwrap();
+		let receiver_1_asset_id_fq_var =
+			FqVar::new_witness(ark_relations::ns!(cs, "sender asset id"), || {
+				Ok(&receiver_1_asset_id_fq)
+			})
+			.unwrap();
+		let receiver_2_asset_id_fq_var =
+			FqVar::new_witness(ark_relations::ns!(cs, "sender asset id"), || {
+				Ok(&receiver_2_asset_id_fq)
+			})
+			.unwrap();
+
+		sender_1_asset_id_fq_var
+			.enforce_equal(&sender_2_asset_id_fq_var)
+			.unwrap();
+		sender_1_asset_id_fq_var
+			.enforce_equal(&receiver_1_asset_id_fq_var)
+			.unwrap();
+		sender_1_asset_id_fq_var
+			.enforce_equal(&receiver_2_asset_id_fq_var)
+			.unwrap();
 
 		Ok(())
 	}
@@ -306,6 +344,43 @@ impl ConstraintSynthesizer<Fq> for ReclaimCircuit {
 		receiver_value_sum += reclaim_value_var;
 
 		sender_value_sum.enforce_equal(&receiver_value_sum).unwrap();
+
+		// 5. check that the asset ids match
+
+		let asset_id_fq = Fq::from(self.asset_id as u64);
+		let sender_1_asset_id_fq = Fq::from(self.sender_1.asset.asset_id as u64);
+		let sender_2_asset_id_fq = Fq::from(self.sender_2.asset.asset_id as u64);
+		let receiver_asset_id_fq = Fq::from(self.receiver.prepared_data.asset_id as u64);
+
+		let asset_id_fq_var = FqVar::new_input(ark_relations::ns!(cs, "sender asset id"), || {
+			Ok(&asset_id_fq)
+		})
+		.unwrap();
+		let sender_1_asset_id_fq_var =
+			FqVar::new_witness(ark_relations::ns!(cs, "sender asset id"), || {
+				Ok(&sender_1_asset_id_fq)
+			})
+			.unwrap();
+		let sender_2_asset_id_fq_var =
+			FqVar::new_witness(ark_relations::ns!(cs, "sender asset id"), || {
+				Ok(&sender_2_asset_id_fq)
+			})
+			.unwrap();
+		let receiver_asset_id_fq_var =
+			FqVar::new_witness(ark_relations::ns!(cs, "sender asset id"), || {
+				Ok(&receiver_asset_id_fq)
+			})
+			.unwrap();
+
+		asset_id_fq_var
+			.enforce_equal(&sender_1_asset_id_fq_var)
+			.unwrap();
+		asset_id_fq_var
+			.enforce_equal(&sender_2_asset_id_fq_var)
+			.unwrap();
+		asset_id_fq_var
+			.enforce_equal(&receiver_asset_id_fq_var)
+			.unwrap();
 
 		Ok(())
 	}

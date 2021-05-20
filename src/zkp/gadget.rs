@@ -82,9 +82,10 @@ pub(crate) fn sender_token_well_formed_circuit_helper(
 	result_var.enforce_equal(&commitment_var2).unwrap();
 
 	// =============================
-	// statement 2: cm = com(v||k, s)
+	// statement 2: cm = com( asset_id || v || k, s)
 	// =============================
 	let input: Vec<u8> = [
+		(asset.asset_id as u64).to_le_bytes().as_ref(),
 		asset.priv_info.value.to_le_bytes().as_ref(),
 		asset.pub_info.k.as_ref(),
 	]

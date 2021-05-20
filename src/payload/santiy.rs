@@ -21,7 +21,14 @@ impl SanityCheck for MintData {
 	type Param = CommitmentParam;
 
 	fn sanity(&self, param: &Self::Param) -> bool {
-		let payload = [self.amount.to_le_bytes().as_ref(), self.k.as_ref()].concat();
+		// check that
+		// cm = com( asset_id | v||k, s )
+		let payload = [
+			(self.asset_id as u64).to_le_bytes().as_ref(),
+			self.amount.to_le_bytes().as_ref(),
+			self.k.as_ref(),
+		]
+		.concat();
 		<MantaCrypto as Commitment>::check_commitment(&param, &payload, &self.s, &self.cm)
 	}
 }

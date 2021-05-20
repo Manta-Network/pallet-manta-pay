@@ -1437,7 +1437,7 @@ dependencies = [
 [[package]]
 name = "manta-crypto"
 version = "3.0.0"
-source = "git+https://github.com/Manta-Network/manta-crypto?branch=master#eed8c7c56c4d01ef08cb5239f9d2ff3b1ea85de0"
+source = "git+https://github.com/Manta-Network/manta-crypto?branch=master#a23182964290aa30cb7e28b1b8958538b6d3c992"
 dependencies = [
  "aes",
  "ark-bls12-381",
@@ -1704,7 +1704,7 @@ checksum = "624a8340c38c1b80fd549087862da4ba43e08858af025b236e509b6649fc13d5"
 [[package]]
 name = "pallet-manta-asset"
 version = "3.0.0"
-source = "git+https://github.com/Manta-Network/pallet-manta-asset?branch=impl-asset-id#f421310dfe2cc57e2227172d679dae834767585c"
+source = "git+https://github.com/Manta-Network/pallet-manta-asset?branch=impl-asset-id#eae133b9898ae0389925eb19fd473fba773ffddf"
 dependencies = [
  "ark-crypto-primitives",
  "ark-ed-on-bls12-381",

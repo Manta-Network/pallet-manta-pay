@@ -82,7 +82,7 @@ benchmarks! {
 		let mut sk = [0u8; 32];
 
 		rng.fill_bytes(&mut sk);
-		let asset = MantaAsset::sample(&commit_param, &sk, &10, &mut rng);
+		let asset = MantaAsset::sample(&commit_param, &sk, &AssetId::TestAsset, &10, &mut rng);
 		let payload = generate_mint_payload(&asset);
 
 	}: mint_private_asset (
@@ -121,12 +121,12 @@ benchmarks! {
 
 		// mint the tokens
 		rng.fill_bytes(&mut sk);
-		let asset_1 = MantaAsset::sample(&commit_param, &sk, &15, &mut rng);
+		let asset_1 = MantaAsset::sample(&commit_param, &sk,&AssetId::TestAsset, &15, &mut rng);
 		let payload = generate_mint_payload(&asset_1);
 		Module::<T>::mint_private_asset(origin.clone(), payload).unwrap();
 
 		rng.fill_bytes(&mut sk);
-		let asset_2 = MantaAsset::sample(&commit_param, &sk, &25, &mut rng);
+		let asset_2 = MantaAsset::sample(&commit_param, &sk,&AssetId::TestAsset, &25, &mut rng);
 		let payload = generate_mint_payload(&asset_2);
 		Module::<T>::mint_private_asset(origin, payload).unwrap();
 
@@ -136,11 +136,11 @@ benchmarks! {
 
 		// extract the receivers
 		rng.fill_bytes(&mut sk);
-		let receiver_full_1 = MantaAssetFullReceiver::sample(&commit_param, &sk, &(), &mut rng);
+		let receiver_full_1 = MantaAssetFullReceiver::sample(&commit_param, &sk,&AssetId::TestAsset, &(), &mut rng);
 		let receiver_1 = receiver_full_1.prepared.process(&10, &mut rng);
 
 		rng.fill_bytes(&mut sk);
-		let receiver_full_2 = MantaAssetFullReceiver::sample(&commit_param, &sk, &(), &mut rng);
+		let receiver_full_2 = MantaAssetFullReceiver::sample(&commit_param, &sk,&AssetId::TestAsset, &(), &mut rng);
 		let receiver_2 = receiver_full_1.prepared.process(&30, &mut rng);
 
 		// form the transaction payload
@@ -191,12 +191,12 @@ benchmarks! {
 
 		// mint the tokens
 		rng.fill_bytes(&mut sk);
-		let asset_1 = MantaAsset::sample(&commit_param, &sk, &15, &mut rng);
+		let asset_1 = MantaAsset::sample(&commit_param, &sk,&AssetId::TestAsset, &15, &mut rng);
 		let payload = generate_mint_payload(&asset_1);
 		Module::<T>::mint_private_asset(origin.clone(), payload).unwrap();
 
 		rng.fill_bytes(&mut sk);
-		let asset_2 = MantaAsset::sample(&commit_param, &sk, &25, &mut rng);
+		let asset_2 = MantaAsset::sample(&commit_param, &sk,&AssetId::TestAsset, &25, &mut rng);
 		let payload = generate_mint_payload(&asset_2);
 		Module::<T>::mint_private_asset(origin, payload).unwrap();
 
@@ -207,7 +207,7 @@ benchmarks! {
 		// extract the receivers
 		rng.fill_bytes(&mut sk);
 		let reclaim_value = 30;
-		let receiver_full = MantaAssetFullReceiver::sample(&commit_param, &sk, &(), &mut rng);
+		let receiver_full = MantaAssetFullReceiver::sample(&commit_param, &sk,&AssetId::TestAsset, &(), &mut rng);
 		let receiver = receiver_full.prepared.process(&10, &mut rng);
 
 		// form the transaction payload

@@ -23,7 +23,7 @@ mod verifier;
 
 pub use circuit::{ReclaimCircuit, TransferCircuit};
 pub(crate) use gadget::*;
-pub use keys::write_zkp_keys;
+pub use keys::{write_zkp_keys, RECLAIM_PK, TRANSFER_PK};
 
 use crate::payload::*;
 use ark_ff::ToConstraintField;
