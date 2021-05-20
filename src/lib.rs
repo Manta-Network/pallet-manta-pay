@@ -593,11 +593,8 @@ decl_storage! {
 		/// If 0, then this asset is not initialized.
 		pub TotalSupply: map hasher(blake2_128_concat) AssetId => u64;
 
-		// /// Returns a boolean: is this token already initialized (can only initiate once)
-		// pub Init get(fn is_init): bool;
-
 		/// List of _void number_s.
-		/// A void number is also known as a `serial number` in other protocols.
+		/// A void number is also known as a `serial number` or `nullifier` in other protocols.
 		/// Each coin has a unique void number, and if this number is revealed,
 		/// the coin is voided.
 		/// The ledger maintains a list of all void numbers.
