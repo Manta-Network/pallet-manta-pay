@@ -41,7 +41,7 @@ sha2 = { version = "0.9.3", default-features = false }
 
 # Manta Dependencies
 manta-crypto = { branch = "master", git = "https://github.com/Manta-Network/manta-crypto" }
-pallet-manta-asset = { branch = "master", git = "https://github.com/Manta-Network/pallet-manta-asset" }
+pallet-manta-asset = { branch = "impl-asset-id", git = "https://github.com/Manta-Network/pallet-manta-asset" }
 
 [dev-dependencies]
 # benchmarking 

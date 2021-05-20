@@ -78,7 +78,13 @@ fn manta_transfer_zkp_key_gen(
 	for e in 0..128 {
 		rng.fill_bytes(&mut sk);
 
-		let sender = MantaAsset::sample(&commit_param, &sk, &(e + 100), &mut rng);
+		let sender = MantaAsset::sample(
+			&commit_param,
+			&sk,
+			&AssetId::TestAsset,
+			&(e + 100),
+			&mut rng,
+		);
 		ledger.push(sender.commitment);
 		coins.push(sender);
 	}
@@ -92,10 +98,12 @@ fn manta_transfer_zkp_key_gen(
 
 	// receiver's total value is also 210
 	rng.fill_bytes(&mut sk);
-	let receiver_1_full = MantaAssetFullReceiver::sample(&commit_param, &sk, &(), &mut rng);
+	let receiver_1_full =
+		MantaAssetFullReceiver::sample(&commit_param, &sk, &AssetId::TestAsset, &(), &mut rng);
 	let receiver_1 = receiver_1_full.prepared.process(&80, &mut rng);
 	rng.fill_bytes(&mut sk);
-	let receiver_2_full = MantaAssetFullReceiver::sample(&commit_param, &sk, &(), &mut rng);
+	let receiver_2_full =
+		MantaAssetFullReceiver::sample(&commit_param, &sk, &AssetId::TestAsset, &(), &mut rng);
 	let receiver_2 = receiver_2_full.prepared.process(&130, &mut rng);
 
 	// transfer circuit
@@ -156,7 +164,13 @@ fn manta_reclaim_zkp_key_gen(
 	for e in 0..128 {
 		rng.fill_bytes(&mut sk);
 
-		let sender = MantaAsset::sample(&commit_param, &sk, &(e + 100), &mut rng);
+		let sender = MantaAsset::sample(
+			&commit_param,
+			&sk,
+			&AssetId::TestAsset,
+			&(e + 100),
+			&mut rng,
+		);
 		ledger.push(sender.commitment);
 		coins.push(sender);
 	}
@@ -168,7 +182,8 @@ fn manta_reclaim_zkp_key_gen(
 	let sender_2 = SenderMetaData::build(hash_param.clone(), sender_2, &ledger);
 
 	// receiver's total value is also 210
-	let receiver_full = MantaAssetFullReceiver::sample(&commit_param, &sk, &(), &mut rng);
+	let receiver_full =
+		MantaAssetFullReceiver::sample(&commit_param, &sk, &AssetId::TestAsset, &(), &mut rng);
 	let receiver = receiver_full.prepared.process(&80, &mut rng);
 
 	// transfer circuit

@@ -115,7 +115,7 @@ fn test_mint_should_work() {
 		let mut rng = ChaCha20Rng::from_seed([3u8; 32]);
 		let mut sk = [0u8; 32];
 		rng.fill_bytes(&mut sk);
-		let asset = MantaAsset::sample(&commit_param, &sk, &10, &mut rng);
+		let asset = MantaAsset::sample(&commit_param, &sk, &AssetId::TestAsset, &10, &mut rng);
 
 		let payload = generate_mint_payload(&asset);
 		assert_ok!(Assets::mint_private_asset(Origin::signed(1), payload));
@@ -257,7 +257,13 @@ fn mint_tokens_helper(size: usize) -> Vec<MantaAsset> {
 		// build a sender token
 		let token_value = 10 + i as u64;
 		rng.fill_bytes(&mut sk);
-		let asset = MantaAsset::sample(&commit_param, &sk, &token_value, &mut rng);
+		let asset = MantaAsset::sample(
+			&commit_param,
+			&sk,
+			&AssetId::TestAsset,
+			&token_value,
+			&mut rng,
+		);
 		let payload = generate_mint_payload(&asset);
 
 		// mint a sender token
@@ -312,7 +318,8 @@ fn transfer_test_helper(iter: usize) {
 	for i in 0usize..size {
 		// build a receiver token
 		rng.fill_bytes(&mut sk);
-		let receiver_full = MantaAssetFullReceiver::sample(&commit_param, &sk, &(), &mut rng);
+		let receiver_full =
+			MantaAssetFullReceiver::sample(&commit_param, &sk, &AssetId::TestAsset, &(), &mut rng);
 		let receiver = receiver_full.prepared.process(&(i as u64 + 10), &mut rng);
 		receivers_full.push(receiver_full);
 		receivers_processed.push(receiver);
@@ -430,7 +437,8 @@ fn reclaim_test_helper(iter: usize) {
 		let sender_2 = SenderMetaData::build(hash_param.clone(), sender_2, &list_2);
 
 		rng.fill_bytes(&mut sk);
-		let receiver_full = MantaAssetFullReceiver::sample(&commit_param, &sk, &(), &mut rng);
+		let receiver_full =
+			MantaAssetFullReceiver::sample(&commit_param, &sk, &AssetId::TestAsset, &(), &mut rng);
 		let receiver = receiver_full.prepared.process(&10, &mut rng);
 
 		let reclaim_value =
