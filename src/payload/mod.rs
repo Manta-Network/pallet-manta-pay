@@ -75,9 +75,9 @@ pub struct ReceiverData {
 }
 
 /// Given the inputs, generate the payload for the mint_asset extrinsic.
-pub fn generate_mint_payload(asset: &MantaAsset) -> [u8; 112] {
+pub fn generate_mint_payload(asset: &MantaAsset) -> [u8; MINT_PAYLOAD_SIZE] {
 	let data = generate_mint_struct(asset);
-	let mut res = [0u8; 112];
+	let mut res = [0u8; MINT_PAYLOAD_SIZE];
 	data.serialize(res.as_mut());
 	res
 }
@@ -118,7 +118,7 @@ pub fn generate_private_transfer_payload<R: RngCore + CryptoRng>(
 	receiver_1: MantaAssetProcessedReceiver,
 	receiver_2: MantaAssetProcessedReceiver,
 	rng: &mut R,
-) -> [u8; 608] {
+) -> [u8; PRIVATE_TRANSFER_PAYLOAD_SIZE] {
 	let data = generate_private_transfer_struct(
 		commit_param,
 		hash_param,
@@ -129,7 +129,7 @@ pub fn generate_private_transfer_payload<R: RngCore + CryptoRng>(
 		receiver_2,
 		rng,
 	);
-	let mut res = [0u8; 608];
+	let mut res = [0u8; PRIVATE_TRANSFER_PAYLOAD_SIZE];
 	data.serialize(res.as_mut());
 	res
 }
@@ -233,7 +233,7 @@ pub fn generate_reclaim_payload<R: RngCore + CryptoRng>(
 	receiver: MantaAssetProcessedReceiver,
 	reclaim_value: u64,
 	rng: &mut R,
-) -> [u8; 512] {
+) -> [u8; RECLAIM_PAYLOAD_SIZE] {
 	let data = generate_reclaim_struct(
 		commit_param,
 		hash_param,
@@ -244,7 +244,7 @@ pub fn generate_reclaim_payload<R: RngCore + CryptoRng>(
 		reclaim_value,
 		rng,
 	);
-	let mut res = [0u8; 512];
+	let mut res = [0u8; RECLAIM_PAYLOAD_SIZE];
 	data.serialize(res.as_mut());
 	res
 }

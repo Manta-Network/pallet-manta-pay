@@ -132,6 +132,10 @@ use sp_std::prelude::*;
 /// An abstract struct for manta-pay.
 pub struct MantaPay;
 
+pub const MINT_PAYLOAD_SIZE: usize = 112;
+pub const PRIVATE_TRANSFER_PAYLOAD_SIZE: usize = 608;
+pub const RECLAIM_PAYLOAD_SIZE: usize = 512;
+
 /// The module configuration trait.
 pub trait Config: frame_system::Config {
 	/// The overarching event type.
@@ -253,7 +257,7 @@ decl_module! {
 		/// Given an amount, and relevant data, mint the token to the ledger
 		#[weight = T::WeightInfo::mint_private_asset()]
 		fn mint_private_asset(origin,
-			payload: [u8; 112]
+			payload: [u8; MINT_PAYLOAD_SIZE]
 		) {
 			// todo: Implement the fix denomination method
 
@@ -334,7 +338,7 @@ decl_module! {
 		/// Neither the values nor the identities is leaked during this process.
 		#[weight = T::WeightInfo::private_transfer()]
 		fn private_transfer(origin,
-			payload: [u8; 608],
+			payload: [u8; PRIVATE_TRANSFER_PAYLOAD_SIZE],
 		) {
 			// this function does not know which asset_id is been transferred.
 			// so there will not be an initialization check
@@ -432,7 +436,7 @@ decl_module! {
 		/// __TODO__: shall we use a different receiver rather than `origin`?
 		#[weight = T::WeightInfo::reclaim()]
 		fn reclaim(origin,
-			payload: [u8; 512],
+			payload: [u8; RECLAIM_PAYLOAD_SIZE],
 		) {
 
 
