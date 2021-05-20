@@ -125,7 +125,7 @@ use frame_support::{decl_error, decl_event, decl_module, decl_storage, ensure};
 use frame_system::ensure_signed;
 use ledger::LedgerSharding;
 use manta_crypto::*;
-use pallet_manta_asset::SanityCheck;
+use pallet_manta_asset::{AssetId, SanityCheck};
 use sp_runtime::traits::{StaticLookup, Zero};
 use sp_std::prelude::*;
 
@@ -156,9 +156,17 @@ decl_module! {
 		/// - 1 event.
 		/// # </weight>
 		#[weight = T::WeightInfo::mint_private_asset()]
-		fn init_asset(origin, total: u64) {
+		fn init_asset(origin,
+			asset_id: AssetId,
+			total: u64
+		) {
 
-			ensure!(!Self::is_init(), <Error<T>>::AlreadyInitialized);
+			// if the asset_id has a total suply != 0, then this asset is initialized
+			ensure!(
+				TotalSupply::get(&asset_id) == 0,
+				<Error<T>>::AlreadyInitialized
+			);
+
 			let origin = ensure_signed(origin)?;
 
 			// for now we hard code the parameters generated from the following seed:
@@ -169,6 +177,8 @@ decl_module! {
 			let commit_param = CommitmentParam::deserialize(COMMIT_PARAM.data);
 			let hash_param_checksum = hash_param.get_checksum();
 			let commit_param_checksum = commit_param.get_checksum();
+			HashParamChecksum::put(hash_param_checksum);
+			CommitParamChecksum::put(commit_param_checksum);
 
 			// push the ZKP verification key to the ledger storage
 			//
@@ -186,19 +196,22 @@ decl_module! {
 			let reclaim_key_digest = RECLAIM_PK.get_checksum();
 			ReclaimZKPKeyChecksum::put(reclaim_key_digest);
 
-			// coin_shards are a 256 lists of commitments
+			// coin_shards are 256 lists of commitments
 			let coin_shards = Shards::default();
 			CoinShards::put(coin_shards);
 
-			PoolBalance::put(0);
+
+			// initialize the asset with `total` number of supplies
+			// the total number of private asset (pool balance) remain 0
+			// the assets is credit to the sender's account
+			PoolBalance::insert(asset_id, 0);
+			TotalSupply::insert(asset_id, total);
+			<Balances<T>>::insert(&origin, asset_id, total);
+
 			VNList::put(Vec::<[u8; 32]>::new());
 			EncValueList::put(Vec::<[u8; 16]>::new());
-			<Balances<T>>::insert(&origin, total);
-			<TotalSupply>::put(total);
+
 			Self::deposit_event(RawEvent::Issued(origin, total));
-			Init::put(true);
-			HashParamChecksum::put(hash_param_checksum);
-			CommitParamChecksum::put(commit_param_checksum);
 		}
 
 		/// Move some assets from one holder to another.
@@ -212,37 +225,51 @@ decl_module! {
 		#[weight = T::WeightInfo::transfer_asset()]
 		fn transfer_asset(origin,
 			target: <T::Lookup as StaticLookup>::Source,
+			asset_id: AssetId,
 			amount: u64
 		) {
-			ensure!(Self::is_init(), <Error<T>>::BasecoinNotInit);
+
+			// if the asset_id has a total suply == 0, then this asset is initialized
+			ensure!(
+				TotalSupply::get(&asset_id) != 0,
+				<Error<T>>::BasecoinNotInit
+			);
 			let origin = ensure_signed(origin)?;
 
 			let origin_account = origin.clone();
-			let origin_balance = <Balances<T>>::get(&origin_account);
+			let origin_balance = <Balances<T>>::get(&origin_account, asset_id);
 			let target = T::Lookup::lookup(target)?;
 			ensure!(!amount.is_zero(), Error::<T>::AmountZero);
 			ensure!(origin_balance >= amount, Error::<T>::BalanceLow);
 			Self::deposit_event(RawEvent::Transferred(origin, target.clone(), amount));
-			<Balances<T>>::insert(origin_account, origin_balance - amount);
-			<Balances<T>>::mutate(target, |balance| *balance += amount);
+
+			// todo: figure out the different between insert and mutate.
+			<Balances<T>>::insert(origin_account, asset_id, origin_balance - amount);
+			<Balances<T>>::mutate(target, asset_id, |balance| *balance += amount);
 		}
 
 		/// Given an amount, and relevant data, mint the token to the ledger
 		#[weight = T::WeightInfo::mint_private_asset()]
 		fn mint_private_asset(origin,
+			asset_id: AssetId,
 			payload: [u8; 112]
 		) {
 			// todo: Implement the fix denomination method
+
+			// if the asset_id has a total suply == 0, then this asset is initialized
+			ensure!(
+				TotalSupply::get(&asset_id) != 0,
+				<Error<T>>::BasecoinNotInit
+			);
 
 			// parse the input_data into input
 			let input = MintData::deserialize(payload.as_ref());
 
 			// get the original balance
-			ensure!(Self::is_init(), <Error<T>>::BasecoinNotInit);
 			let origin = ensure_signed(origin)?;
 			let origin_account = origin.clone();
 			ensure!(!input.amount.is_zero(), Error::<T>::AmountZero);
-			let origin_balance = <Balances<T>>::get(&origin_account);
+			let origin_balance = <Balances<T>>::get(&origin_account, asset_id);
 			ensure!(origin_balance >= input.amount, Error::<T>::BalanceLow);
 
 			// get the parameter checksum from the ledger
@@ -284,9 +311,16 @@ decl_module! {
 			Self::deposit_event(RawEvent::Minted(origin, input.amount));
 			CoinShards::put(coin_shards);
 
-			let old_pool_balance = PoolBalance::get();
-			PoolBalance::put(old_pool_balance + input.amount);
-			<Balances<T>>::insert(origin_account, origin_balance - input.amount);
+			let old_pool_balance = PoolBalance::get(asset_id);
+			PoolBalance::mutate(
+				asset_id,
+				|balance| *balance = old_pool_balance + input.amount
+			);
+			<Balances<T>>::mutate(
+				origin_account,
+				asset_id,
+				|balance| *balance =  origin_balance - input.amount
+			);
 		}
 
 
@@ -298,8 +332,10 @@ decl_module! {
 		fn private_transfer(origin,
 			payload: [u8; 608],
 		) {
+			// this function does not know which asset_id is been transferred.
+			// so there will not be an initialization check
+
 			let data = PrivateTransferData::deserialize(payload.as_ref());
-			ensure!(Self::is_init(), <Error<T>>::BasecoinNotInit);
 			let origin = ensure_signed(origin)?;
 
 			// get the parameter checksum from the ledger
@@ -392,15 +428,21 @@ decl_module! {
 		/// __TODO__: shall we use a different receiver rather than `origin`?
 		#[weight = T::WeightInfo::reclaim()]
 		fn reclaim(origin,
+			asset_id: AssetId,
 			payload: [u8; 512],
 		) {
+
+			// if the asset_id has a total suply == 0, then this asset is initialized
+			ensure!(
+				TotalSupply::get(&asset_id) != 0,
+				<Error<T>>::BasecoinNotInit
+			);
+
 			let data = ReclaimData::deserialize(payload.as_ref());
 
 			let origin = ensure_signed(origin)?;
 			let origin_account = origin.clone();
-			let origin_balance = <Balances<T>>::get(&origin);
-			ensure!(Self::is_init(), <Error<T>>::BasecoinNotInit);
-
+			let origin_balance = <Balances<T>>::get(&origin, asset_id);
 
 			// get the parameter checksum from the ledger
 			// and make sure the parameters match
@@ -414,7 +456,7 @@ decl_module! {
 			let hash_param = HashParam::deserialize(HASH_PARAM.data);
 
 			// check the balance is greater than amount
-			let mut pool = PoolBalance::get();
+			let mut pool = PoolBalance::get(asset_id);
 			ensure!(pool>=data.reclaim_amount, <Error<T>>::PoolOverdrawn);
 			pool -= data.reclaim_amount;
 
@@ -476,9 +518,13 @@ decl_module! {
 
 			Self::deposit_event(RawEvent::PrivateReclaimed(origin));
 			VNList::put(sn_list);
-			PoolBalance::put(pool);
+			PoolBalance::mutate(asset_id, |balance| *balance = pool);
 			EncValueList::put(enc_value_list);
-			<Balances<T>>::insert(origin_account, origin_balance + data.reclaim_amount);
+			<Balances<T>>::mutate(
+				origin_account,
+				asset_id,
+				|balance| *balance = origin_balance + data.reclaim_amount
+			);
 		}
 	}
 }
@@ -537,13 +583,17 @@ decl_error! {
 decl_storage! {
 	trait Store for Module<T: Config> as Assets {
 		/// The number of units of assets held by any given account.
-		pub Balances: map hasher(blake2_128_concat) T::AccountId => u64;
+		pub Balances: double_map
+			hasher(blake2_128_concat) T::AccountId,
+			hasher(blake2_128_concat) AssetId
+			=> u64;
 
 		/// The total unit supply of the asset.
-		pub TotalSupply get(fn total_supply): u64;
+		/// If 0, then this asset is not initialized.
+		pub TotalSupply: map hasher(blake2_128_concat) AssetId => u64;
 
-		/// Returns a boolean: is this token already initialized (can only initiate once)
-		pub Init get(fn is_init): bool;
+		// /// Returns a boolean: is this token already initialized (can only initiate once)
+		// pub Init get(fn is_init): bool;
 
 		/// List of _void number_s.
 		/// A void number is also known as a `serial number` in other protocols.
@@ -560,8 +610,8 @@ decl_storage! {
 		/// List of encrypted values.
 		pub EncValueList get(fn enc_value_list): Vec<[u8; 16]>;
 
-		/// The balance of all minted coins.
-		pub PoolBalance get(fn pool_balance): u64;
+		/// The balance of all minted coins for this asset_id.
+		pub PoolBalance: map hasher(blake2_128_concat) AssetId => u64;
 
 		/// The checksum of hash parameter.
 		pub HashParamChecksum get(fn hash_param_checksum): [u8; 32];
@@ -586,7 +636,12 @@ impl<T: Config> Module<T> {
 	// Public immutables
 
 	/// Get the asset `id` balance of `who`.
-	pub fn balance(who: T::AccountId) -> u64 {
-		<Balances<T>>::get(who)
+	pub fn balance(who: T::AccountId, what: AssetId) -> u64 {
+		<Balances<T>>::get(who, what)
+	}
+
+	/// Get the asset `id` total supply.
+	pub fn total_supply(what: AssetId) -> u64 {
+		TotalSupply::get(what)
 	}
 }
