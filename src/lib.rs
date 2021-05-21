@@ -257,7 +257,7 @@ decl_module! {
 		/// Given an amount, and relevant data, mint the token to the ledger
 		#[weight = T::WeightInfo::mint_private_asset()]
 		fn mint_private_asset(origin,
-			payload: [u8; MINT_PAYLOAD_SIZE]
+			payload: [u8; 112]
 		) {
 			// todo: Implement the fix denomination method
 
@@ -269,7 +269,6 @@ decl_module! {
 				TotalSupply::get(&input.asset_id) != 0,
 				<Error<T>>::BasecoinNotInit
 			);
-
 
 			// get the original balance
 			let origin = ensure_signed(origin)?;

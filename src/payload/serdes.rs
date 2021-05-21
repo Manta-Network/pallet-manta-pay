@@ -35,12 +35,13 @@ impl MantaSerDes for MintData {
 	fn deserialize<R: Read>(mut reader: R) -> Self {
 		let mut data = MintData::default();
 
-		let mut buf = [0u8; 8];
-		reader.read_exact(buf.as_mut()).unwrap();
-		data.asset_id = u64::from_le_bytes(buf).into();
+		let mut buf1 = [0u8; 8];
+		let mut buf2 = [0u8; 8];
+		reader.read_exact(buf1.as_mut()).unwrap();
+		data.asset_id = u64::from_le_bytes(buf1).into();
 
-		reader.read_exact(buf.as_mut()).unwrap();
-		data.amount = u64::from_le_bytes(buf);
+		reader.read_exact(buf2.as_mut()).unwrap();
+		data.amount = u64::from_le_bytes(buf2);
 
 		reader.read_exact(&mut data.cm).unwrap();
 		reader.read_exact(&mut data.k).unwrap();

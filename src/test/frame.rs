@@ -95,10 +95,10 @@ fn test_constants_should_work() {
 	new_test_ext().execute_with(|| {
 		assert_ok!(Assets::init_asset(
 			Origin::signed(1),
-			AssetId::TestAsset,
+			TEST_ASSET,
 			100
 		));
-		assert_eq!(Assets::balance(1, AssetId::TestAsset), 100);
+		assert_eq!(Assets::balance(1, TEST_ASSET), 100);
 		let hash_param = HashParam::deserialize(HASH_PARAM.data);
 		let commit_param = CommitmentParam::deserialize(COMMIT_PARAM.data);
 		let hash_param_checksum_local = hash_param.get_checksum();
@@ -115,23 +115,23 @@ fn test_mint_should_work() {
 	new_test_ext().execute_with(|| {
 		assert_ok!(Assets::init_asset(
 			Origin::signed(1),
-			AssetId::TestAsset,
+			TEST_ASSET,
 			1000
 		));
-		assert_eq!(Assets::balance(1, AssetId::TestAsset), 1000);
-		assert_eq!(PoolBalance::get(AssetId::TestAsset), 0);
+		assert_eq!(Assets::balance(1, TEST_ASSET), 1000);
+		assert_eq!(PoolBalance::get(TEST_ASSET), 0);
 
 		let commit_param = CommitmentParam::deserialize(COMMIT_PARAM.data);
 		let mut rng = ChaCha20Rng::from_seed([3u8; 32]);
 		let mut sk = [0u8; 32];
 		rng.fill_bytes(&mut sk);
-		let asset = MantaAsset::sample(&commit_param, &sk, &AssetId::TestAsset, &10, &mut rng);
+		let asset = MantaAsset::sample(&commit_param, &sk, &TEST_ASSET, &10, &mut rng);
 
 		let payload = generate_mint_payload(&asset);
 		assert_ok!(Assets::mint_private_asset(Origin::signed(1), payload));
 
-		assert_eq!(TotalSupply::get(AssetId::TestAsset), 1000);
-		assert_eq!(PoolBalance::get(AssetId::TestAsset), 10);
+		assert_eq!(TotalSupply::get(TEST_ASSET), 1000);
+		assert_eq!(PoolBalance::get(TEST_ASSET), 10);
 		let coin_shards = CoinShards::get();
 		assert!(coin_shards.exist(&asset.commitment));
 		let sn_list = VNList::get();
@@ -166,10 +166,10 @@ fn issuing_asset_units_to_issuer_should_work() {
 	new_test_ext().execute_with(|| {
 		assert_ok!(Assets::init_asset(
 			Origin::signed(1),
-			AssetId::TestAsset,
+			TEST_ASSET,
 			100
 		));
-		assert_eq!(Assets::balance(1, AssetId::TestAsset), 100);
+		assert_eq!(Assets::balance(1, TEST_ASSET), 100);
 	});
 }
 
@@ -178,28 +178,28 @@ fn querying_total_supply_should_work() {
 	new_test_ext().execute_with(|| {
 		assert_ok!(Assets::init_asset(
 			Origin::signed(1),
-			AssetId::TestAsset,
+			TEST_ASSET,
 			100
 		));
-		assert_eq!(Assets::balance(1, AssetId::TestAsset), 100);
+		assert_eq!(Assets::balance(1, TEST_ASSET), 100);
 		assert_ok!(Assets::transfer_asset(
 			Origin::signed(1),
 			2,
-			AssetId::TestAsset,
+			TEST_ASSET,
 			50
 		));
-		assert_eq!(Assets::balance(1, AssetId::TestAsset), 50);
-		assert_eq!(Assets::balance(2, AssetId::TestAsset), 50);
+		assert_eq!(Assets::balance(1, TEST_ASSET), 50);
+		assert_eq!(Assets::balance(2, TEST_ASSET), 50);
 		assert_ok!(Assets::transfer_asset(
 			Origin::signed(2),
 			3,
-			AssetId::TestAsset,
+			TEST_ASSET,
 			31
 		));
-		assert_eq!(Assets::balance(1, AssetId::TestAsset), 50);
-		assert_eq!(Assets::balance(2, AssetId::TestAsset), 19);
-		assert_eq!(Assets::balance(3, AssetId::TestAsset), 31);
-		assert_eq!(Assets::total_supply(AssetId::TestAsset), 100);
+		assert_eq!(Assets::balance(1, TEST_ASSET), 50);
+		assert_eq!(Assets::balance(2, TEST_ASSET), 19);
+		assert_eq!(Assets::balance(3, TEST_ASSET), 31);
+		assert_eq!(Assets::total_supply(TEST_ASSET), 100);
 	});
 }
 
@@ -208,18 +208,18 @@ fn transferring_amount_above_available_balance_should_work() {
 	new_test_ext().execute_with(|| {
 		assert_ok!(Assets::init_asset(
 			Origin::signed(1),
-			AssetId::TestAsset,
+			TEST_ASSET,
 			100
 		));
-		assert_eq!(Assets::balance(1, AssetId::TestAsset), 100);
+		assert_eq!(Assets::balance(1, TEST_ASSET), 100);
 		assert_ok!(Assets::transfer_asset(
 			Origin::signed(1),
 			2,
-			AssetId::TestAsset,
+			TEST_ASSET,
 			50
 		));
-		assert_eq!(Assets::balance(1, AssetId::TestAsset), 50);
-		assert_eq!(Assets::balance(2, AssetId::TestAsset), 50);
+		assert_eq!(Assets::balance(1, TEST_ASSET), 50);
+		assert_eq!(Assets::balance(2, TEST_ASSET), 50);
 	});
 }
 
@@ -228,20 +228,20 @@ fn transferring_amount_more_than_available_balance_should_not_work() {
 	new_test_ext().execute_with(|| {
 		assert_ok!(Assets::init_asset(
 			Origin::signed(1),
-			AssetId::TestAsset,
+			TEST_ASSET,
 			100
 		));
-		assert_eq!(Assets::balance(1, AssetId::TestAsset), 100);
+		assert_eq!(Assets::balance(1, TEST_ASSET), 100);
 		assert_ok!(Assets::transfer_asset(
 			Origin::signed(1),
 			2,
-			AssetId::TestAsset,
+			TEST_ASSET,
 			50
 		));
-		assert_eq!(Assets::balance(1, AssetId::TestAsset), 50);
-		assert_eq!(Assets::balance(2, AssetId::TestAsset), 50);
+		assert_eq!(Assets::balance(1, TEST_ASSET), 50);
+		assert_eq!(Assets::balance(2, TEST_ASSET), 50);
 		assert_noop!(
-			Assets::transfer_asset(Origin::signed(1), 1, AssetId::TestAsset, 60),
+			Assets::transfer_asset(Origin::signed(1), 1, TEST_ASSET, 60),
 			Error::<Test>::BalanceLow
 		);
 	});
@@ -252,12 +252,12 @@ fn transferring_less_than_one_unit_should_not_work() {
 	new_test_ext().execute_with(|| {
 		assert_ok!(Assets::init_asset(
 			Origin::signed(1),
-			AssetId::TestAsset,
+			TEST_ASSET,
 			100
 		));
-		assert_eq!(Assets::balance(1, AssetId::TestAsset), 100);
+		assert_eq!(Assets::balance(1, TEST_ASSET), 100);
 		assert_noop!(
-			Assets::transfer_asset(Origin::signed(1), 2, AssetId::TestAsset, 0),
+			Assets::transfer_asset(Origin::signed(1), 2, TEST_ASSET, 0),
 			Error::<Test>::AmountZero
 		);
 	});
@@ -268,12 +268,12 @@ fn transferring_more_units_than_total_supply_should_not_work() {
 	new_test_ext().execute_with(|| {
 		assert_ok!(Assets::init_asset(
 			Origin::signed(1),
-			AssetId::TestAsset,
+			TEST_ASSET,
 			100
 		));
-		assert_eq!(Assets::balance(1, AssetId::TestAsset), 100);
+		assert_eq!(Assets::balance(1, TEST_ASSET), 100);
 		assert_noop!(
-			Assets::transfer_asset(Origin::signed(1), 2, AssetId::TestAsset, 101),
+			Assets::transfer_asset(Origin::signed(1), 2, TEST_ASSET, 101),
 			Error::<Test>::BalanceLow
 		);
 	});
@@ -284,10 +284,10 @@ fn destroying_asset_balance_with_positive_balance_should_work() {
 	new_test_ext().execute_with(|| {
 		assert_ok!(Assets::init_asset(
 			Origin::signed(1),
-			AssetId::TestAsset,
+			TEST_ASSET,
 			100
 		));
-		assert_eq!(Assets::balance(1, AssetId::TestAsset), 100);
+		assert_eq!(Assets::balance(1, TEST_ASSET), 100);
 	});
 }
 
@@ -296,11 +296,11 @@ fn cannot_init_twice() {
 	new_test_ext().execute_with(|| {
 		assert_ok!(Assets::init_asset(
 			Origin::signed(1),
-			AssetId::TestAsset,
+			TEST_ASSET,
 			100
 		));
 		assert_noop!(
-			Assets::init_asset(Origin::signed(1), AssetId::TestAsset, 100),
+			Assets::init_asset(Origin::signed(1), TEST_ASSET, 100),
 			Error::<Test>::AlreadyInitialized
 		);
 	});
@@ -322,7 +322,7 @@ fn mint_tokens_helper(size: usize) -> Vec<MantaAsset> {
 		let asset = MantaAsset::sample(
 			&commit_param,
 			&sk,
-			&AssetId::TestAsset,
+			&TEST_ASSET,
 			&token_value,
 			&mut rng,
 		);
@@ -334,7 +334,7 @@ fn mint_tokens_helper(size: usize) -> Vec<MantaAsset> {
 		pool += token_value;
 
 		// sanity checks
-		assert_eq!(PoolBalance::get(AssetId::TestAsset), pool);
+		assert_eq!(PoolBalance::get(TEST_ASSET), pool);
 		let coin_shards = CoinShards::get();
 		assert!(coin_shards.exist(&asset.commitment));
 		senders.push(asset);
@@ -346,11 +346,11 @@ fn transfer_test_helper(iter: usize) {
 	// setup
 	assert_ok!(Assets::init_asset(
 		Origin::signed(1),
-		AssetId::TestAsset,
+		TEST_ASSET,
 		10_000_000
 	));
-	assert_eq!(Assets::balance(1, AssetId::TestAsset), 10_000_000);
-	assert_eq!(PoolBalance::get(AssetId::TestAsset), 0);
+	assert_eq!(Assets::balance(1, TEST_ASSET), 10_000_000);
+	assert_eq!(PoolBalance::get(TEST_ASSET), 0);
 
 	let hash_param = HashParam::deserialize(HASH_PARAM.data);
 	let commit_param = CommitmentParam::deserialize(COMMIT_PARAM.data);
@@ -373,7 +373,7 @@ fn transfer_test_helper(iter: usize) {
 
 	let size = iter << 1;
 	let senders = mint_tokens_helper(size);
-	let pool = PoolBalance::get(AssetId::TestAsset);
+	let pool = PoolBalance::get(TEST_ASSET);
 
 	let sn_list = VNList::get();
 	assert_eq!(sn_list.len(), 0);
@@ -385,7 +385,7 @@ fn transfer_test_helper(iter: usize) {
 		// build a receiver token
 		rng.fill_bytes(&mut sk);
 		let receiver_full =
-			MantaAssetFullReceiver::sample(&commit_param, &sk, &AssetId::TestAsset, &(), &mut rng);
+			MantaAssetFullReceiver::sample(&commit_param, &sk, &TEST_ASSET, &(), &mut rng);
 		let receiver = receiver_full.prepared.process(&(i as u64 + 10), &mut rng);
 		receivers_full.push(receiver_full);
 		receivers_processed.push(receiver);
@@ -446,11 +446,11 @@ fn transfer_test_helper(iter: usize) {
 			<MantaCrypto as Ecies>::decrypt(&sk_2, &ciphertext_2),
 			receiver_2.value
 		);
-		assert_eq!(PoolBalance::get(AssetId::TestAsset), pool);
+		assert_eq!(PoolBalance::get(TEST_ASSET), pool);
 	}
 
 	// check the resulting status of the ledger storage
-	assert_eq!(TotalSupply::get(AssetId::TestAsset), 10_000_000);
+	assert_eq!(TotalSupply::get(TEST_ASSET), 10_000_000);
 	let coin_shards = CoinShards::get();
 	let sn_list = VNList::get();
 	for i in 0usize..size {
@@ -464,18 +464,18 @@ fn reclaim_test_helper(iter: usize) {
 	// setup
 	assert_ok!(Assets::init_asset(
 		Origin::signed(1),
-		AssetId::TestAsset,
+		TEST_ASSET,
 		10_000_000
 	));
-	assert_eq!(Assets::balance(1, AssetId::TestAsset), 10_000_000);
-	assert_eq!(PoolBalance::get(AssetId::TestAsset), 0);
+	assert_eq!(Assets::balance(1, TEST_ASSET), 10_000_000);
+	assert_eq!(PoolBalance::get(TEST_ASSET), 0);
 
 	let hash_param = HashParam::deserialize(HASH_PARAM.data);
 	let commit_param = CommitmentParam::deserialize(COMMIT_PARAM.data);
 
 	let size = iter << 1;
 	let senders = mint_tokens_helper(size);
-	let mut pool = PoolBalance::get(AssetId::TestAsset);
+	let mut pool = PoolBalance::get(TEST_ASSET);
 
 	let mut rng = ChaCha20Rng::from_seed([3u8; 32]);
 	let mut sk = [0u8; 32];
@@ -508,7 +508,7 @@ fn reclaim_test_helper(iter: usize) {
 
 		rng.fill_bytes(&mut sk);
 		let receiver_full =
-			MantaAssetFullReceiver::sample(&commit_param, &sk, &AssetId::TestAsset, &(), &mut rng);
+			MantaAssetFullReceiver::sample(&commit_param, &sk, &TEST_ASSET, &(), &mut rng);
 		let receiver = receiver_full.prepared.process(&10, &mut rng);
 
 		let reclaim_value =
@@ -530,9 +530,9 @@ fn reclaim_test_helper(iter: usize) {
 		assert_ok!(Assets::reclaim(Origin::signed(1), payload));
 
 		// check the resulting status of the ledger storage
-		assert_eq!(TotalSupply::get(AssetId::TestAsset), 10_000_000);
+		assert_eq!(TotalSupply::get(TEST_ASSET), 10_000_000);
 		pool -= reclaim_value;
-		assert_eq!(PoolBalance::get(AssetId::TestAsset), pool);
+		assert_eq!(PoolBalance::get(TEST_ASSET), pool);
 
 		let sn_list = VNList::get();
 		assert_eq!(sn_list.len(), 2 * (i + 1));

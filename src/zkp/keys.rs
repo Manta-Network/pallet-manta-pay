@@ -93,7 +93,7 @@ fn manta_transfer_zkp_key_gen(
 		let sender = MantaAsset::sample(
 			&commit_param,
 			&sk,
-			&AssetId::TestAsset,
+			&TEST_ASSET,
 			&(e + 100),
 			&mut rng,
 		);
@@ -111,11 +111,11 @@ fn manta_transfer_zkp_key_gen(
 	// receiver's total value is also 210
 	rng.fill_bytes(&mut sk);
 	let receiver_1_full =
-		MantaAssetFullReceiver::sample(&commit_param, &sk, &AssetId::TestAsset, &(), &mut rng);
+		MantaAssetFullReceiver::sample(&commit_param, &sk, &TEST_ASSET, &(), &mut rng);
 	let receiver_1 = receiver_1_full.prepared.process(&80, &mut rng);
 	rng.fill_bytes(&mut sk);
 	let receiver_2_full =
-		MantaAssetFullReceiver::sample(&commit_param, &sk, &AssetId::TestAsset, &(), &mut rng);
+		MantaAssetFullReceiver::sample(&commit_param, &sk, &TEST_ASSET, &(), &mut rng);
 	let receiver_2 = receiver_2_full.prepared.process(&130, &mut rng);
 
 	// transfer circuit
@@ -181,7 +181,7 @@ fn manta_reclaim_zkp_key_gen(
 		let sender = MantaAsset::sample(
 			&commit_param,
 			&sk,
-			&AssetId::TestAsset,
+			&TEST_ASSET,
 			&(e + 100),
 			&mut rng,
 		);
@@ -197,7 +197,7 @@ fn manta_reclaim_zkp_key_gen(
 
 	// receiver's total value is also 210
 	let receiver_full =
-		MantaAssetFullReceiver::sample(&commit_param, &sk, &AssetId::TestAsset, &(), &mut rng);
+		MantaAssetFullReceiver::sample(&commit_param, &sk, &TEST_ASSET, &(), &mut rng);
 	let receiver = receiver_full.prepared.process(&80, &mut rng);
 
 	// transfer circuit
