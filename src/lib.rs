@@ -167,7 +167,7 @@ decl_module! {
 
 			// if the asset_id has a total suply != 0, then this asset is initialized
 			ensure!(
-				TotalSupply::get(&asset_id) == 0,
+				!TotalSupply::contains_key(&asset_id),
 				<Error<T>>::AlreadyInitialized
 			);
 
@@ -235,7 +235,7 @@ decl_module! {
 
 			// if the asset_id has a total suply == 0, then this asset is initialized
 			ensure!(
-				TotalSupply::get(&asset_id) != 0,
+				TotalSupply::contains_key(&asset_id),
 				<Error<T>>::BasecoinNotInit
 			);
 			let origin = ensure_signed(origin)?;
@@ -266,7 +266,7 @@ decl_module! {
 
 			// if the asset_id has a total suply == 0, then this asset is initialized
 			ensure!(
-				TotalSupply::get(&input.asset_id) != 0,
+				TotalSupply::contains_key(&input.asset_id),
 				<Error<T>>::BasecoinNotInit
 			);
 
@@ -438,13 +438,11 @@ decl_module! {
 			payload: [u8; RECLAIM_PAYLOAD_SIZE],
 		) {
 
-
-
 			let data = ReclaimData::deserialize(payload.as_ref());
 
 			// if the asset_id has a total suply == 0, then this asset is initialized
 			ensure!(
-				TotalSupply::get(&data.asset_id) != 0,
+				TotalSupply::contains_key(&data.asset_id),
 				<Error<T>>::BasecoinNotInit
 			);
 
