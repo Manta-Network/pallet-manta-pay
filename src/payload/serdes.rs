@@ -38,7 +38,7 @@ impl MantaSerDes for MintData {
 		let mut buf1 = [0u8; 8];
 		let mut buf2 = [0u8; 8];
 		reader.read_exact(buf1.as_mut()).unwrap();
-		data.asset_id = u64::from_le_bytes(buf1).into();
+		data.asset_id = u64::from_le_bytes(buf1);
 
 		reader.read_exact(buf2.as_mut()).unwrap();
 		data.amount = u64::from_le_bytes(buf2);
@@ -101,7 +101,7 @@ impl MantaSerDes for ReclaimData {
 
 		let mut buf = [0u8; 8];
 		reader.read_exact(buf.as_mut()).unwrap();
-		data.asset_id = u64::from_le_bytes(buf).into();
+		data.asset_id = u64::from_le_bytes(buf);
 
 		reader.read_exact(buf.as_mut()).unwrap();
 		data.reclaim_amount = u64::from_le_bytes(buf);
