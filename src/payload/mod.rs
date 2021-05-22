@@ -19,8 +19,8 @@ use ark_groth16::create_random_proof;
 use ark_serialize::CanonicalSerialize;
 use ark_std::rand::{CryptoRng, RngCore};
 use frame_support::codec::{Decode, Encode};
-use manta_crypto::*;
 use manta_asset::*;
+use manta_crypto::*;
 
 mod default;
 mod santiy;

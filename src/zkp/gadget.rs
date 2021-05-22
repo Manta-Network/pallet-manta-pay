@@ -36,8 +36,8 @@ use ark_r1cs_std::{alloc::AllocVar, prelude::*};
 use ark_relations::r1cs::ConstraintSystemRef;
 use ark_serialize::CanonicalDeserialize;
 use ark_std::vec::Vec;
-use manta_crypto::*;
 use manta_asset::*;
+use manta_crypto::*;
 
 // =============================
 // circuit for the following statements

@@ -19,8 +19,8 @@ use crate::*;
 use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
 use ark_std::rand::{RngCore, SeedableRng};
 use frame_support::{assert_noop, assert_ok, parameter_types};
-use manta_crypto::*;
 use manta_asset::*;
+use manta_crypto::*;
 use rand_chacha::ChaCha20Rng;
 use sp_core::H256;
 use sp_runtime::{
@@ -93,11 +93,7 @@ fn new_test_ext() -> sp_io::TestExternalities {
 #[test]
 fn test_constants_should_work() {
 	new_test_ext().execute_with(|| {
-		assert_ok!(Assets::init_asset(
-			Origin::signed(1),
-			TEST_ASSET,
-			100
-		));
+		assert_ok!(Assets::init_asset(Origin::signed(1), TEST_ASSET, 100));
 		assert_eq!(Assets::balance(1, TEST_ASSET), 100);
 		let hash_param = HashParam::deserialize(HASH_PARAM.data);
 		let commit_param = CommitmentParam::deserialize(COMMIT_PARAM.data);
@@ -113,11 +109,7 @@ fn test_constants_should_work() {
 #[test]
 fn test_mint_should_work() {
 	new_test_ext().execute_with(|| {
-		assert_ok!(Assets::init_asset(
-			Origin::signed(1),
-			TEST_ASSET,
-			1000
-		));
+		assert_ok!(Assets::init_asset(Origin::signed(1), TEST_ASSET, 1000));
 		assert_eq!(Assets::balance(1, TEST_ASSET), 1000);
 		assert_eq!(PoolBalance::get(TEST_ASSET), 0);
 
@@ -164,11 +156,7 @@ fn test_reclaim_should_work_super_long() {
 #[test]
 fn issuing_asset_units_to_issuer_should_work() {
 	new_test_ext().execute_with(|| {
-		assert_ok!(Assets::init_asset(
-			Origin::signed(1),
-			TEST_ASSET,
-			100
-		));
+		assert_ok!(Assets::init_asset(Origin::signed(1), TEST_ASSET, 100));
 		assert_eq!(Assets::balance(1, TEST_ASSET), 100);
 	});
 }
@@ -176,26 +164,12 @@ fn issuing_asset_units_to_issuer_should_work() {
 #[test]
 fn querying_total_supply_should_work() {
 	new_test_ext().execute_with(|| {
-		assert_ok!(Assets::init_asset(
-			Origin::signed(1),
-			TEST_ASSET,
-			100
-		));
+		assert_ok!(Assets::init_asset(Origin::signed(1), TEST_ASSET, 100));
 		assert_eq!(Assets::balance(1, TEST_ASSET), 100);
-		assert_ok!(Assets::transfer_asset(
-			Origin::signed(1),
-			2,
-			TEST_ASSET,
-			50
-		));
+		assert_ok!(Assets::transfer_asset(Origin::signed(1), 2, TEST_ASSET, 50));
 		assert_eq!(Assets::balance(1, TEST_ASSET), 50);
 		assert_eq!(Assets::balance(2, TEST_ASSET), 50);
-		assert_ok!(Assets::transfer_asset(
-			Origin::signed(2),
-			3,
-			TEST_ASSET,
-			31
-		));
+		assert_ok!(Assets::transfer_asset(Origin::signed(2), 3, TEST_ASSET, 31));
 		assert_eq!(Assets::balance(1, TEST_ASSET), 50);
 		assert_eq!(Assets::balance(2, TEST_ASSET), 19);
 		assert_eq!(Assets::balance(3, TEST_ASSET), 31);
@@ -206,18 +180,9 @@ fn querying_total_supply_should_work() {
 #[test]
 fn transferring_amount_above_available_balance_should_work() {
 	new_test_ext().execute_with(|| {
-		assert_ok!(Assets::init_asset(
-			Origin::signed(1),
-			TEST_ASSET,
-			100
-		));
+		assert_ok!(Assets::init_asset(Origin::signed(1), TEST_ASSET, 100));
 		assert_eq!(Assets::balance(1, TEST_ASSET), 100);
-		assert_ok!(Assets::transfer_asset(
-			Origin::signed(1),
-			2,
-			TEST_ASSET,
-			50
-		));
+		assert_ok!(Assets::transfer_asset(Origin::signed(1), 2, TEST_ASSET, 50));
 		assert_eq!(Assets::balance(1, TEST_ASSET), 50);
 		assert_eq!(Assets::balance(2, TEST_ASSET), 50);
 	});
@@ -226,18 +191,9 @@ fn transferring_amount_above_available_balance_should_work() {
 #[test]
 fn transferring_amount_more_than_available_balance_should_not_work() {
 	new_test_ext().execute_with(|| {
-		assert_ok!(Assets::init_asset(
-			Origin::signed(1),
-			TEST_ASSET,
-			100
-		));
+		assert_ok!(Assets::init_asset(Origin::signed(1), TEST_ASSET, 100));
 		assert_eq!(Assets::balance(1, TEST_ASSET), 100);
-		assert_ok!(Assets::transfer_asset(
-			Origin::signed(1),
-			2,
-			TEST_ASSET,
-			50
-		));
+		assert_ok!(Assets::transfer_asset(Origin::signed(1), 2, TEST_ASSET, 50));
 		assert_eq!(Assets::balance(1, TEST_ASSET), 50);
 		assert_eq!(Assets::balance(2, TEST_ASSET), 50);
 		assert_noop!(
@@ -250,11 +206,7 @@ fn transferring_amount_more_than_available_balance_should_not_work() {
 #[test]
 fn transferring_less_than_one_unit_should_not_work() {
 	new_test_ext().execute_with(|| {
-		assert_ok!(Assets::init_asset(
-			Origin::signed(1),
-			TEST_ASSET,
-			100
-		));
+		assert_ok!(Assets::init_asset(Origin::signed(1), TEST_ASSET, 100));
 		assert_eq!(Assets::balance(1, TEST_ASSET), 100);
 		assert_noop!(
 			Assets::transfer_asset(Origin::signed(1), 2, TEST_ASSET, 0),
@@ -266,11 +218,7 @@ fn transferring_less_than_one_unit_should_not_work() {
 #[test]
 fn transferring_more_units_than_total_supply_should_not_work() {
 	new_test_ext().execute_with(|| {
-		assert_ok!(Assets::init_asset(
-			Origin::signed(1),
-			TEST_ASSET,
-			100
-		));
+		assert_ok!(Assets::init_asset(Origin::signed(1), TEST_ASSET, 100));
 		assert_eq!(Assets::balance(1, TEST_ASSET), 100);
 		assert_noop!(
 			Assets::transfer_asset(Origin::signed(1), 2, TEST_ASSET, 101),
@@ -282,11 +230,7 @@ fn transferring_more_units_than_total_supply_should_not_work() {
 #[test]
 fn destroying_asset_balance_with_positive_balance_should_work() {
 	new_test_ext().execute_with(|| {
-		assert_ok!(Assets::init_asset(
-			Origin::signed(1),
-			TEST_ASSET,
-			100
-		));
+		assert_ok!(Assets::init_asset(Origin::signed(1), TEST_ASSET, 100));
 		assert_eq!(Assets::balance(1, TEST_ASSET), 100);
 	});
 }
@@ -294,11 +238,7 @@ fn destroying_asset_balance_with_positive_balance_should_work() {
 #[test]
 fn cannot_init_twice() {
 	new_test_ext().execute_with(|| {
-		assert_ok!(Assets::init_asset(
-			Origin::signed(1),
-			TEST_ASSET,
-			100
-		));
+		assert_ok!(Assets::init_asset(Origin::signed(1), TEST_ASSET, 100));
 		assert_noop!(
 			Assets::init_asset(Origin::signed(1), TEST_ASSET, 100),
 			Error::<Test>::AlreadyInitialized
@@ -319,13 +259,7 @@ fn mint_tokens_helper(size: usize) -> Vec<MantaAsset> {
 		// build a sender token
 		let token_value = 10 + i as u64;
 		rng.fill_bytes(&mut sk);
-		let asset = MantaAsset::sample(
-			&commit_param,
-			&sk,
-			&TEST_ASSET,
-			&token_value,
-			&mut rng,
-		);
+		let asset = MantaAsset::sample(&commit_param, &sk, &TEST_ASSET, &token_value, &mut rng);
 		let payload = generate_mint_payload(&asset);
 
 		// mint a sender token

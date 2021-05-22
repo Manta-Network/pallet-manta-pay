@@ -23,8 +23,8 @@ use ark_relations::r1cs::{ConstraintSynthesizer, ConstraintSystem};
 use ark_serialize::CanonicalSerialize;
 use ark_std::rand::{RngCore, SeedableRng};
 use hkdf::Hkdf;
-use manta_crypto::*;
 use manta_asset::*;
+use manta_crypto::*;
 use rand_chacha::ChaCha20Rng;
 use sha2::Sha512Trunc256;
 
@@ -90,13 +90,7 @@ fn manta_transfer_zkp_key_gen(
 	for e in 0..128 {
 		rng.fill_bytes(&mut sk);
 
-		let sender = MantaAsset::sample(
-			&commit_param,
-			&sk,
-			&TEST_ASSET,
-			&(e + 100),
-			&mut rng,
-		);
+		let sender = MantaAsset::sample(&commit_param, &sk, &TEST_ASSET, &(e + 100), &mut rng);
 		ledger.push(sender.commitment);
 		coins.push(sender);
 	}
@@ -178,13 +172,7 @@ fn manta_reclaim_zkp_key_gen(
 	for e in 0..128 {
 		rng.fill_bytes(&mut sk);
 
-		let sender = MantaAsset::sample(
-			&commit_param,
-			&sk,
-			&TEST_ASSET,
-			&(e + 100),
-			&mut rng,
-		);
+		let sender = MantaAsset::sample(&commit_param, &sk, &TEST_ASSET, &(e + 100), &mut rng);
 		ledger.push(sender.commitment);
 		coins.push(sender);
 	}

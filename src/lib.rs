@@ -124,8 +124,8 @@ use ark_std::vec::Vec;
 use frame_support::{decl_error, decl_event, decl_module, decl_storage, ensure};
 use frame_system::ensure_signed;
 use ledger::LedgerSharding;
+use manta_asset::SanityCheck;
 use manta_crypto::*;
-use manta_asset::{AssetId, SanityCheck};
 use sp_runtime::traits::{StaticLookup, Zero};
 use sp_std::prelude::*;
 
@@ -161,7 +161,7 @@ decl_module! {
 		/// # </weight>
 		#[weight = T::WeightInfo::mint_private_asset()]
 		fn init_asset(origin,
-			asset_id: AssetId,
+			asset_id: u64,
 			total: u64
 		) {
 
@@ -229,7 +229,7 @@ decl_module! {
 		#[weight = T::WeightInfo::transfer_asset()]
 		fn transfer_asset(origin,
 			target: <T::Lookup as StaticLookup>::Source,
-			asset_id: AssetId,
+			asset_id: u64,
 			amount: u64
 		) {
 
@@ -542,15 +542,15 @@ decl_event! {
 		<T as frame_system::Config>::AccountId,
 	{
 		/// The asset was issued. \[asset_id, owner, total_supply\]
-		Issued(AssetId, AccountId, u64),
+		Issued(u64, AccountId, u64),
 		/// The asset was transferred. \[from, to, amount\]
-		Transferred(AssetId, AccountId, AccountId, u64),
+		Transferred(u64, AccountId, AccountId, u64),
 		/// The asset was minted to private
-		Minted(AssetId, AccountId, u64),
+		Minted(u64, AccountId, u64),
 		/// Private transfer
 		PrivateTransferred(AccountId),
 		/// The assets was reclaimed
-		PrivateReclaimed(AssetId, AccountId, u64),
+		PrivateReclaimed(u64, AccountId, u64),
 	}
 }
 
@@ -593,12 +593,12 @@ decl_storage! {
 		/// The number of units of assets held by any given account.
 		pub Balances: double_map
 			hasher(blake2_128_concat) T::AccountId,
-			hasher(blake2_128_concat) AssetId
+			hasher(blake2_128_concat) u64
 			=> u64;
 
 		/// The total unit supply of the asset.
 		/// If 0, then this asset is not initialized.
-		pub TotalSupply: map hasher(blake2_128_concat) AssetId => u64;
+		pub TotalSupply: map hasher(blake2_128_concat) u64 => u64;
 
 		/// List of _void number_s.
 		/// A void number is also known as a `serial number` or `nullifier` in other protocols.
@@ -616,7 +616,7 @@ decl_storage! {
 		pub EncValueList get(fn enc_value_list): Vec<[u8; 16]>;
 
 		/// The balance of all minted coins for this asset_id.
-		pub PoolBalance: map hasher(blake2_128_concat) AssetId => u64;
+		pub PoolBalance: map hasher(blake2_128_concat) u64 => u64;
 
 		/// The checksum of hash parameter.
 		pub HashParamChecksum get(fn hash_param_checksum): [u8; 32];
@@ -641,12 +641,12 @@ impl<T: Config> Module<T> {
 	// Public immutables
 
 	/// Get the asset `id` balance of `who`.
-	pub fn balance(who: T::AccountId, what: AssetId) -> u64 {
+	pub fn balance(who: T::AccountId, what: u64) -> u64 {
 		<Balances<T>>::get(who, what)
 	}
 
 	/// Get the asset `id` total supply.
-	pub fn total_supply(what: AssetId) -> u64 {
+	pub fn total_supply(what: u64) -> u64 {
 		TotalSupply::get(what)
 	}
 }

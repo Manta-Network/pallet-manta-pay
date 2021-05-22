@@ -31,10 +31,9 @@ use ark_std::{
 };
 use frame_benchmarking::{account, benchmarks, whitelisted_caller};
 use frame_system::{EventRecord, RawOrigin};
-use manta_asset::{MantaAsset, MantaAssetFullReceiver, Process, Sampling};
+use manta_asset::{MantaAsset, MantaAssetFullReceiver, Process, Sampling, TEST_ASSET};
 use rand_chacha::ChaCha20Rng;
 use std::{fs::File, io::Read};
-use manta_asset::TEST_ASSET;
 
 const SEED: u32 = 0;
 
