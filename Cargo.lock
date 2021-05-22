@@ -1406,7 +1406,7 @@ dependencies = [
 [[package]]
 name = "manta-asset"
 version = "3.0.0"
-source = "git+https://github.com/Manta-Network/manta-asset?branch=impl-asset-id#79cf02eacc5dcc029eb2a72fd684d4187ab21a64"
+source = "git+https://github.com/Manta-Network/manta-asset?branch=master#49ab31edd9453616b3e5ca1e5268278b497f07fe"
 dependencies = [
  "ark-crypto-primitives",
  "ark-ed-on-bls12-381",
