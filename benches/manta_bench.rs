@@ -28,8 +28,8 @@ use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
 use ark_std::rand::{RngCore, SeedableRng};
 use criterion::Criterion;
 use data_encoding::BASE64;
+use manta_asset::*;
 use manta_crypto::*;
-use pallet_manta_asset::*;
 use pallet_manta_pay::*;
 use rand_chacha::ChaCha20Rng;
 use std::{fs::File, io::prelude::*};
@@ -85,10 +85,10 @@ fn bench_transfer_verify(c: &mut Criterion) {
 	// sender
 	let mut sk = [0u8; 32];
 	rng.fill_bytes(&mut sk);
-	let sender_1 = MantaAsset::sample(&commit_param, &sk, &100, &mut rng);
+	let sender_1 = MantaAsset::sample(&commit_param, &sk, &TEST_ASSET, &100, &mut rng);
 
 	rng.fill_bytes(&mut sk);
-	let sender_2 = MantaAsset::sample(&commit_param, &sk, &300, &mut rng);
+	let sender_2 = MantaAsset::sample(&commit_param, &sk, &TEST_ASSET, &300, &mut rng);
 
 	let list = [sender_1.commitment, sender_2.commitment];
 	let sender_1 = SenderMetaData::build(hash_param.clone(), sender_1, &list);
@@ -96,11 +96,13 @@ fn bench_transfer_verify(c: &mut Criterion) {
 
 	// receiver
 	rng.fill_bytes(&mut sk);
-	let receiver_1_full = MantaAssetFullReceiver::sample(&commit_param, &sk, &(), &mut rng);
+	let receiver_1_full =
+		MantaAssetFullReceiver::sample(&commit_param, &sk, &TEST_ASSET, &(), &mut rng);
 	let receiver_1 = receiver_1_full.prepared.process(&150, &mut rng);
 
 	rng.fill_bytes(&mut sk);
-	let receiver_2_full = MantaAssetFullReceiver::sample(&commit_param, &sk, &(), &mut rng);
+	let receiver_2_full =
+		MantaAssetFullReceiver::sample(&commit_param, &sk, &TEST_ASSET, &(), &mut rng);
 	let receiver_2 = receiver_2_full.prepared.process(&250, &mut rng);
 
 	let circuit = TransferCircuit {
@@ -261,10 +263,10 @@ fn bench_transfer_prove(c: &mut Criterion) {
 	// sender
 	let mut sk = [0u8; 32];
 	rng.fill_bytes(&mut sk);
-	let sender_1 = MantaAsset::sample(&commit_param, &sk, &100, &mut rng);
+	let sender_1 = MantaAsset::sample(&commit_param, &sk, &TEST_ASSET, &100, &mut rng);
 
 	rng.fill_bytes(&mut sk);
-	let sender_2 = MantaAsset::sample(&commit_param, &sk, &300, &mut rng);
+	let sender_2 = MantaAsset::sample(&commit_param, &sk, &TEST_ASSET, &300, &mut rng);
 
 	let list = [sender_1.commitment, sender_2.commitment];
 	let sender_1 = SenderMetaData::build(hash_param.clone(), sender_1, &list);
@@ -272,11 +274,13 @@ fn bench_transfer_prove(c: &mut Criterion) {
 
 	// receiver
 	rng.fill_bytes(&mut sk);
-	let receiver_1_full = MantaAssetFullReceiver::sample(&commit_param, &sk, &(), &mut rng);
+	let receiver_1_full =
+		MantaAssetFullReceiver::sample(&commit_param, &sk, &TEST_ASSET, &(), &mut rng);
 	let receiver_1 = receiver_1_full.prepared.process(&150, &mut rng);
 
 	rng.fill_bytes(&mut sk);
-	let receiver_2_full = MantaAssetFullReceiver::sample(&commit_param, &sk, &(), &mut rng);
+	let receiver_2_full =
+		MantaAssetFullReceiver::sample(&commit_param, &sk, &TEST_ASSET, &(), &mut rng);
 	let receiver_2 = receiver_2_full.prepared.process(&250, &mut rng);
 
 	let circuit = TransferCircuit {

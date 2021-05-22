@@ -31,6 +31,7 @@ impl Default for PrivateTransferData {
 impl Default for ReclaimData {
 	fn default() -> Self {
 		Self {
+			asset_id: AssetId::default(),
 			reclaim_amount: 0,
 			sender_1: SenderData::default(),
 			sender_2: SenderData::default(),

@@ -89,6 +89,7 @@ impl MantaZKPVerifier for ReclaimData {
 		let mr_1: Vec<Fq> = ToConstraintField::<Fq>::to_field_elements(&merkle_root_1).unwrap();
 		let mr_2: Vec<Fq> = ToConstraintField::<Fq>::to_field_elements(&merkle_root_2).unwrap();
 		let value_fq = Fq::from(self.reclaim_amount);
+		let asset_id_fq = Fq::from(self.asset_id as u64);
 		inputs = [
 			inputs[..].as_ref(),
 			sn_1.as_ref(),
@@ -96,6 +97,7 @@ impl MantaZKPVerifier for ReclaimData {
 			mr_1.as_ref(),
 			mr_2.as_ref(),
 			[value_fq].as_ref(),
+			[asset_id_fq].as_ref(),
 		]
 		.concat();
 
