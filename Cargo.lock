@@ -1406,7 +1406,7 @@ dependencies = [
 [[package]]
 name = "manta-asset"
 version = "3.0.0"
-source = "git+https://github.com/Manta-Network/manta-asset?branch=master#49ab31edd9453616b3e5ca1e5268278b497f07fe"
+source = "git+https://github.com/Manta-Network/manta-asset?branch=error-wrapper#7333d1301e94de90f5c878022c77ea20d081cab6"
 dependencies = [
  "ark-crypto-primitives",
  "ark-ed-on-bls12-381",
@@ -1422,7 +1422,7 @@ dependencies = [
 [[package]]
 name = "manta-crypto"
 version = "3.0.0"
-source = "git+https://github.com/Manta-Network/manta-crypto?branch=master#a23182964290aa30cb7e28b1b8958538b6d3c992"
+source = "git+https://github.com/Manta-Network/manta-crypto?branch=error-wrapper#419755d4fa3aeb37ee09d30b4517c1c19f46f724"
 dependencies = [
  "aes",
  "ark-bls12-381",
