@@ -146,9 +146,7 @@ fn mint_without_init_should_not_work() {
 #[test]
 fn mint_zero_amount_should_not_work() {
 	new_test_ext().execute_with(|| {
-		assert_ok!(Assets::init_asset(Origin::signed(1), TEST_ASSET, 100));
-		assert_eq!(Assets::balance(1, TEST_ASSET), 100);
-		assert_eq!(PoolBalance::get(TEST_ASSET), 0);
+		mint_tokens_setup_helper();
 
 		let payload = generate_mint_payload_helper(0);
 
@@ -162,9 +160,7 @@ fn mint_zero_amount_should_not_work() {
 #[test]
 fn mint_with_insufficient_origin_balance_should_not_work() {
 	new_test_ext().execute_with(|| {
-		assert_ok!(Assets::init_asset(Origin::signed(1), TEST_ASSET, 100));
-		assert_eq!(Assets::balance(1, TEST_ASSET), 100);
-		assert_eq!(PoolBalance::get(TEST_ASSET), 0);
+		mint_tokens_setup_helper();
 
 		assert_ok!(Assets::transfer_asset(Origin::signed(1), 2, TEST_ASSET, 99));
 		assert_eq!(Assets::balance(1, TEST_ASSET), 1);
@@ -180,20 +176,39 @@ fn mint_with_insufficient_origin_balance_should_not_work() {
 }
 
 #[test]
-fn mint_with_eisting_coin_should_not_work() {
+fn mint_with_existing_coin_should_not_work() {
 	new_test_ext().execute_with(|| {
-		assert_ok!(Assets::init_asset(Origin::signed(1), TEST_ASSET, 100));
-		assert_eq!(Assets::balance(1, TEST_ASSET), 100);
-		assert_eq!(PoolBalance::get(TEST_ASSET), 0);
+		mint_tokens_setup_helper();
 
 		let payload = generate_mint_payload_helper(50);
-		Assets::mint_private_asset(Origin::signed(1), payload);
+		assert_ok!(Assets::mint_private_asset(Origin::signed(1), payload));
+
 		assert_noop!(
 			Assets::mint_private_asset(Origin::signed(1), payload),
 			Error::<Test>::MantaCoinExist
 		);
 	});
 }
+
+#[test]
+fn mint_with_invalid_commit_should_not_work() {
+	new_test_ext().execute_with(|| {
+		mint_tokens_setup_helper();
+
+		let commit_param = CommitmentParam::deserialize(Parameter{data:&[0u8; 81664]}.data);
+		let mut rng = ChaCha20Rng::from_seed([3u8; 32]);
+		let mut sk = [0u8; 32];
+		rng.fill_bytes(&mut sk);
+		let asset = MantaAsset::sample(&commit_param, &sk, &TEST_ASSET, &50, &mut rng);
+		let payload = generate_mint_payload(&asset);
+
+		assert_noop!(
+			Assets::mint_private_asset(Origin::signed(1), payload),
+			Error::<Test>::MintFail
+		);
+	});
+}
+
 
 #[test]
 fn test_transfer_should_work() {
@@ -347,6 +362,12 @@ fn generate_mint_payload_helper(value: u64) -> [u8; MINT_PAYLOAD_SIZE] {
 	rng.fill_bytes(&mut sk);
 	let asset = MantaAsset::sample(&commit_param, &sk, &TEST_ASSET, &value, &mut rng);
 	generate_mint_payload(&asset)
+}
+
+fn mint_tokens_setup_helper() {
+	assert_ok!(Assets::init_asset(Origin::signed(1), TEST_ASSET, 100));
+	assert_eq!(Assets::balance(1, TEST_ASSET), 100);
+	assert_eq!(PoolBalance::get(TEST_ASSET), 0);
 }
 
 fn transfer_test_helper(iter: usize) {
