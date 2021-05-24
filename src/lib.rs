@@ -277,8 +277,9 @@ decl_module! {
 			let origin_balance = <Balances<T>>::get(&origin_account, input.asset_id);
 			ensure!(origin_balance >= input.amount, Error::<T>::BalanceLow);
 
-			// get the parameter checksum from the ledger
-			// and make sure the parameters match
+			// HASH_PARAM and COMMIT_PARAM are too big to keep on chain,
+			// therefore we only store their checksums.
+			// Retreive them from the ledger and make sure they match to the locals
 			let hash_param_checksum_local = HASH_PARAM.get_checksum();
 			let commit_param_checksum_local = COMMIT_PARAM.get_checksum();
 
