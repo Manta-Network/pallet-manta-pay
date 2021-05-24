@@ -33,7 +33,7 @@ use ark_crypto_primitives::{
 };
 use ark_ed_on_bls12_381::{EdwardsProjective, Fq, Fr};
 use ark_r1cs_std::{alloc::AllocVar, prelude::*};
-use ark_relations::r1cs::ConstraintSystemRef;
+use ark_relations::r1cs::{ConstraintSystemRef, SynthesisError};
 use ark_serialize::CanonicalDeserialize;
 use ark_std::vec::Vec;
 use manta_asset::*;
@@ -49,14 +49,14 @@ pub(crate) fn sender_token_well_formed_circuit_helper(
 	parameters_var: &CommitmentParamVar,
 	asset: &MantaAsset,
 	cs: ConstraintSystemRef<Fq>,
-) {
+) -> Result<(), SynthesisError> {
 	// =============================
 	// statement 1: k = com(pk||rho, r)
 	// =============================
 	let input: Vec<u8> = [asset.pub_info.pk.as_ref(), asset.pub_info.rho.as_ref()].concat();
 	let mut input_var = Vec::new();
 	for byte in &input {
-		input_var.push(UInt8::new_witness(cs.clone(), || Ok(*byte)).unwrap());
+		input_var.push(UInt8::new_witness(cs.clone(), || Ok(*byte))?);
 	}
 
 	// opening
@@ -65,21 +65,18 @@ pub(crate) fn sender_token_well_formed_circuit_helper(
 	let randomness_var = MantaCoinCommitmentOpenVar::new_witness(
 		ark_relations::ns!(cs, "gadget_randomness"),
 		|| Ok(&r),
-	)
-	.unwrap();
+	)?;
 
 	// commitment
-	let result_var =
-		CommitmentSchemeVar::commit(&parameters_var, &input_var, &randomness_var).unwrap();
+	let result_var = CommitmentSchemeVar::commit(&parameters_var, &input_var, &randomness_var)?;
 
 	// circuit to compare the committed value with supplied value
 	let k = CommitmentOutput::deserialize(asset.pub_info.k.as_ref()).unwrap();
 	let commitment_var2 = MantaCoinCommitmentOutputVar::new_input(
 		ark_relations::ns!(cs, "gadget_commitment"),
 		|| Ok(k),
-	)
-	.unwrap();
-	result_var.enforce_equal(&commitment_var2).unwrap();
+	)?;
+	result_var.enforce_equal(&commitment_var2)?;
 
 	// =============================
 	// statement 2: cm = com( asset_id || v || k, s)
@@ -92,7 +89,7 @@ pub(crate) fn sender_token_well_formed_circuit_helper(
 	.concat();
 	let mut input_var = Vec::new();
 	for byte in &input {
-		input_var.push(UInt8::new_witness(cs.clone(), || Ok(*byte)).unwrap());
+		input_var.push(UInt8::new_witness(cs.clone(), || Ok(*byte))?);
 	}
 
 	// opening
@@ -100,12 +97,11 @@ pub(crate) fn sender_token_well_formed_circuit_helper(
 	let randomness_var = MantaCoinCommitmentOpenVar::new_witness(
 		ark_relations::ns!(cs, "gadget_randomness"),
 		|| Ok(&s),
-	)
-	.unwrap();
+	)?;
 
 	// commitment
 	let result_var: MantaCoinCommitmentOutputVar =
-		CommitmentSchemeVar::commit(&parameters_var, &input_var, &randomness_var).unwrap();
+		CommitmentSchemeVar::commit(&parameters_var, &input_var, &randomness_var)?;
 
 	// the other commitment
 	let cm = CommitmentOutput::deserialize(asset.commitment.as_ref()).unwrap();
@@ -113,11 +109,12 @@ pub(crate) fn sender_token_well_formed_circuit_helper(
 	let commitment_var2 = MantaCoinCommitmentOutputVar::new_witness(
 		ark_relations::ns!(cs, "gadget_commitment"),
 		|| Ok(cm),
-	)
-	.unwrap();
+	)?;
 
 	// circuit to compare the committed value with supplied value
-	result_var.enforce_equal(&commitment_var2).unwrap();
+	result_var.enforce_equal(&commitment_var2)?;
+
+	Ok(())
 }
 
 // =============================
@@ -129,7 +126,7 @@ pub(crate) fn receiver_token_well_formed_circuit_helper(
 	parameters_var: &CommitmentParamVar,
 	receiver: &MantaAssetProcessedReceiver,
 	cs: ConstraintSystemRef<Fq>,
-) {
+) -> Result<(), SynthesisError> {
 	// =============================
 	// statement 1: cm = com(v||k, s)
 	// =============================
@@ -140,7 +137,7 @@ pub(crate) fn receiver_token_well_formed_circuit_helper(
 	.concat();
 	let mut input_var = Vec::new();
 	for byte in &input {
-		input_var.push(UInt8::new_witness(cs.clone(), || Ok(*byte)).unwrap());
+		input_var.push(UInt8::new_witness(cs.clone(), || Ok(*byte))?);
 	}
 
 	// opening
@@ -150,12 +147,11 @@ pub(crate) fn receiver_token_well_formed_circuit_helper(
 	let randomness_var = MantaCoinCommitmentOpenVar::new_witness(
 		ark_relations::ns!(cs, "gadget_randomness"),
 		|| Ok(&s),
-	)
-	.unwrap();
+	)?;
 
 	// commitment
 	let result_var: MantaCoinCommitmentOutputVar =
-		CommitmentSchemeVar::commit(&parameters_var, &input_var, &randomness_var).unwrap();
+		CommitmentSchemeVar::commit(&parameters_var, &input_var, &randomness_var)?;
 
 	// the other commitment
 	let cm = CommitmentOutput::deserialize(receiver.commitment.as_ref()).unwrap();
@@ -163,11 +159,12 @@ pub(crate) fn receiver_token_well_formed_circuit_helper(
 	let commitment_var2 = MantaCoinCommitmentOutputVar::new_input(
 		ark_relations::ns!(cs, "gadget_commitment"),
 		|| Ok(cm),
-	)
-	.unwrap();
+	)?;
 
 	// circuit to compare the committed value with supplied value
-	result_var.enforce_equal(&commitment_var2).unwrap();
+	result_var.enforce_equal(&commitment_var2)?;
+
+	Ok(())
 }
 
 // =============================
@@ -182,33 +179,33 @@ pub(crate) fn prf_circuit_helper(
 	input: &[u8; 32],
 	output: &[u8; 32],
 	cs: ConstraintSystemRef<Fq>,
-) {
+) -> Result<(), SynthesisError> {
 	// step 1. Allocate seed
 	let seed_var = Blake2sGadget::new_seed(cs.clone(), &seed);
 
 	// step 2. Allocate inputs
-	let input_var = UInt8::new_witness_vec(ark_relations::ns!(cs, "declare_input"), input).unwrap();
+	let input_var = UInt8::new_witness_vec(ark_relations::ns!(cs, "declare_input"), input)?;
 
 	// step 3. Allocate evaluated output
-	let output_var = Blake2sGadget::evaluate(&seed_var, &input_var).unwrap();
+	let output_var = Blake2sGadget::evaluate(&seed_var, &input_var)?;
 
 	// step 4. Actual output
 	let actual_out_var = if is_output_hidden {
 		<Blake2sGadget as PRFGadget<_, Fq>>::OutputVar::new_witness(
 			ark_relations::ns!(cs, "declare_output"),
 			|| Ok(output),
-		)
-		.unwrap()
+		)?
 	} else {
 		<Blake2sGadget as PRFGadget<_, Fq>>::OutputVar::new_input(
 			ark_relations::ns!(cs, "declare_output"),
 			|| Ok(output),
-		)
-		.unwrap()
+		)?
 	};
 
 	// step 5. compare the outputs
-	output_var.enforce_equal(&actual_out_var).unwrap();
+	output_var.enforce_equal(&actual_out_var)?;
+
+	Ok(())
 }
 
 // =============================
@@ -221,23 +218,21 @@ pub(crate) fn merkle_membership_circuit_proof(
 	param_var: HashParamVar,
 	root: HashOutput,
 	cs: ConstraintSystemRef<Fq>,
-) {
-	let root_var =
-		HashOutputVar::new_input(ark_relations::ns!(cs, "new_digest"), || Ok(root)).unwrap();
+) -> Result<(), SynthesisError> {
+	let root_var = HashOutputVar::new_input(ark_relations::ns!(cs, "new_digest"), || Ok(root))?;
 
 	// Allocate Merkle Tree Path
 	let membership_var =
-		PathVar::<_, HashVar, _>::new_witness(ark_relations::ns!(cs, "new_witness"), || Ok(path))
-			.unwrap();
+		PathVar::<_, HashVar, _>::new_witness(ark_relations::ns!(cs, "new_witness"), || Ok(path))?;
 
 	// Allocate Leaf
-	let leaf_var = UInt8::new_witness_vec(ark_relations::ns!(cs, "commitment"), cm).unwrap();
+	let leaf_var = UInt8::new_witness_vec(ark_relations::ns!(cs, "commitment"), cm)?;
 	let leaf_var: &[_] = leaf_var.as_slice();
 
 	// check membership
 	membership_var
-		.check_membership(&param_var, &root_var, &leaf_var)
-		.unwrap()
-		.enforce_equal(&Boolean::TRUE)
-		.unwrap();
+		.check_membership(&param_var, &root_var, &leaf_var)?
+		.enforce_equal(&Boolean::TRUE)?;
+
+	Ok(())
 }

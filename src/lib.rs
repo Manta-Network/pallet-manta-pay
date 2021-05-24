@@ -310,7 +310,7 @@ decl_module! {
 			);
 
 			// update the shards
-			coin_shards.update(&input.cm, hash_param);
+			coin_shards.update(&input.cm, hash_param).unwrap();
 
 			// write back to ledger storage
 			Self::deposit_event(
@@ -389,12 +389,12 @@ decl_module! {
 				!coin_shards.exist(&data.receiver_1.cm),
 				<Error<T>>::MantaCoinExist
 			);
-			coin_shards.update(&data.receiver_1.cm, hash_param.clone());
+			coin_shards.update(&data.receiver_1.cm, hash_param.clone()).unwrap();
 			ensure!(
 				!coin_shards.exist(&data.receiver_2.cm),
 				<Error<T>>::MantaCoinExist
 			);
-			coin_shards.update(&data.receiver_2.cm, hash_param);
+			coin_shards.update(&data.receiver_2.cm, hash_param).unwrap();
 
 			// get the verification key from the ledger
 			let transfer_vk_checksum = TransferZKPKeyChecksum::get();
@@ -519,7 +519,7 @@ decl_module! {
 			enc_value_list.push(data.receiver.cipher);
 
 
-			coin_shards.update(&data.receiver.cm, hash_param);
+			coin_shards.update(&data.receiver.cm, hash_param).unwrap();
 			CoinShards::put(coin_shards);
 
 			Self::deposit_event(

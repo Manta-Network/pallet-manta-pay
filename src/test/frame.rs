@@ -95,10 +95,10 @@ fn test_constants_should_work() {
 	new_test_ext().execute_with(|| {
 		assert_ok!(Assets::init_asset(Origin::signed(1), TEST_ASSET, 100));
 		assert_eq!(Assets::balance(1, TEST_ASSET), 100);
-		let hash_param = HashParam::deserialize(HASH_PARAM.data);
-		let commit_param = CommitmentParam::deserialize(COMMIT_PARAM.data);
-		let hash_param_checksum_local = hash_param.get_checksum();
-		let commit_param_checksum_local = commit_param.get_checksum();
+		let hash_param = HashParam::deserialize(HASH_PARAM.data).unwrap();
+		let commit_param = CommitmentParam::deserialize(COMMIT_PARAM.data).unwrap();
+		let hash_param_checksum_local = hash_param.get_checksum().unwrap();
+		let commit_param_checksum_local = commit_param.get_checksum().unwrap();
 		let hash_param_checksum = HashParamChecksum::get();
 		let commit_param_checksum = CommitParamChecksum::get();
 		assert_eq!(hash_param_checksum, hash_param_checksum_local);
@@ -113,11 +113,11 @@ fn test_mint_should_work() {
 		assert_eq!(Assets::balance(1, TEST_ASSET), 1000);
 		assert_eq!(PoolBalance::get(TEST_ASSET), 0);
 
-		let commit_param = CommitmentParam::deserialize(COMMIT_PARAM.data);
+		let commit_param = CommitmentParam::deserialize(COMMIT_PARAM.data).unwrap();
 		let mut rng = ChaCha20Rng::from_seed([3u8; 32]);
 		let mut sk = [0u8; 32];
 		rng.fill_bytes(&mut sk);
-		let asset = MantaAsset::sample(&commit_param, &sk, &TEST_ASSET, &10, &mut rng);
+		let asset = MantaAsset::sample(&commit_param, &sk, &TEST_ASSET, &10, &mut rng).unwrap();
 
 		let payload = generate_mint_payload(&asset);
 		assert_ok!(Assets::mint_private_asset(Origin::signed(1), payload));
@@ -247,7 +247,7 @@ fn cannot_init_twice() {
 }
 
 fn mint_tokens_helper(size: usize) -> Vec<MantaAsset> {
-	let commit_param = CommitmentParam::deserialize(COMMIT_PARAM.data);
+	let commit_param = CommitmentParam::deserialize(COMMIT_PARAM.data).unwrap();
 
 	let mut rng = ChaCha20Rng::from_seed([3u8; 32]);
 	let mut pool = 0;
@@ -259,7 +259,8 @@ fn mint_tokens_helper(size: usize) -> Vec<MantaAsset> {
 		// build a sender token
 		let token_value = 10 + i as u64;
 		rng.fill_bytes(&mut sk);
-		let asset = MantaAsset::sample(&commit_param, &sk, &TEST_ASSET, &token_value, &mut rng);
+		let asset =
+			MantaAsset::sample(&commit_param, &sk, &TEST_ASSET, &token_value, &mut rng).unwrap();
 		let payload = generate_mint_payload(&asset);
 
 		// mint a sender token
@@ -286,8 +287,8 @@ fn transfer_test_helper(iter: usize) {
 	assert_eq!(Assets::balance(1, TEST_ASSET), 10_000_000);
 	assert_eq!(PoolBalance::get(TEST_ASSET), 0);
 
-	let hash_param = HashParam::deserialize(HASH_PARAM.data);
-	let commit_param = CommitmentParam::deserialize(COMMIT_PARAM.data);
+	let hash_param = HashParam::deserialize(HASH_PARAM.data).unwrap();
+	let commit_param = CommitmentParam::deserialize(COMMIT_PARAM.data).unwrap();
 
 	// load the ZKP keys
 	let mut file = File::open("transfer_pk.bin").unwrap();
@@ -300,7 +301,7 @@ fn transfer_test_helper(iter: usize) {
 	vk.serialize_uncompressed(&mut vk_bytes).unwrap();
 	let vk = TRANSFER_PK;
 	let vk_checksum = TransferZKPKeyChecksum::get();
-	assert_eq!(vk.get_checksum(), vk_checksum);
+	assert_eq!(vk.get_checksum().unwrap(), vk_checksum);
 
 	let mut rng = ChaCha20Rng::from_seed([3u8; 32]);
 	let mut sk = [0u8; 32];
@@ -319,8 +320,11 @@ fn transfer_test_helper(iter: usize) {
 		// build a receiver token
 		rng.fill_bytes(&mut sk);
 		let receiver_full =
-			MantaAssetFullReceiver::sample(&commit_param, &sk, &TEST_ASSET, &(), &mut rng);
-		let receiver = receiver_full.prepared.process(&(i as u64 + 10), &mut rng);
+			MantaAssetFullReceiver::sample(&commit_param, &sk, &TEST_ASSET, &(), &mut rng).unwrap();
+		let receiver = receiver_full
+			.prepared
+			.process(&(i as u64 + 10), &mut rng)
+			.unwrap();
 		receivers_full.push(receiver_full);
 		receivers_processed.push(receiver);
 	}
@@ -334,9 +338,9 @@ fn transfer_test_helper(iter: usize) {
 		let shard_index_1 = sender_1.commitment[0] as usize;
 		let shard_index_2 = sender_2.commitment[0] as usize;
 		let list_1 = coin_shards.shard[shard_index_1].list.clone();
-		let sender_1 = SenderMetaData::build(hash_param.clone(), sender_1, &list_1);
+		let sender_1 = SenderMetaData::build(hash_param.clone(), sender_1, &list_1).unwrap();
 		let list_2 = coin_shards.shard[shard_index_2].list.clone();
-		let sender_2 = SenderMetaData::build(hash_param.clone(), sender_2, &list_2);
+		let sender_2 = SenderMetaData::build(hash_param.clone(), sender_2, &list_2).unwrap();
 
 		// extract the receivers
 		let receiver_1 = receivers_processed[i * 2 + 1].clone();
@@ -352,7 +356,8 @@ fn transfer_test_helper(iter: usize) {
 			receiver_1.clone(),
 			receiver_2.clone(),
 			&mut rng,
-		);
+		)
+		.unwrap();
 
 		// invoke the transfer event
 		assert_ok!(Assets::private_transfer(Origin::signed(1), payload));
@@ -404,8 +409,8 @@ fn reclaim_test_helper(iter: usize) {
 	assert_eq!(Assets::balance(1, TEST_ASSET), 10_000_000);
 	assert_eq!(PoolBalance::get(TEST_ASSET), 0);
 
-	let hash_param = HashParam::deserialize(HASH_PARAM.data);
-	let commit_param = CommitmentParam::deserialize(COMMIT_PARAM.data);
+	let hash_param = HashParam::deserialize(HASH_PARAM.data).unwrap();
+	let commit_param = CommitmentParam::deserialize(COMMIT_PARAM.data).unwrap();
 
 	let size = iter << 1;
 	let senders = mint_tokens_helper(size);
@@ -425,7 +430,7 @@ fn reclaim_test_helper(iter: usize) {
 	vk.serialize_uncompressed(&mut vk_bytes).unwrap();
 	let vk = RECLAIM_PK;
 	let vk_checksum = ReclaimZKPKeyChecksum::get();
-	assert_eq!(vk.get_checksum(), vk_checksum);
+	assert_eq!(vk.get_checksum().unwrap(), vk_checksum);
 
 	for i in 0usize..iter {
 		let coin_shards = CoinShards::get();
@@ -436,14 +441,14 @@ fn reclaim_test_helper(iter: usize) {
 		let shard_index_1 = sender_1.commitment[0] as usize;
 		let shard_index_2 = sender_2.commitment[0] as usize;
 		let list_1 = coin_shards.shard[shard_index_1].list.clone();
-		let sender_1 = SenderMetaData::build(hash_param.clone(), sender_1, &list_1);
+		let sender_1 = SenderMetaData::build(hash_param.clone(), sender_1, &list_1).unwrap();
 		let list_2 = coin_shards.shard[shard_index_2].list.clone();
-		let sender_2 = SenderMetaData::build(hash_param.clone(), sender_2, &list_2);
+		let sender_2 = SenderMetaData::build(hash_param.clone(), sender_2, &list_2).unwrap();
 
 		rng.fill_bytes(&mut sk);
 		let receiver_full =
-			MantaAssetFullReceiver::sample(&commit_param, &sk, &TEST_ASSET, &(), &mut rng);
-		let receiver = receiver_full.prepared.process(&10, &mut rng);
+			MantaAssetFullReceiver::sample(&commit_param, &sk, &TEST_ASSET, &(), &mut rng).unwrap();
+		let receiver = receiver_full.prepared.process(&10, &mut rng).unwrap();
 
 		let reclaim_value =
 			sender_1.asset.priv_info.value + sender_2.asset.priv_info.value - receiver.value;
@@ -458,7 +463,8 @@ fn reclaim_test_helper(iter: usize) {
 			receiver,
 			reclaim_value,
 			&mut rng,
-		);
+		)
+		.unwrap();
 
 		// invoke the reclaim event
 		assert_ok!(Assets::reclaim(Origin::signed(1), payload));

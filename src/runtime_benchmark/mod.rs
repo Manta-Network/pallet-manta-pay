@@ -105,20 +105,20 @@ benchmarks! {
 		<Balances<T>>::insert(&caller, TEST_ASSET, 1000);
 		assert!(Module::<T>::init_asset(origin.clone(), TEST_ASSET, 1000).is_ok());
 
-		let hash_param = HashParam::deserialize(HASH_PARAM.data);
-		let commit_param = CommitmentParam::deserialize(COMMIT_PARAM.data);
+		let hash_param = HashParam::deserialize(HASH_PARAM.data).unwrap();
+		let commit_param = CommitmentParam::deserialize(COMMIT_PARAM.data).unwrap();
 
 		let mut rng = ChaCha20Rng::from_seed([3u8; 32]);
 		let mut sk = [0u8; 32];
 
 		// mint the tokens
 		rng.fill_bytes(&mut sk);
-		let asset_1 = MantaAsset::sample(&commit_param, &sk, &TEST_ASSET, &10, &mut rng);
+		let asset_1 = MantaAsset::sample(&commit_param, &sk, &TEST_ASSET, &10, &mut rng).unwrap();
 		let payload = generate_mint_payload(&asset_1);
 		Module::<T>::mint_private_asset(origin.clone(), payload).unwrap();
 
 		rng.fill_bytes(&mut sk);
-		let asset_2 = MantaAsset::sample(&commit_param, &sk, &TEST_ASSET, &11, &mut rng);
+		let asset_2 = MantaAsset::sample(&commit_param, &sk, &TEST_ASSET, &11, &mut rng).unwrap();
 		let payload = generate_mint_payload(&asset_2);
 		Module::<T>::mint_private_asset(origin, payload).unwrap();
 
@@ -178,20 +178,20 @@ benchmarks! {
 		<Balances<T>>::insert(&caller, TEST_ASSET, 1000);
 		assert!(Module::<T>::init_asset(origin.clone(), TEST_ASSET, 1000).is_ok());
 
-		let hash_param = HashParam::deserialize(HASH_PARAM.data);
-		let commit_param = CommitmentParam::deserialize(COMMIT_PARAM.data);
+		let hash_param = HashParam::deserialize(HASH_PARAM.data).unwrap();
+		let commit_param = CommitmentParam::deserialize(COMMIT_PARAM.data).unwrap();
 
 		let mut rng = ChaCha20Rng::from_seed([3u8; 32]);
 		let mut sk = [0u8; 32];
 
 		// mint the tokens
 		rng.fill_bytes(&mut sk);
-		let asset_1 = MantaAsset::sample(&commit_param, &sk,&TEST_ASSET, &10, &mut rng);
+		let asset_1 = MantaAsset::sample(&commit_param, &sk,&TEST_ASSET, &10, &mut rng).unwrap();
 		let payload = generate_mint_payload(&asset_1);
 		Module::<T>::mint_private_asset(origin.clone(), payload).unwrap();
 
 		rng.fill_bytes(&mut sk);
-		let asset_2 = MantaAsset::sample(&commit_param, &sk,&TEST_ASSET, &11, &mut rng);
+		let asset_2 = MantaAsset::sample(&commit_param, &sk,&TEST_ASSET, &11, &mut rng).unwrap();
 		let payload = generate_mint_payload(&asset_2);
 		Module::<T>::mint_private_asset(origin, payload).unwrap();
 

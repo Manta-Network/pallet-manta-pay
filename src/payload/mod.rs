@@ -21,6 +21,7 @@ use ark_std::rand::{CryptoRng, RngCore};
 use frame_support::codec::{Decode, Encode};
 use manta_asset::*;
 use manta_crypto::*;
+use manta_errors::MantaErrors;
 
 mod default;
 mod santiy;
@@ -78,7 +79,7 @@ pub struct ReceiverData {
 pub fn generate_mint_payload(asset: &MantaAsset) -> [u8; MINT_PAYLOAD_SIZE] {
 	let data = generate_mint_struct(asset);
 	let mut res = [0u8; MINT_PAYLOAD_SIZE];
-	data.serialize(res.as_mut());
+	data.serialize(res.as_mut()).unwrap();
 	res
 }
 
@@ -118,7 +119,7 @@ pub fn generate_private_transfer_payload<R: RngCore + CryptoRng>(
 	receiver_1: MantaAssetProcessedReceiver,
 	receiver_2: MantaAssetProcessedReceiver,
 	rng: &mut R,
-) -> [u8; PRIVATE_TRANSFER_PAYLOAD_SIZE] {
+) -> Result<[u8; PRIVATE_TRANSFER_PAYLOAD_SIZE], MantaErrors> {
 	let data = generate_private_transfer_struct(
 		commit_param,
 		hash_param,
@@ -128,10 +129,10 @@ pub fn generate_private_transfer_payload<R: RngCore + CryptoRng>(
 		receiver_1,
 		receiver_2,
 		rng,
-	);
+	)?;
 	let mut res = [0u8; PRIVATE_TRANSFER_PAYLOAD_SIZE];
-	data.serialize(res.as_mut());
-	res
+	data.serialize(res.as_mut())?;
+	Ok(res)
 }
 
 /// Given the inputs, generate the payload for the private_transfer
@@ -158,7 +159,7 @@ fn generate_private_transfer_struct<R: RngCore + CryptoRng>(
 	receiver_1: MantaAssetProcessedReceiver,
 	receiver_2: MantaAssetProcessedReceiver,
 	rng: &mut R,
-) -> PrivateTransferData {
+) -> Result<PrivateTransferData, MantaErrors> {
 	// generate circuit
 	let circuit = TransferCircuit {
 		commit_param,
@@ -172,18 +173,18 @@ fn generate_private_transfer_struct<R: RngCore + CryptoRng>(
 	};
 
 	// generate ZKP
-	let proof = create_random_proof(circuit, &pk, rng).unwrap();
+	let proof = create_random_proof(circuit, &pk, rng)?;
 	let mut proof_bytes = [0u8; 192];
-	proof.serialize(proof_bytes.as_mut()).unwrap();
+	proof.serialize(proof_bytes.as_mut())?;
 
 	// serialize the roots
 	let mut root_1 = [0u8; 32];
-	sender_1.root.serialize(root_1.as_mut()).unwrap();
+	sender_1.root.serialize(root_1.as_mut())?;
 
 	let mut root_2 = [0u8; 32];
-	sender_2.root.serialize(root_2.as_mut()).unwrap();
+	sender_2.root.serialize(root_2.as_mut())?;
 
-	PrivateTransferData {
+	Ok(PrivateTransferData {
 		sender_1: SenderData {
 			k: sender_1.asset.pub_info.k,
 			void_number: sender_1.asset.void_number,
@@ -207,7 +208,7 @@ fn generate_private_transfer_struct<R: RngCore + CryptoRng>(
 			cipher: receiver_2.ciphertext,
 		},
 		proof: proof_bytes,
-	}
+	})
 }
 
 /// Given the inputs, generate the payload for the reclaim extrinsic.
@@ -233,7 +234,7 @@ pub fn generate_reclaim_payload<R: RngCore + CryptoRng>(
 	receiver: MantaAssetProcessedReceiver,
 	reclaim_value: u64,
 	rng: &mut R,
-) -> [u8; RECLAIM_PAYLOAD_SIZE] {
+) -> Result<[u8; RECLAIM_PAYLOAD_SIZE], MantaErrors> {
 	let data = generate_reclaim_struct(
 		commit_param,
 		hash_param,
@@ -243,10 +244,10 @@ pub fn generate_reclaim_payload<R: RngCore + CryptoRng>(
 		receiver,
 		reclaim_value,
 		rng,
-	);
+	)?;
 	let mut res = [0u8; RECLAIM_PAYLOAD_SIZE];
-	data.serialize(res.as_mut());
-	res
+	data.serialize(res.as_mut())?;
+	Ok(res)
 }
 
 /// Given the inputs, generate the payload for the reclaim extrinsic.
@@ -272,8 +273,9 @@ fn generate_reclaim_struct<R: RngCore + CryptoRng>(
 	receiver: MantaAssetProcessedReceiver,
 	reclaim_value: u64,
 	rng: &mut R,
-) -> ReclaimData {
+) -> Result<ReclaimData, MantaErrors> {
 	// check the asset_ids match
+	// TODO: raise an `asset_id_not_match` error
 	assert_eq!(
 		sender_1.asset.asset_id, sender_2.asset.asset_id,
 		"Asset_ids do not match"
@@ -298,18 +300,18 @@ fn generate_reclaim_struct<R: RngCore + CryptoRng>(
 	};
 
 	// generate ZKP
-	let proof = create_random_proof(circuit, &pk, rng).unwrap();
+	let proof = create_random_proof(circuit, &pk, rng)?;
 	let mut proof_bytes = [0u8; 192];
-	proof.serialize(proof_bytes.as_mut()).unwrap();
+	proof.serialize(proof_bytes.as_mut())?;
 
 	// serialize the roots
 	let mut root_1 = [0u8; 32];
-	sender_1.root.serialize(root_1.as_mut()).unwrap();
+	sender_1.root.serialize(root_1.as_mut())?;
 
 	let mut root_2 = [0u8; 32];
-	sender_2.root.serialize(root_2.as_mut()).unwrap();
+	sender_2.root.serialize(root_2.as_mut())?;
 
-	ReclaimData {
+	Ok(ReclaimData {
 		asset_id: sender_1.asset.asset_id,
 		reclaim_amount: reclaim_value,
 		sender_1: SenderData {
@@ -329,5 +331,5 @@ fn generate_reclaim_struct<R: RngCore + CryptoRng>(
 			cipher: receiver.ciphertext,
 		},
 		proof: proof_bytes,
-	}
+	})
 }

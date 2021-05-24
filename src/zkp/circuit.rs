@@ -102,13 +102,12 @@ impl ConstraintSynthesizer<Fq> for TransferCircuit {
 		let parameters_var =
 			CommitmentParamVar::new_input(ark_relations::ns!(cs, "gadget_parameters"), || {
 				Ok(&self.commit_param)
-			})
-			.unwrap();
+			})?;
 
-		sender_token_well_formed_circuit_helper(&parameters_var, &self.sender_1.asset, cs.clone());
-		sender_token_well_formed_circuit_helper(&parameters_var, &self.sender_2.asset, cs.clone());
-		receiver_token_well_formed_circuit_helper(&parameters_var, &self.receiver_1, cs.clone());
-		receiver_token_well_formed_circuit_helper(&parameters_var, &self.receiver_2, cs.clone());
+		sender_token_well_formed_circuit_helper(&parameters_var, &self.sender_1.asset, cs.clone())?;
+		sender_token_well_formed_circuit_helper(&parameters_var, &self.sender_2.asset, cs.clone())?;
+		receiver_token_well_formed_circuit_helper(&parameters_var, &self.receiver_1, cs.clone())?;
+		receiver_token_well_formed_circuit_helper(&parameters_var, &self.receiver_2, cs.clone())?;
 
 		// 2. address and the secret key derives public key
 		//  sender.pk = PRF(sender_sk, [0u8;32])
@@ -119,36 +118,35 @@ impl ConstraintSynthesizer<Fq> for TransferCircuit {
 			&[0u8; 32],
 			&self.sender_1.asset.pub_info.pk,
 			cs.clone(),
-		);
+		)?;
 		prf_circuit_helper(
 			false,
 			&self.sender_1.asset.priv_info.sk,
 			&self.sender_1.asset.pub_info.rho,
 			&self.sender_1.asset.void_number,
 			cs.clone(),
-		);
+		)?;
 		prf_circuit_helper(
 			true,
 			&self.sender_2.asset.priv_info.sk,
 			&[0u8; 32],
 			&self.sender_2.asset.pub_info.pk,
 			cs.clone(),
-		);
+		)?;
 		prf_circuit_helper(
 			false,
 			&self.sender_2.asset.priv_info.sk,
 			&self.sender_2.asset.pub_info.rho,
 			&self.sender_2.asset.void_number,
 			cs.clone(),
-		);
+		)?;
 
 		// 3. sender's commitment is on the list
 		// Allocate Parameters for CRH
 		let param_var = HashParamVar::new_constant(
 			ark_relations::ns!(cs, "new_parameter"),
 			self.hash_param.clone(),
-		)
-		.unwrap();
+		)?;
 
 		merkle_membership_circuit_proof(
 			&self.sender_1.asset.commitment,
@@ -156,7 +154,7 @@ impl ConstraintSynthesizer<Fq> for TransferCircuit {
 			param_var.clone(),
 			self.sender_1.root,
 			cs.clone(),
-		);
+		)?;
 
 		merkle_membership_circuit_proof(
 			&self.sender_2.asset.commitment,
@@ -164,7 +162,7 @@ impl ConstraintSynthesizer<Fq> for TransferCircuit {
 			param_var,
 			self.sender_2.root,
 			cs.clone(),
-		);
+		)?;
 
 		// 4. sender's and receiver's total value are the same
 		// TODO: do we need to check that the values are all positive?
@@ -173,30 +171,27 @@ impl ConstraintSynthesizer<Fq> for TransferCircuit {
 		let mut sender_value_sum =
 			FqVar::new_witness(ark_relations::ns!(cs, "sender value"), || {
 				Ok(&sender_value_1_fq)
-			})
-			.unwrap();
+			})?;
 		let sender_value_2_fq = Fq::from(self.sender_2.asset.priv_info.value);
-		let sender_value_2_var = FqVar::new_witness(ark_relations::ns!(cs, "sender value"), || {
-			Ok(&sender_value_2_fq)
-		})
-		.unwrap();
+		let sender_value_2_var =
+			FqVar::new_witness(ark_relations::ns!(cs, "sender value"), || {
+				Ok(&sender_value_2_fq)
+			})?;
 		sender_value_sum += sender_value_2_var;
 
 		let receiver_value_1_fq = Fq::from(self.receiver_1.value);
 		let mut receiver_value_sum =
 			FqVar::new_witness(ark_relations::ns!(cs, "receiver value"), || {
 				Ok(&receiver_value_1_fq)
-			})
-			.unwrap();
+			})?;
 		let receiver_value_2_fq = Fq::from(self.receiver_2.value);
 		let receiver_value_2_var =
 			FqVar::new_witness(ark_relations::ns!(cs, "receiver value"), || {
 				Ok(&receiver_value_2_fq)
-			})
-			.unwrap();
+			})?;
 		receiver_value_sum += receiver_value_2_var;
 
-		sender_value_sum.enforce_equal(&receiver_value_sum).unwrap();
+		sender_value_sum.enforce_equal(&receiver_value_sum)?;
 
 		// 5. check that the asset ids match
 		let sender_1_asset_id_fq = Fq::from(self.sender_1.asset.asset_id as u64);
@@ -207,33 +202,23 @@ impl ConstraintSynthesizer<Fq> for TransferCircuit {
 		let sender_1_asset_id_fq_var =
 			FqVar::new_witness(ark_relations::ns!(cs, "sender asset id"), || {
 				Ok(&sender_1_asset_id_fq)
-			})
-			.unwrap();
+			})?;
 		let sender_2_asset_id_fq_var =
 			FqVar::new_witness(ark_relations::ns!(cs, "sender asset id"), || {
 				Ok(&sender_2_asset_id_fq)
-			})
-			.unwrap();
+			})?;
 		let receiver_1_asset_id_fq_var =
 			FqVar::new_witness(ark_relations::ns!(cs, "sender asset id"), || {
 				Ok(&receiver_1_asset_id_fq)
-			})
-			.unwrap();
+			})?;
 		let receiver_2_asset_id_fq_var =
 			FqVar::new_witness(ark_relations::ns!(cs, "sender asset id"), || {
 				Ok(&receiver_2_asset_id_fq)
-			})
-			.unwrap();
+			})?;
 
-		sender_1_asset_id_fq_var
-			.enforce_equal(&sender_2_asset_id_fq_var)
-			.unwrap();
-		sender_1_asset_id_fq_var
-			.enforce_equal(&receiver_1_asset_id_fq_var)
-			.unwrap();
-		sender_1_asset_id_fq_var
-			.enforce_equal(&receiver_2_asset_id_fq_var)
-			.unwrap();
+		sender_1_asset_id_fq_var.enforce_equal(&sender_2_asset_id_fq_var)?;
+		sender_1_asset_id_fq_var.enforce_equal(&receiver_1_asset_id_fq_var)?;
+		sender_1_asset_id_fq_var.enforce_equal(&receiver_2_asset_id_fq_var)?;
 
 		Ok(())
 	}
@@ -251,12 +236,11 @@ impl ConstraintSynthesizer<Fq> for ReclaimCircuit {
 		let parameters_var =
 			CommitmentParamVar::new_input(ark_relations::ns!(cs, "gadget_parameters"), || {
 				Ok(&self.commit_param)
-			})
-			.unwrap();
+			})?;
 
-		sender_token_well_formed_circuit_helper(&parameters_var, &self.sender_1.asset, cs.clone());
-		sender_token_well_formed_circuit_helper(&parameters_var, &self.sender_2.asset, cs.clone());
-		receiver_token_well_formed_circuit_helper(&parameters_var, &self.receiver, cs.clone());
+		sender_token_well_formed_circuit_helper(&parameters_var, &self.sender_1.asset, cs.clone())?;
+		sender_token_well_formed_circuit_helper(&parameters_var, &self.sender_2.asset, cs.clone())?;
+		receiver_token_well_formed_circuit_helper(&parameters_var, &self.receiver, cs.clone())?;
 
 		// 2. address and the secret key derives public key
 		//  sender.pk = PRF(sender_sk, [0u8;32])
@@ -267,36 +251,35 @@ impl ConstraintSynthesizer<Fq> for ReclaimCircuit {
 			&[0u8; 32],
 			&self.sender_1.asset.pub_info.pk,
 			cs.clone(),
-		);
+		)?;
 		prf_circuit_helper(
 			false,
 			&self.sender_1.asset.priv_info.sk,
 			&self.sender_1.asset.pub_info.rho,
 			&self.sender_1.asset.void_number,
 			cs.clone(),
-		);
+		)?;
 		prf_circuit_helper(
 			true,
 			&self.sender_2.asset.priv_info.sk,
 			&[0u8; 32],
 			&self.sender_2.asset.pub_info.pk,
 			cs.clone(),
-		);
+		)?;
 		prf_circuit_helper(
 			false,
 			&self.sender_2.asset.priv_info.sk,
 			&self.sender_2.asset.pub_info.rho,
 			&self.sender_2.asset.void_number,
 			cs.clone(),
-		);
+		)?;
 
 		// 3. sender's commitment is in List_all
 		// Allocate Parameters for CRH
 		let param_var = HashParamVar::new_constant(
 			ark_relations::ns!(cs, "new_parameter"),
 			self.hash_param.clone(),
-		)
-		.unwrap();
+		)?;
 
 		merkle_membership_circuit_proof(
 			&self.sender_1.asset.commitment,
@@ -304,7 +287,7 @@ impl ConstraintSynthesizer<Fq> for ReclaimCircuit {
 			param_var.clone(),
 			self.sender_1.root,
 			cs.clone(),
-		);
+		)?;
 
 		merkle_membership_circuit_proof(
 			&self.sender_2.asset.commitment,
@@ -312,7 +295,7 @@ impl ConstraintSynthesizer<Fq> for ReclaimCircuit {
 			param_var,
 			self.sender_2.root,
 			cs.clone(),
-		);
+		)?;
 
 		// 4. sender's and receiver's total value are the same
 		// TODO: do we need to check that the values are all positive?
@@ -321,29 +304,27 @@ impl ConstraintSynthesizer<Fq> for ReclaimCircuit {
 		let mut sender_value_sum =
 			FqVar::new_witness(ark_relations::ns!(cs, "sender value"), || {
 				Ok(&sender_value_1_fq)
-			})
-			.unwrap();
+			})?;
 		let sender_value_2_fq = Fq::from(self.sender_2.asset.priv_info.value);
-		let sender_value_2_var = FqVar::new_witness(ark_relations::ns!(cs, "sender value"), || {
-			Ok(&sender_value_2_fq)
-		})
-		.unwrap();
+		let sender_value_2_var =
+			FqVar::new_witness(ark_relations::ns!(cs, "sender value"), || {
+				Ok(&sender_value_2_fq)
+			})?;
 		sender_value_sum += sender_value_2_var;
 
 		let receiver_value_fq = Fq::from(self.receiver.value);
 		let mut receiver_value_sum =
 			FqVar::new_witness(ark_relations::ns!(cs, "receiver value"), || {
 				Ok(&receiver_value_fq)
-			})
-			.unwrap();
+			})?;
 		let reclaim_value_fq = Fq::from(self.reclaim_value);
-		let reclaim_value_var = FqVar::new_input(ark_relations::ns!(cs, "reclaimed value"), || {
-			Ok(&reclaim_value_fq)
-		})
-		.unwrap();
+		let reclaim_value_var =
+			FqVar::new_input(ark_relations::ns!(cs, "reclaimed value"), || {
+				Ok(&reclaim_value_fq)
+			})?;
 		receiver_value_sum += reclaim_value_var;
 
-		sender_value_sum.enforce_equal(&receiver_value_sum).unwrap();
+		sender_value_sum.enforce_equal(&receiver_value_sum)?;
 
 		// 5. check that the asset ids match
 
@@ -354,33 +335,23 @@ impl ConstraintSynthesizer<Fq> for ReclaimCircuit {
 
 		let asset_id_fq_var = FqVar::new_input(ark_relations::ns!(cs, "sender asset id"), || {
 			Ok(&asset_id_fq)
-		})
-		.unwrap();
+		})?;
 		let sender_1_asset_id_fq_var =
 			FqVar::new_witness(ark_relations::ns!(cs, "sender asset id"), || {
 				Ok(&sender_1_asset_id_fq)
-			})
-			.unwrap();
+			})?;
 		let sender_2_asset_id_fq_var =
 			FqVar::new_witness(ark_relations::ns!(cs, "sender asset id"), || {
 				Ok(&sender_2_asset_id_fq)
-			})
-			.unwrap();
+			})?;
 		let receiver_asset_id_fq_var =
 			FqVar::new_witness(ark_relations::ns!(cs, "sender asset id"), || {
 				Ok(&receiver_asset_id_fq)
-			})
-			.unwrap();
+			})?;
 
-		asset_id_fq_var
-			.enforce_equal(&sender_1_asset_id_fq_var)
-			.unwrap();
-		asset_id_fq_var
-			.enforce_equal(&sender_2_asset_id_fq_var)
-			.unwrap();
-		asset_id_fq_var
-			.enforce_equal(&receiver_asset_id_fq_var)
-			.unwrap();
+		asset_id_fq_var.enforce_equal(&sender_1_asset_id_fq_var)?;
+		asset_id_fq_var.enforce_equal(&sender_2_asset_id_fq_var)?;
+		asset_id_fq_var.enforce_equal(&receiver_asset_id_fq_var)?;
 
 		Ok(())
 	}

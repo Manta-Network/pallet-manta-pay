@@ -103,8 +103,8 @@ fn manta_transfer_zkp_key_gen(
 	let sender_1 = coins[0].clone();
 	let sender_2 = coins[10].clone();
 
-	let sender_1 = SenderMetaData::build(hash_param.clone(), sender_1, &ledger);
-	let sender_2 = SenderMetaData::build(hash_param.clone(), sender_2, &ledger);
+	let sender_1 = SenderMetaData::build(hash_param.clone(), sender_1, &ledger)?;
+	let sender_2 = SenderMetaData::build(hash_param.clone(), sender_2, &ledger)?;
 
 	// receiver's total value is also 210
 	rng.fill_bytes(&mut sk);
@@ -183,8 +183,8 @@ fn manta_reclaim_zkp_key_gen(
 	let sender_1 = coins[0].clone();
 	let sender_2 = coins[10].clone();
 
-	let sender_1 = SenderMetaData::build(hash_param.clone(), sender_1, &ledger);
-	let sender_2 = SenderMetaData::build(hash_param.clone(), sender_2, &ledger);
+	let sender_1 = SenderMetaData::build(hash_param.clone(), sender_1, &ledger)?;
+	let sender_2 = SenderMetaData::build(hash_param.clone(), sender_2, &ledger)?;
 
 	// receiver's total value is also 210
 	let receiver_full =

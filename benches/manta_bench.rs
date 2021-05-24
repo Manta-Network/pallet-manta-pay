@@ -51,14 +51,14 @@ fn bench_param_io(c: &mut Criterion) {
 	let bench_str = format!("hash param");
 	bench_group.bench_function(bench_str, move |b| {
 		b.iter(|| {
-			HashParam::deserialize(HASH_PARAM.data);
+			HashParam::deserialize(HASH_PARAM.data).unwrap();
 		})
 	});
 
 	let bench_str = format!("commit param");
 	bench_group.bench_function(bench_str, move |b| {
 		b.iter(|| {
-			CommitmentParam::deserialize(COMMIT_PARAM.data);
+			CommitmentParam::deserialize(COMMIT_PARAM.data).unwrap();
 		})
 	});
 	bench_group.finish();
@@ -85,25 +85,25 @@ fn bench_transfer_verify(c: &mut Criterion) {
 	// sender
 	let mut sk = [0u8; 32];
 	rng.fill_bytes(&mut sk);
-	let sender_1 = MantaAsset::sample(&commit_param, &sk, &TEST_ASSET, &100, &mut rng);
+	let sender_1 = MantaAsset::sample(&commit_param, &sk, &TEST_ASSET, &100, &mut rng).unwrap();
 
 	rng.fill_bytes(&mut sk);
-	let sender_2 = MantaAsset::sample(&commit_param, &sk, &TEST_ASSET, &300, &mut rng);
+	let sender_2 = MantaAsset::sample(&commit_param, &sk, &TEST_ASSET, &300, &mut rng).unwrap();
 
 	let list = [sender_1.commitment, sender_2.commitment];
-	let sender_1 = SenderMetaData::build(hash_param.clone(), sender_1, &list);
-	let sender_2 = SenderMetaData::build(hash_param.clone(), sender_2, &list);
+	let sender_1 = SenderMetaData::build(hash_param.clone(), sender_1, &list).unwrap();
+	let sender_2 = SenderMetaData::build(hash_param.clone(), sender_2, &list).unwrap();
 
 	// receiver
 	rng.fill_bytes(&mut sk);
 	let receiver_1_full =
-		MantaAssetFullReceiver::sample(&commit_param, &sk, &TEST_ASSET, &(), &mut rng);
-	let receiver_1 = receiver_1_full.prepared.process(&150, &mut rng);
+		MantaAssetFullReceiver::sample(&commit_param, &sk, &TEST_ASSET, &(), &mut rng).unwrap();
+	let receiver_1 = receiver_1_full.prepared.process(&150, &mut rng).unwrap();
 
 	rng.fill_bytes(&mut sk);
 	let receiver_2_full =
-		MantaAssetFullReceiver::sample(&commit_param, &sk, &TEST_ASSET, &(), &mut rng);
-	let receiver_2 = receiver_2_full.prepared.process(&250, &mut rng);
+		MantaAssetFullReceiver::sample(&commit_param, &sk, &TEST_ASSET, &(), &mut rng).unwrap();
+	let receiver_2 = receiver_2_full.prepared.process(&250, &mut rng).unwrap();
 
 	let circuit = TransferCircuit {
 		commit_param: commit_param.clone(),
@@ -138,8 +138,9 @@ fn bench_transfer_verify(c: &mut Criterion) {
 		receiver_1,
 		receiver_2,
 		&mut rng,
-	);
-	let transfer_data = PrivateTransferData::deserialize(transfer_data.as_ref());
+	)
+	.unwrap();
+	let transfer_data = PrivateTransferData::deserialize(transfer_data.as_ref()).unwrap();
 
 	println!("start benchmarking proof verification");
 	let mut bench_group = c.benchmark_group("private transfer");
@@ -170,7 +171,8 @@ fn bench_merkle_tree(c: &mut Criterion) {
 
 	bench_group.bench_function(bench_str, move |b| {
 		b.iter(|| {
-			<MantaCrypto as MerkleTree>::root(hash_param_clone.clone(), &[cm_bytes1.clone()]);
+			<MantaCrypto as MerkleTree>::root(hash_param_clone.clone(), &[cm_bytes1.clone()])
+				.unwrap();
 		})
 	});
 
@@ -187,7 +189,8 @@ fn bench_merkle_tree(c: &mut Criterion) {
 			<MantaCrypto as MerkleTree>::root(
 				hash_param_clone.clone(),
 				&[cm_bytes1.clone(), cm_bytes2.clone()],
-			);
+			)
+			.unwrap();
 		})
 	});
 
@@ -204,7 +207,8 @@ fn bench_merkle_tree(c: &mut Criterion) {
 			<MantaCrypto as MerkleTree>::root(
 				hash_param_clone.clone(),
 				&[cm_bytes1.clone(), cm_bytes2.clone(), cm_bytes3.clone()],
-			);
+			)
+			.unwrap();
 		})
 	});
 
@@ -263,25 +267,25 @@ fn bench_transfer_prove(c: &mut Criterion) {
 	// sender
 	let mut sk = [0u8; 32];
 	rng.fill_bytes(&mut sk);
-	let sender_1 = MantaAsset::sample(&commit_param, &sk, &TEST_ASSET, &100, &mut rng);
+	let sender_1 = MantaAsset::sample(&commit_param, &sk, &TEST_ASSET, &100, &mut rng).unwrap();
 
 	rng.fill_bytes(&mut sk);
-	let sender_2 = MantaAsset::sample(&commit_param, &sk, &TEST_ASSET, &300, &mut rng);
+	let sender_2 = MantaAsset::sample(&commit_param, &sk, &TEST_ASSET, &300, &mut rng).unwrap();
 
 	let list = [sender_1.commitment, sender_2.commitment];
-	let sender_1 = SenderMetaData::build(hash_param.clone(), sender_1, &list);
-	let sender_2 = SenderMetaData::build(hash_param.clone(), sender_2, &list);
+	let sender_1 = SenderMetaData::build(hash_param.clone(), sender_1, &list).unwrap();
+	let sender_2 = SenderMetaData::build(hash_param.clone(), sender_2, &list).unwrap();
 
 	// receiver
 	rng.fill_bytes(&mut sk);
 	let receiver_1_full =
-		MantaAssetFullReceiver::sample(&commit_param, &sk, &TEST_ASSET, &(), &mut rng);
-	let receiver_1 = receiver_1_full.prepared.process(&150, &mut rng);
+		MantaAssetFullReceiver::sample(&commit_param, &sk, &TEST_ASSET, &(), &mut rng).unwrap();
+	let receiver_1 = receiver_1_full.prepared.process(&150, &mut rng).unwrap();
 
 	rng.fill_bytes(&mut sk);
 	let receiver_2_full =
-		MantaAssetFullReceiver::sample(&commit_param, &sk, &TEST_ASSET, &(), &mut rng);
-	let receiver_2 = receiver_2_full.prepared.process(&250, &mut rng);
+		MantaAssetFullReceiver::sample(&commit_param, &sk, &TEST_ASSET, &(), &mut rng).unwrap();
+	let receiver_2 = receiver_2_full.prepared.process(&250, &mut rng).unwrap();
 
 	let circuit = TransferCircuit {
 		commit_param: commit_param.clone(),
