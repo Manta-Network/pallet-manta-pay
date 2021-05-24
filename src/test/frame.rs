@@ -126,8 +126,56 @@ fn test_mint_should_work() {
 		assert_eq!(PoolBalance::get(TEST_ASSET), 10);
 		let coin_shards = CoinShards::get();
 		assert!(coin_shards.exist(&asset.commitment));
-		let sn_list = VNList::get();
-		assert_eq!(sn_list.len(), 0);
+		let vn_list = VNList::get();
+		assert_eq!(vn_list.len(), 0);
+	});
+}
+
+#[test]
+fn mint_without_init_should_not_work() {
+	new_test_ext().execute_with(|| {
+		let payload = generate_mint_payload_helper(100);
+
+		assert_noop!(
+			Assets::mint_private_asset(Origin::signed(1), payload),
+			Error::<Test>::BasecoinNotInit
+		);
+	});
+}
+
+#[test]
+fn mint_zero_amount_should_not_work() {
+	new_test_ext().execute_with(|| {
+		assert_ok!(Assets::init_asset(Origin::signed(1), TEST_ASSET, 100));
+		assert_eq!(Assets::balance(1, TEST_ASSET), 100);
+		assert_eq!(PoolBalance::get(TEST_ASSET), 0);
+
+		let payload = generate_mint_payload_helper(0);
+
+		assert_noop!(
+			Assets::mint_private_asset(Origin::signed(1), payload),
+			Error::<Test>::AmountZero
+		);
+	});
+}
+
+#[test]
+fn mint_with_insufficient_origin_balance_should_not_work() {
+	new_test_ext().execute_with(|| {
+		assert_ok!(Assets::init_asset(Origin::signed(1), TEST_ASSET, 100));
+		assert_eq!(Assets::balance(1, TEST_ASSET), 100);
+		assert_eq!(PoolBalance::get(TEST_ASSET), 0);
+
+		assert_ok!(Assets::transfer_asset(Origin::signed(1), 2, TEST_ASSET, 99));
+		assert_eq!(Assets::balance(1, TEST_ASSET), 1);
+		assert_eq!(Assets::balance(2, TEST_ASSET), 99);
+
+		let payload = generate_mint_payload_helper(50);
+
+		assert_noop!(
+			Assets::mint_private_asset(Origin::signed(1), payload),
+			Error::<Test>::BalanceLow
+		);
 	});
 }
 
@@ -178,7 +226,7 @@ fn querying_total_supply_should_work() {
 }
 
 #[test]
-fn transferring_amount_above_available_balance_should_work() {
+fn transferring_amount_below_available_balance_should_work() {
 	new_test_ext().execute_with(|| {
 		assert_ok!(Assets::init_asset(Origin::signed(1), TEST_ASSET, 100));
 		assert_eq!(Assets::balance(1, TEST_ASSET), 100);
@@ -276,6 +324,15 @@ fn mint_tokens_helper(size: usize) -> Vec<MantaAsset> {
 	senders
 }
 
+fn generate_mint_payload_helper(value: u64) -> [u8; MINT_PAYLOAD_SIZE] {
+	let commit_param = CommitmentParam::deserialize(COMMIT_PARAM.data);
+	let mut rng = ChaCha20Rng::from_seed([3u8; 32]);
+	let mut sk = [0u8; 32];
+	rng.fill_bytes(&mut sk);
+	let asset = MantaAsset::sample(&commit_param, &sk, &TEST_ASSET, &value, &mut rng);
+	generate_mint_payload(&asset)
+}
+
 fn transfer_test_helper(iter: usize) {
 	// setup
 	assert_ok!(Assets::init_asset(
@@ -309,8 +366,8 @@ fn transfer_test_helper(iter: usize) {
 	let senders = mint_tokens_helper(size);
 	let pool = PoolBalance::get(TEST_ASSET);
 
-	let sn_list = VNList::get();
-	assert_eq!(sn_list.len(), 0);
+	let vn_list = VNList::get();
+	assert_eq!(vn_list.len(), 0);
 
 	// build receivers
 	let mut receivers_full = Vec::new();

@@ -159,7 +159,7 @@ decl_module! {
 		/// - 2 storage writes (codec `O(1)`).
 		/// - 1 event.
 		/// # </weight>
-		#[weight = T::WeightInfo::mint_private_asset()]
+		#[weight = T::WeightInfo::init_asset()]
 		fn init_asset(origin,
 			asset_id: u64,
 			total: u64
