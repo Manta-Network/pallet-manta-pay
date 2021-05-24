@@ -194,7 +194,7 @@ fn mint_with_existing_coin_should_not_work() {
 fn mint_with_invalid_commitment_should_not_work() {
 	new_test_ext().execute_with(|| {
 		mint_tokens_setup_helper();
-		
+
 		let commit_param = CommitmentParam::deserialize(
 			Parameter {
 				data: &[0u8; 81664],
@@ -222,7 +222,7 @@ fn mint_with_hash_param_mismatch_should_not_work() {
 		let payload = generate_mint_payload_helper(50);
 		assert_ok!(Assets::mint_private_asset(Origin::signed(1), payload));
 
-		HashParamChecksum::put([3u8;32]);
+		HashParamChecksum::put([3u8; 32]);
 
 		assert_noop!(
 			Assets::mint_private_asset(Origin::signed(1), payload),
@@ -239,7 +239,7 @@ fn mint_with_commit_param_mismatch_should_not_work() {
 		let payload = generate_mint_payload_helper(50);
 		assert_ok!(Assets::mint_private_asset(Origin::signed(1), payload));
 
-		CommitParamChecksum::put([3u8;32]);
+		CommitParamChecksum::put([3u8; 32]);
 
 		assert_noop!(
 			Assets::mint_private_asset(Origin::signed(1), payload),
