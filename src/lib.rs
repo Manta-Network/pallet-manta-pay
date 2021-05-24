@@ -137,8 +137,8 @@ pub const PRIVATE_TRANSFER_PAYLOAD_SIZE: usize = 608;
 pub const RECLAIM_PAYLOAD_SIZE: usize = 512;
 
 /// Type aliases
-pub type PrivatePayload =  [u8; PRIVATE_TRANSFER_PAYLOAD_SIZE];
-pub type ReclaimPayload =  [u8; RECLAIM_PAYLOAD_SIZE];
+pub type PrivatePayload = [u8; PRIVATE_TRANSFER_PAYLOAD_SIZE];
+pub type ReclaimPayload = [u8; RECLAIM_PAYLOAD_SIZE];
 
 /// The module configuration trait.
 pub trait Config: frame_system::Config {
