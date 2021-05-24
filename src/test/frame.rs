@@ -195,7 +195,12 @@ fn mint_with_invalid_commit_should_not_work() {
 	new_test_ext().execute_with(|| {
 		mint_tokens_setup_helper();
 
-		let commit_param = CommitmentParam::deserialize(Parameter{data:&[0u8; 81664]}.data);
+		let commit_param = CommitmentParam::deserialize(
+			Parameter {
+				data: &[0u8; 81664],
+			}
+			.data,
+		);
 		let mut rng = ChaCha20Rng::from_seed([3u8; 32]);
 		let mut sk = [0u8; 32];
 		rng.fill_bytes(&mut sk);
@@ -208,7 +213,6 @@ fn mint_with_invalid_commit_should_not_work() {
 		);
 	});
 }
-
 
 #[test]
 fn test_transfer_should_work() {
