@@ -16,11 +16,12 @@
 
 use super::*;
 use manta_asset::SanityCheck;
+use manta_errors::MantaErrors;
 
 impl SanityCheck for MintData {
 	type Param = CommitmentParam;
 
-	fn sanity(&self, param: &Self::Param) -> bool {
+	fn sanity(&self, param: &Self::Param) -> Result<bool, MantaErrors> {
 		// check that
 		// cm = com( asset_id | v||k, s )
 		let payload = [

@@ -1406,7 +1406,7 @@ dependencies = [
 [[package]]
 name = "manta-asset"
 version = "3.0.0"
-source = "git+https://github.com/Manta-Network/manta-asset?branch=error-wrapper#7333d1301e94de90f5c878022c77ea20d081cab6"
+source = "git+https://github.com/Manta-Network/manta-asset?branch=error-wrapper#3df6e017ee1a5838b93fda2711712154ca9004af"
 dependencies = [
  "ark-crypto-primitives",
  "ark-ed-on-bls12-381",
@@ -1416,13 +1416,14 @@ dependencies = [
  "blake2",
  "frame-support",
  "manta-crypto",
+ "manta-errors",
  "parity-scale-codec",
 ]
 
 [[package]]
 name = "manta-crypto"
 version = "3.0.0"
-source = "git+https://github.com/Manta-Network/manta-crypto?branch=error-wrapper#419755d4fa3aeb37ee09d30b4517c1c19f46f724"
+source = "git+https://github.com/Manta-Network/manta-crypto?branch=error-wrapper#7eac45aa848072cc25c097840d137fcf62394ae1"
 dependencies = [
  "aes",
  "ark-bls12-381",
@@ -1430,11 +1431,24 @@ dependencies = [
  "ark-ed-on-bls12-381",
  "ark-groth16",
  "ark-r1cs-std",
+ "ark-relations",
  "ark-serialize",
  "ark-std",
  "blake2",
  "generic-array 0.14.4",
+ "manta-errors",
  "x25519-dalek",
+]
+
+[[package]]
+name = "manta-errors"
+version = "0.1.0"
+source = "git+https://github.com/Manta-Network/manta-errors#7cb948211292f4c0b7c8a838d2054fa5d939b29e"
+dependencies = [
+ "ark-crypto-primitives",
+ "ark-relations",
+ "ark-serialize",
+ "ark-std",
 ]
 
 [[package]]
@@ -1708,6 +1722,7 @@ dependencies = [
  "hkdf",
  "manta-asset",
  "manta-crypto",
+ "manta-errors",
  "parity-scale-codec",
  "rand_chacha 0.2.2",
  "serde",

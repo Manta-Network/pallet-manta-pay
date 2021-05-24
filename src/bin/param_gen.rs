@@ -16,5 +16,5 @@
 
 fn main() {
 	println!("Hello, Manta!");
-	pallet_manta_pay::write_zkp_keys();
+	pallet_manta_pay::write_zkp_keys().unwrap();
 }

@@ -24,6 +24,7 @@
 use ark_std::vec::Vec;
 use frame_support::codec::{Decode, Encode};
 use manta_crypto::*;
+use manta_errors::MantaErrors;
 
 /// A shard is a list of commitment, and a merkle root of this list.
 #[derive(Encode, Debug, Decode, Clone, Default, PartialEq)]
@@ -50,7 +51,11 @@ pub trait LedgerSharding {
 	fn exist(&self, target: &Self::Commitment) -> bool;
 
 	/// update the shards with a new commitment
-	fn update(&mut self, target: &Self::Commitment, param: Self::Param);
+	fn update(
+		&mut self,
+		target: &Self::Commitment,
+		param: Self::Param,
+	) -> Result<(), MantaErrors>;
 }
 
 impl LedgerSharding for Shards {
@@ -85,7 +90,11 @@ impl LedgerSharding for Shards {
 
 	// this function updates the ledger shards,
 	// this function does not check if target already exists in the list or not
-	fn update(&mut self, target: &Self::Commitment, param: Self::Param) {
+	fn update(
+		&mut self,
+		target: &Self::Commitment,
+		param: Self::Param,
+	) -> Result<(), MantaErrors> {
 		// FIXME: at the moment, the index of the shard is determined by the first
 		// byte of the cm. this may be potentially risky, since the commitment
 		// is a group element, and the first byte may not be uniformly distributed
@@ -95,7 +104,8 @@ impl LedgerSharding for Shards {
 		// update the list, and the root accordingly
 		self.shard[shard_index].list.push(*target);
 		self.shard[shard_index].root =
-			<MantaCrypto as MerkleTree>::root(param, &self.shard[shard_index].list);
+			<MantaCrypto as MerkleTree>::root(param, &self.shard[shard_index].list)?;
+		Ok(())
 	}
 }
 
