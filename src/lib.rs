@@ -137,7 +137,7 @@ pub const PRIVATE_TRANSFER_PAYLOAD_SIZE: usize = 608;
 pub const RECLAIM_PAYLOAD_SIZE: usize = 512;
 
 /// Type aliases
-pub type PrivatePayload = [u8; PRIVATE_TRANSFER_PAYLOAD_SIZE];
+pub type PrivateTransferPayload = [u8; PRIVATE_TRANSFER_PAYLOAD_SIZE];
 pub type ReclaimPayload = [u8; RECLAIM_PAYLOAD_SIZE];
 
 /// The module configuration trait.
@@ -341,7 +341,7 @@ decl_module! {
 		/// Neither the values nor the identities is leaked during this process.
 		#[weight = T::WeightInfo::private_transfer()]
 		fn private_transfer(origin,
-			payload: PrivatePayload,
+			payload: PrivateTransferPayload,
 		) {
 			// this function does not know which asset_id is been transferred.
 			// so there will not be an initialization check
