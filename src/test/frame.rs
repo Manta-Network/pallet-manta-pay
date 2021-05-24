@@ -180,6 +180,22 @@ fn mint_with_insufficient_origin_balance_should_not_work() {
 }
 
 #[test]
+fn mint_with_eisting_coin_should_not_work() {
+	new_test_ext().execute_with(|| {
+		assert_ok!(Assets::init_asset(Origin::signed(1), TEST_ASSET, 100));
+		assert_eq!(Assets::balance(1, TEST_ASSET), 100);
+		assert_eq!(PoolBalance::get(TEST_ASSET), 0);
+
+		let payload = generate_mint_payload_helper(50);
+		Assets::mint_private_asset(Origin::signed(1), payload);
+		assert_noop!(
+			Assets::mint_private_asset(Origin::signed(1), payload),
+			Error::<Test>::MantaCoinExist
+		);
+	});
+}
+
+#[test]
 fn test_transfer_should_work() {
 	new_test_ext().execute_with(|| transfer_test_helper(1));
 }
