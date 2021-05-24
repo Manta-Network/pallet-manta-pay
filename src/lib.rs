@@ -136,6 +136,10 @@ pub const MINT_PAYLOAD_SIZE: usize = 112;
 pub const PRIVATE_TRANSFER_PAYLOAD_SIZE: usize = 608;
 pub const RECLAIM_PAYLOAD_SIZE: usize = 512;
 
+/// Type aliases
+pub type PrivatePayload =  [u8; PRIVATE_TRANSFER_PAYLOAD_SIZE];
+pub type ReclaimPayload =  [u8; RECLAIM_PAYLOAD_SIZE];
+
 /// The module configuration trait.
 pub trait Config: frame_system::Config {
 	/// The overarching event type.
@@ -337,7 +341,7 @@ decl_module! {
 		/// Neither the values nor the identities is leaked during this process.
 		#[weight = T::WeightInfo::private_transfer()]
 		fn private_transfer(origin,
-			payload: [u8; PRIVATE_TRANSFER_PAYLOAD_SIZE],
+			payload: PrivatePayload,
 		) {
 			// this function does not know which asset_id is been transferred.
 			// so there will not be an initialization check
@@ -435,7 +439,7 @@ decl_module! {
 		/// __TODO__: shall we use a different receiver rather than `origin`?
 		#[weight = T::WeightInfo::reclaim()]
 		fn reclaim(origin,
-			payload: [u8; RECLAIM_PAYLOAD_SIZE],
+			payload: ReclaimPayload,
 		) {
 
 			let data = ReclaimData::deserialize(payload.as_ref());
