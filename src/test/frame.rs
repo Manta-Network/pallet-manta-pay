@@ -133,7 +133,7 @@ fn test_mint_should_work() {
 
 #[test]
 fn test_transfer_should_work() {
-	new_test_ext().execute_with(|| transfer_test_helper(5));
+	new_test_ext().execute_with(|| transfer_test_helper(1));
 }
 
 #[ignore]
@@ -144,7 +144,7 @@ fn test_transfer_should_work_super_long() {
 
 #[test]
 fn test_reclaim_should_work() {
-	new_test_ext().execute_with(|| reclaim_test_helper(5));
+	new_test_ext().execute_with(|| reclaim_test_helper(1));
 }
 
 #[ignore]
@@ -249,7 +249,7 @@ fn cannot_init_twice() {
 fn mint_tokens_helper(size: usize) -> Vec<MantaAsset> {
 	let commit_param = CommitmentParam::deserialize(COMMIT_PARAM.data);
 
-	let mut rng = ChaCha20Rng::from_seed([88u8; 32]);
+	let mut rng = ChaCha20Rng::from_seed([3u8; 32]);
 	let mut pool = 0;
 	let mut sk = [0u8; 32];
 
