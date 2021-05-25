@@ -468,6 +468,89 @@ fn transferring_spent_coin_should_not_work() {
 }
 
 #[test]
+fn transferring_existing_coins_should_not_work() {
+	new_test_ext().execute_with(|| {
+		setup_for_private_transfer();
+
+		let hash_param = HashParam::deserialize(HASH_PARAM.data);
+		let commit_param = CommitmentParam::deserialize(COMMIT_PARAM.data);
+
+		let pk = load_zkp_keys();
+
+		let mut rng = ChaCha20Rng::from_seed([3u8; 32]);
+		let mut sk = [0u8; 32];
+
+		let iter = 2;
+		let size = iter << 1;
+		let senders = mint_tokens_helper(size);
+
+		let vn_list = VNList::get();
+		assert_eq!(vn_list.len(), 0);
+
+		// build receivers
+		let mut receivers_full = Vec::new();
+		let mut receivers_processed = Vec::new();
+		for i in 0usize..size {
+			// build a receiver token
+			rng.fill_bytes(&mut sk[..]);
+			let receiver_full =
+				MantaAssetFullReceiver::sample(&commit_param, &sk, &TEST_ASSET, &(), &mut rng);
+			let receiver = receiver_full.prepared.process(&(i as u64 + 10), &mut rng);
+			receivers_full.push(receiver_full);
+			receivers_processed.push(receiver);
+		}
+
+		for i in 0usize..iter {
+			let mut coin_shards = CoinShards::get();
+
+			// build sender meta data
+			let sender_1 = senders[i * 2].clone();
+			let sender_2 = senders[i * 2 + 1].clone();
+			let shard_index_1 = sender_1.commitment[0] as usize;
+			let shard_index_2 = sender_2.commitment[0] as usize;
+			let list_1 = coin_shards.shard[shard_index_1].list.clone();
+			let sender_1 = SenderMetaData::build(hash_param.clone(), sender_1, &list_1);
+			let list_2 = coin_shards.shard[shard_index_2].list.clone();
+			let sender_2 = SenderMetaData::build(hash_param.clone(), sender_2, &list_2);
+
+			// extract the receivers
+			let receiver_1 = receivers_processed[i * 2 + 1].clone();
+			let receiver_2 = receivers_processed[i * 2].clone();
+
+			// form the transaction payload
+			let payload = generate_private_transfer_payload(
+				commit_param.clone(),
+				hash_param.clone(),
+				&pk,
+				sender_1,
+				sender_2,
+				receiver_1.clone(),
+				receiver_2.clone(),
+				&mut rng,
+			);
+
+			if i == 0 {
+				coin_shards.update(&receiver_1.commitment, hash_param.clone());
+				CoinShards::put(coin_shards);
+	
+				assert_noop!(
+					Assets::private_transfer(Origin::signed(1), payload),
+					Error::<Test>::MantaCoinExist
+				);
+			} else {
+				coin_shards.update(&receiver_2.commitment, hash_param.clone());
+				CoinShards::put(coin_shards);
+
+				assert_noop!(
+					Assets::private_transfer(Origin::signed(1), payload),
+					Error::<Test>::MantaCoinExist
+				);
+			}
+		}
+	});
+}			
+
+#[test]
 fn destroying_asset_balance_with_positive_balance_should_work() {
 	new_test_ext().execute_with(|| {
 		assert_ok!(Assets::init_asset(Origin::signed(1), TEST_ASSET, 100));
