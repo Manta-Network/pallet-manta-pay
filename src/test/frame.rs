@@ -227,7 +227,7 @@ fn mint_with_hash_param_mismatch_should_not_work() {
 
 		assert_noop!(
 			Assets::mint_private_asset(Origin::signed(1), payload),
-			Error::<Test>::MintFail
+			Error::<Test>::ParamFail
 		);
 	});
 }
@@ -244,7 +244,7 @@ fn mint_with_commit_param_mismatch_should_not_work() {
 
 		assert_noop!(
 			Assets::mint_private_asset(Origin::signed(1), payload),
-			Error::<Test>::MintFail
+			Error::<Test>::ParamFail
 		);
 	});
 }
