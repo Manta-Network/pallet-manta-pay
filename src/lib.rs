@@ -137,6 +137,7 @@ pub const PRIVATE_TRANSFER_PAYLOAD_SIZE: usize = 608;
 pub const RECLAIM_PAYLOAD_SIZE: usize = 512;
 
 /// Type aliases
+pub type MintPayload = [u8; MINT_PAYLOAD_SIZE];
 pub type PrivateTransferPayload = [u8; PRIVATE_TRANSFER_PAYLOAD_SIZE];
 pub type ReclaimPayload = [u8; RECLAIM_PAYLOAD_SIZE];
 
@@ -261,7 +262,7 @@ decl_module! {
 		/// Given an amount, and relevant data, mint the token to the ledger
 		#[weight = T::WeightInfo::mint_private_asset()]
 		fn mint_private_asset(origin,
-			payload: [u8; 112]
+			payload: MintPayload
 		) {
 			// todo: Implement the fix denomination method
 
