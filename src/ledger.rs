@@ -93,10 +93,7 @@ impl Default for Shards {
 	fn default() -> Self {
 		use sp_std::convert::TryInto;
 
-		let mut shard = Vec::with_capacity(256);
-		for _ in 0..256 {
-			shard.push(Shard::default());
-		}
+		let shard = vec![Shard::default(); 256];
 
 		Self {
 			shard: shard
