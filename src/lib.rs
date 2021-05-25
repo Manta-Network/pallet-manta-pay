@@ -127,7 +127,10 @@ use frame_system::ensure_signed;
 use ledger::LedgerSharding;
 use manta_asset::SanityCheck;
 use manta_crypto::*;
-use sp_runtime::traits::{StaticLookup, Zero};
+use sp_runtime::{
+	traits::{StaticLookup, Zero},
+	DispatchError,
+};
 use sp_std::prelude::*;
 
 /// An abstract struct for manta-pay.
@@ -183,34 +186,29 @@ decl_module! {
 			//  * hash parameter seed: [1u8; 32]
 			//  * commitment parameter seed: [2u8; 32]
 			// We may want to pass those two in for `init`
-			let hash_param = match HashParam::deserialize(HASH_PARAM.data) {
-				Ok(p) => p,
-				Err(e) => {
+			let hash_param = HashParam::deserialize(HASH_PARAM.data)
+				.map_err::<DispatchError, _>(|e| {
 					log::error!(target: "manta-pay", "failed to init the asset with error: {:?}", e);
-					return Err(<Error<T>>::ParamFail.into());
-				}
-			};
-			let commit_param = match CommitmentParam::deserialize(COMMIT_PARAM.data) {
-				Ok(p) => p,
-				Err(e) => {
+					<Error<T>>::ParamFail.into()
+				})?;
+
+			let commit_param = CommitmentParam::deserialize(COMMIT_PARAM.data)
+				.map_err::<DispatchError, _>(|e| {
 					log::error!(target: "manta-pay", "failed to init the asset with error: {:?}", e);
-					return Err(<Error<T>>::ParamFail.into());
-				}
-			};
-			let hash_param_checksum = match hash_param.get_checksum() {
-				Ok(p) => p,
-				Err(e) => {
+					<Error<T>>::ParamFail.into()
+				})?;
+
+			let hash_param_checksum = hash_param.get_checksum()
+				.map_err::<DispatchError, _>(|e| {
 					log::error!(target: "manta-pay", "failed to init the asset with error: {:?}", e);
-					return Err(<Error<T>>::ParamFail.into());
-				}
-			};
-			let commit_param_checksum = match commit_param.get_checksum() {
-				Ok(p) => p,
-				Err(e) => {
+					<Error<T>>::ParamFail.into()
+				})?;
+
+			let commit_param_checksum = commit_param.get_checksum()
+				.map_err::<DispatchError, _>(|e| {
 					log::error!(target: "manta-pay", "failed to init the asset with error: {:?}", e);
-					return Err(<Error<T>>::ParamFail.into());
-				}
-			};
+					<Error<T>>::ParamFail.into()
+				})?;
 
 			HashParamChecksum::put(hash_param_checksum);
 			CommitParamChecksum::put(commit_param_checksum);
@@ -225,22 +223,20 @@ decl_module! {
 			// for product we should use a MPC protocol to build the ZKP verification key
 			// and then deploy that vk
 			//
-			let transfer_key_digest = match TRANSFER_PK.get_checksum() {
-				Ok(p) => p,
-				Err(e) => {
+			let transfer_key_digest = TRANSFER_PK.get_checksum()
+				.map_err::<DispatchError, _>(|e| {
 					log::error!(target: "manta-pay", "failed to init the asset with error: {:?}", e);
-					return Err(<Error<T>>::ParamFail.into());
-				}
-			};
+					<Error<T>>::ParamFail.into()
+				})?;
+
 			TransferZKPKeyChecksum::put(transfer_key_digest);
 
-			let reclaim_key_digest = match RECLAIM_PK.get_checksum() {
-				Ok(p) => p,
-				Err(e) => {
+			let reclaim_key_digest = RECLAIM_PK.get_checksum()
+				.map_err::<DispatchError, _>(|e| {
 					log::error!(target: "manta-pay", "failed to init the asset with error: {:?}", e);
-					return Err(<Error<T>>::ParamFail.into());
-				}
-			};
+					<Error<T>>::ParamFail.into()
+				})?;
+
 			ReclaimZKPKeyChecksum::put(reclaim_key_digest);
 
 			// deposit the event then update the storage
@@ -306,13 +302,11 @@ decl_module! {
 			// todo: Implement the fix denomination method
 
 			// parse the input_data into input
-			let input = match MintData::deserialize(payload.as_ref()) {
-				Ok(p) => p,
-				Err(e) => {
+			let input =  MintData::deserialize(payload.as_ref())
+				.map_err::<DispatchError, _>(|e| {
 					log::error!(target: "manta-pay", "failed to mint the asset with error: {:?}", e);
-					return Err(<Error<T>>::PayloadDesFail.into());
-				}
-			};
+					<Error<T>>::PayloadDesFail.into()
+				})?;
 
 			// if the asset_id has a total suply == 0, then this asset is initialized
 			ensure!(
@@ -329,20 +323,17 @@ decl_module! {
 
 			// get the parameter checksum from the ledger
 			// and make sure the parameters match
-			let hash_param_checksum_local = match HASH_PARAM.get_checksum() {
-				Ok(p) => p,
-				Err(e) => {
+			let hash_param_checksum_local = HASH_PARAM.get_checksum()
+				.map_err::<DispatchError, _>(|e| {
 					log::error!(target: "manta-pay", "failed to mint the asset with error: {:?}", e);
-					return Err(<Error<T>>::ParamFail.into());
-				}
-			};
-			let commit_param_checksum_local = match COMMIT_PARAM.get_checksum() {
-				Ok(p) => p,
-				Err(e) => {
+					<Error<T>>::ParamFail.into()
+				})?;
+
+			let commit_param_checksum_local = COMMIT_PARAM.get_checksum()
+				.map_err::<DispatchError, _>(|e| {
 					log::error!(target: "manta-pay", "failed to mint the asset with error: {:?}", e);
-					return Err(<Error<T>>::ParamFail.into());
-				}
-			};
+					<Error<T>>::ParamFail.into()
+				})?;
 
 			let hash_param_checksum = HashParamChecksum::get();
 			let commit_param_checksum = CommitParamChecksum::get();
@@ -355,29 +346,25 @@ decl_module! {
 				<Error<T>>::ParamFail
 			);
 
-			let hash_param = match HashParam::deserialize(HASH_PARAM.data) {
-				Ok(p) => p,
-				Err(e) => {
+			let hash_param = HashParam::deserialize(HASH_PARAM.data)
+				.map_err::<DispatchError, _>(|e| {
 					log::error!(target: "manta-pay", "failed to mint the asset with error: {:?}", e);
-					return Err(<Error<T>>::ParamFail.into());
-				}
-			};
-			let commit_param = match CommitmentParam::deserialize(COMMIT_PARAM.data) {
-				Ok(p) => p,
-				Err(e) => {
+					<Error<T>>::ParamFail.into()
+				})?;
+
+			let commit_param = CommitmentParam::deserialize(COMMIT_PARAM.data)
+				.map_err::<DispatchError, _>(|e| {
 					log::error!(target: "manta-pay", "failed to mint the asset with error: {:?}", e);
-					return Err(<Error<T>>::ParamFail.into());
-				}
-			};
+					<Error<T>>::ParamFail.into()
+				})?;
 
 			// check the validity of the commitment
-			let res = match input.sanity(&commit_param) {
-				Ok(p) => p,
-				Err(e) => {
+			let res = input.sanity(&commit_param)
+				.map_err::<DispatchError, _>(|e| {
 					log::error!(target: "manta-pay", "failed to mint the asset with error: {:?}", e);
-					return Err(<Error<T>>::MintFail.into());
-				}
-			};
+					<Error<T>>::MintFail.into()
+				})?;
+
 			ensure!(
 				res,
 				<Error<T>>::MintFail
@@ -391,13 +378,11 @@ decl_module! {
 			);
 
 			// update the shards
-			match coin_shards.update(&input.cm, hash_param) {
-				Ok(p) => p,
-				Err(e) => {
+			coin_shards.update(&input.cm, hash_param)
+				.map_err::<DispatchError, _>(|e| {
 					log::error!(target: "manta-pay", "failed to mint the asset with error: {:?}", e);
-					return Err(<Error<T>>::LedgerUpdateFail.into());
-				}
-			};
+					<Error<T>>::LedgerUpdateFail.into()
+				})?;
 
 			// write back to ledger storage
 			Self::deposit_event(
@@ -429,37 +414,32 @@ decl_module! {
 			// this function does not know which asset_id is been transferred.
 			// so there will not be an initialization check
 
-			let data = match PrivateTransferData::deserialize(payload.as_ref()) {
-				Ok(p) => p,
-				Err(e) => {
+			let data = PrivateTransferData::deserialize(payload.as_ref())
+				.map_err::<DispatchError, _>(|e| {
 					log::error!(target: "manta-pay", "failed to transfer the private asset with error: {:?}", e);
-					return Err(<Error<T>>::PayloadDesFail.into());
-				}
-			};
+					<Error<T>>::PayloadDesFail.into()
+				})?;
+
 			let origin = ensure_signed(origin)?;
 
 			// get the parameter checksum from the ledger
 			// and make sure the parameters match
-			let hash_param_checksum_local = match HASH_PARAM.get_checksum() {
-				Ok(p) => p,
-				Err(e) => {
+			let hash_param_checksum_local = HASH_PARAM.get_checksum()
+				.map_err::<DispatchError, _>(|e| {
 					log::error!(target: "manta-pay", "failed to transfer the private asset with error: {:?}", e);
-					return Err(<Error<T>>::ParamFail.into());
-				}
-			};
+					<Error<T>>::ParamFail.into()
+				})?;
 
 			let hash_param_checksum = HashParamChecksum::get();
 			ensure!(
 				hash_param_checksum_local == hash_param_checksum,
 				<Error<T>>::ParamFail
 			);
-			let hash_param = match HashParam::deserialize(HASH_PARAM.data) {
-				Ok(p) => p,
-				Err(e) => {
+			let hash_param = HashParam::deserialize(HASH_PARAM.data)
+				.map_err::<DispatchError, _>(|e| {
 					log::error!(target: "manta-pay", "failed to transfer the private asset with error: {:?}", e);
-					return Err(<Error<T>>::ParamFail.into());
-				}
-			};
+					<Error<T>>::ParamFail.into()
+				})?;
 
 			// check if vn_old already spent
 			let mut sn_list = VNList::get();
@@ -494,35 +474,32 @@ decl_module! {
 				!coin_shards.exist(&data.receiver_1.cm),
 				<Error<T>>::MantaCoinExist
 			);
-			match coin_shards.update(&data.receiver_1.cm, hash_param.clone()) {
-				Ok(p) => p,
-				Err(e) => {
+			coin_shards
+				.update(&data.receiver_1.cm, hash_param.clone())
+				.map_err::<DispatchError, _>(|e| {
 					log::error!(target: "manta-pay", "failed to transfer the private asset with error: {:?}", e);
-					return Err(<Error<T>>::LedgerUpdateFail.into());
-				}
-			};
+					<Error<T>>::LedgerUpdateFail.into()
+				})?;
+
 			ensure!(
 				!coin_shards.exist(&data.receiver_2.cm),
 				<Error<T>>::MantaCoinExist
 			);
-			match coin_shards.update(&data.receiver_2.cm, hash_param) {
-				Ok(p) => p,
-				Err(e) => {
+			coin_shards
+				.update(&data.receiver_2.cm, hash_param)
+				.map_err::<DispatchError, _>(|e| {
 					log::error!(target: "manta-pay", "failed to transfer the private asset with error: {:?}", e);
-					return Err(<Error<T>>::LedgerUpdateFail.into());
-				}
-			};
+					<Error<T>>::LedgerUpdateFail.into()
+				})?;
 
 			// get the verification key from the ledger
 			let transfer_vk_checksum = TransferZKPKeyChecksum::get();
 			let transfer_vk = TRANSFER_PK;
-			let transfer_vk_checksum_local = match transfer_vk.get_checksum() {
-				Ok(p) => p,
-				Err(e) => {
+			let transfer_vk_checksum_local = transfer_vk.get_checksum()
+				.map_err::<DispatchError, _>(|e| {
 					log::error!(target: "manta-pay", "failed to transfer the private asset with error: {:?}", e);
-					return Err(<Error<T>>::ZkpParamFail.into());
-				}
-			};
+					<Error<T>>::ZkpParamFail.into()
+				})?;
 
 			ensure!(
 				transfer_vk_checksum_local == transfer_vk_checksum,
@@ -562,13 +539,11 @@ decl_module! {
 			payload: ReclaimPayload,
 		) {
 
-			let data = match ReclaimData::deserialize(payload.as_ref()) {
-				Ok(p) => p,
-				Err(e) => {
+			let data = ReclaimData::deserialize(payload.as_ref())
+				.map_err::<DispatchError, _>(|e| {
 					log::error!(target: "manta-pay", "failed to reclaim the private asset with error: {:?}", e);
-					return Err(<Error<T>>::PayloadDesFail.into());
-				}
-			};
+					<Error<T>>::PayloadDesFail.into()
+				})?;
 
 			// if the asset_id has a total suply == 0, then this asset is initialized
 			ensure!(
@@ -582,26 +557,22 @@ decl_module! {
 
 			// get the parameter checksum from the ledger
 			// and make sure the parameters match
-			let hash_param_checksum_local = match HASH_PARAM.get_checksum() {
-				Ok(p) => p,
-				Err(e) => {
+			let hash_param_checksum_local = HASH_PARAM.get_checksum()
+				.map_err::<DispatchError, _>(|e| {
 					log::error!(target: "manta-pay", "failed to reclaim the private asset with error: {:?}", e);
-					return Err(<Error<T>>::ParamFail.into());
-				}
-			};
+					<Error<T>>::ParamFail.into()
+				})?;
 
 			let hash_param_checksum = HashParamChecksum::get();
 			ensure!(
 				hash_param_checksum_local == hash_param_checksum,
 				<Error<T>>::ParamFail
 			);
-			let hash_param = match HashParam::deserialize(HASH_PARAM.data) {
-				Ok(p) => p,
-				Err(e) => {
+			let hash_param = HashParam::deserialize(HASH_PARAM.data)
+				.map_err::<DispatchError, _>(|e| {
 					log::error!(target: "manta-pay", "failed to reclaim the private asset with error: {:?}", e);
-					return Err(<Error<T>>::ParamFail.into());
-				}
-			};
+					<Error<T>>::ParamFail.into()
+				})?;
 
 			// check the balance is greater than amount
 			let mut pool = PoolBalance::get(data.asset_id);
@@ -627,13 +598,11 @@ decl_module! {
 			// get the verification key from the ledger
 			let reclaim_vk_checksum = ReclaimZKPKeyChecksum::get();
 			let reclaim_vk = RECLAIM_PK;
-			let reclaim_vk_checksum_local = match reclaim_vk.get_checksum() {
-				Ok(p) => p,
-				Err(e) => {
+			let reclaim_vk_checksum_local = reclaim_vk.get_checksum()
+				.map_err::<DispatchError, _>(|e| {
 					log::error!(target: "manta-pay", "failed to reclaim the private asset with error: {:?}", e);
-					return Err(<Error<T>>::ZkpParamFail.into());
-				}
-			};
+					<Error<T>>::ZkpParamFail.into()
+				})?;
 
 			ensure!(
 				reclaim_vk_checksum_local == reclaim_vk_checksum,
@@ -669,13 +638,13 @@ decl_module! {
 			enc_value_list.push(data.receiver.cipher);
 
 
-			match coin_shards.update(&data.receiver.cm, hash_param) {
-				Ok(p) => p,
-				Err(e) => {
+			coin_shards
+				.update(&data.receiver.cm, hash_param)
+				.map_err::<DispatchError, _>(|e| {
 					log::error!(target: "manta-pay", "failed to reclaim the private asset with error: {:?}", e);
-					return Err(<Error<T>>::LedgerUpdateFail.into());
-				}
-			};
+					<Error<T>>::LedgerUpdateFail.into()
+				})?;
+
 			CoinShards::put(coin_shards);
 
 			Self::deposit_event(

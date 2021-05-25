@@ -18,6 +18,5 @@ use manta_errors::MantaErrors;
 
 fn main() -> Result<(), MantaErrors> {
 	println!("Hello, Manta!");
-	pallet_manta_pay::write_zkp_keys()?;
-	Ok(())
+	pallet_manta_pay::write_zkp_keys()
 }
