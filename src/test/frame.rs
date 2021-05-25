@@ -345,6 +345,16 @@ fn transferring_more_units_than_total_supply_should_not_work() {
 }
 
 #[test]
+fn transferring_without_init_should_not_work() {
+	new_test_ext().execute_with(|| {
+		assert_noop!(
+			Assets::transfer_asset(Origin::signed(1), 2, TEST_ASSET, 101),
+			Error::<Test>::BasecoinNotInit
+		);
+	});
+}
+
+#[test]
 fn destroying_asset_balance_with_positive_balance_should_work() {
 	new_test_ext().execute_with(|| {
 		assert_ok!(Assets::init_asset(Origin::signed(1), TEST_ASSET, 100));
