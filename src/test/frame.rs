@@ -16,7 +16,7 @@
 
 use crate as pallet_manta_pay;
 use crate::*;
-use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
+use ark_serialize::{CanonicalDeserialize};
 use ark_std::rand::{RngCore, SeedableRng};
 use frame_support::{assert_noop, assert_ok, parameter_types};
 use manta_asset::*;
@@ -93,8 +93,7 @@ fn new_test_ext() -> sp_io::TestExternalities {
 #[test]
 fn test_constants_should_work() {
 	new_test_ext().execute_with(|| {
-		assert_ok!(Assets::init_asset(Origin::signed(1), TEST_ASSET, 100));
-		assert_eq!(Assets::balance(1, TEST_ASSET), 100);
+		initialize_test(100);
 		let hash_param = HashParam::deserialize(HASH_PARAM.data);
 		let commit_param = CommitmentParam::deserialize(COMMIT_PARAM.data);
 		let hash_param_checksum_local = hash_param.get_checksum();
@@ -109,9 +108,7 @@ fn test_constants_should_work() {
 #[test]
 fn test_mint_should_work() {
 	new_test_ext().execute_with(|| {
-		assert_ok!(Assets::init_asset(Origin::signed(1), TEST_ASSET, 1000));
-		assert_eq!(Assets::balance(1, TEST_ASSET), 1000);
-		assert_eq!(PoolBalance::get(TEST_ASSET), 0);
+		initialize_test(1000);
 
 		let commit_param = CommitmentParam::deserialize(COMMIT_PARAM.data);
 		let mut rng = ChaCha20Rng::from_seed([3u8; 32]);
@@ -146,7 +143,7 @@ fn mint_without_init_should_not_work() {
 #[test]
 fn mint_zero_amount_should_not_work() {
 	new_test_ext().execute_with(|| {
-		mint_tokens_setup_helper();
+		initialize_test(100);
 
 		let payload = generate_mint_payload_helper(0);
 
@@ -160,7 +157,7 @@ fn mint_zero_amount_should_not_work() {
 #[test]
 fn mint_with_insufficient_origin_balance_should_not_work() {
 	new_test_ext().execute_with(|| {
-		mint_tokens_setup_helper();
+		initialize_test(100);
 
 		assert_ok!(Assets::transfer_asset(Origin::signed(1), 2, TEST_ASSET, 99));
 		assert_eq!(Assets::balance(1, TEST_ASSET), 1);
@@ -178,7 +175,7 @@ fn mint_with_insufficient_origin_balance_should_not_work() {
 #[test]
 fn mint_with_existing_coin_should_not_work() {
 	new_test_ext().execute_with(|| {
-		mint_tokens_setup_helper();
+		initialize_test(100);
 
 		let payload = generate_mint_payload_helper(50);
 		assert_ok!(Assets::mint_private_asset(Origin::signed(1), payload));
@@ -193,7 +190,7 @@ fn mint_with_existing_coin_should_not_work() {
 #[test]
 fn mint_with_invalid_commitment_should_not_work() {
 	new_test_ext().execute_with(|| {
-		mint_tokens_setup_helper();
+		initialize_test(100);
 
 		let commit_param = CommitmentParam::deserialize(
 			Parameter {
@@ -217,7 +214,7 @@ fn mint_with_invalid_commitment_should_not_work() {
 #[test]
 fn mint_with_hash_param_mismatch_should_not_work() {
 	new_test_ext().execute_with(|| {
-		mint_tokens_setup_helper();
+		initialize_test(100);
 
 		let payload = generate_mint_payload_helper(50);
 		assert_ok!(Assets::mint_private_asset(Origin::signed(1), payload));
@@ -234,7 +231,7 @@ fn mint_with_hash_param_mismatch_should_not_work() {
 #[test]
 fn mint_with_commit_param_mismatch_should_not_work() {
 	new_test_ext().execute_with(|| {
-		mint_tokens_setup_helper();
+		initialize_test(100);
 
 		let payload = generate_mint_payload_helper(50);
 		assert_ok!(Assets::mint_private_asset(Origin::signed(1), payload));
@@ -273,16 +270,14 @@ fn test_reclaim_should_work_super_long() {
 #[test]
 fn issuing_asset_units_to_issuer_should_work() {
 	new_test_ext().execute_with(|| {
-		assert_ok!(Assets::init_asset(Origin::signed(1), TEST_ASSET, 100));
-		assert_eq!(Assets::balance(1, TEST_ASSET), 100);
+		initialize_test(100);
 	});
 }
 
 #[test]
 fn querying_total_supply_should_work() {
 	new_test_ext().execute_with(|| {
-		assert_ok!(Assets::init_asset(Origin::signed(1), TEST_ASSET, 100));
-		assert_eq!(Assets::balance(1, TEST_ASSET), 100);
+		initialize_test(100);
 		assert_ok!(Assets::transfer_asset(Origin::signed(1), 2, TEST_ASSET, 50));
 		assert_eq!(Assets::balance(1, TEST_ASSET), 50);
 		assert_eq!(Assets::balance(2, TEST_ASSET), 50);
@@ -297,8 +292,7 @@ fn querying_total_supply_should_work() {
 #[test]
 fn transferring_amount_below_available_balance_should_work() {
 	new_test_ext().execute_with(|| {
-		assert_ok!(Assets::init_asset(Origin::signed(1), TEST_ASSET, 100));
-		assert_eq!(Assets::balance(1, TEST_ASSET), 100);
+		initialize_test(100);
 		assert_ok!(Assets::transfer_asset(Origin::signed(1), 2, TEST_ASSET, 50));
 		assert_eq!(Assets::balance(1, TEST_ASSET), 50);
 		assert_eq!(Assets::balance(2, TEST_ASSET), 50);
@@ -308,8 +302,7 @@ fn transferring_amount_below_available_balance_should_work() {
 #[test]
 fn transferring_amount_more_than_available_balance_should_not_work() {
 	new_test_ext().execute_with(|| {
-		assert_ok!(Assets::init_asset(Origin::signed(1), TEST_ASSET, 100));
-		assert_eq!(Assets::balance(1, TEST_ASSET), 100);
+		initialize_test(100);
 		assert_ok!(Assets::transfer_asset(Origin::signed(1), 2, TEST_ASSET, 50));
 		assert_eq!(Assets::balance(1, TEST_ASSET), 50);
 		assert_eq!(Assets::balance(2, TEST_ASSET), 50);
@@ -323,8 +316,7 @@ fn transferring_amount_more_than_available_balance_should_not_work() {
 #[test]
 fn transferring_less_than_one_unit_should_not_work() {
 	new_test_ext().execute_with(|| {
-		assert_ok!(Assets::init_asset(Origin::signed(1), TEST_ASSET, 100));
-		assert_eq!(Assets::balance(1, TEST_ASSET), 100);
+		initialize_test(100);
 		assert_noop!(
 			Assets::transfer_asset(Origin::signed(1), 2, TEST_ASSET, 0),
 			Error::<Test>::AmountZero
@@ -335,8 +327,7 @@ fn transferring_less_than_one_unit_should_not_work() {
 #[test]
 fn transferring_more_units_than_total_supply_should_not_work() {
 	new_test_ext().execute_with(|| {
-		assert_ok!(Assets::init_asset(Origin::signed(1), TEST_ASSET, 100));
-		assert_eq!(Assets::balance(1, TEST_ASSET), 100);
+		initialize_test(100);
 		assert_noop!(
 			Assets::transfer_asset(Origin::signed(1), 2, TEST_ASSET, 101),
 			Error::<Test>::BalanceLow
@@ -347,7 +338,7 @@ fn transferring_more_units_than_total_supply_should_not_work() {
 #[test]
 fn transferring_with_hash_param_mismatch_should_not_work() {
 	new_test_ext().execute_with(|| {
-		setup_for_private_transfer();
+		initialize_test(10_000_000);
 
 		let payload = [0u8; 608];
 		HashParamChecksum::put([3u8; 32]);
@@ -378,20 +369,16 @@ fn load_zkp_keys(file_name: &str) -> Groth16Pk {
 	Groth16Pk::deserialize_unchecked(buf).unwrap()
 }
 
-fn setup_for_private_transfer() {
-	assert_ok!(Assets::init_asset(
-		Origin::signed(1),
-		TEST_ASSET,
-		10_000_000
-	));
-	assert_eq!(Assets::balance(1, TEST_ASSET), 10_000_000);
+fn initialize_test(amount: u64) {
+	assert_ok!(Assets::init_asset(Origin::signed(1), TEST_ASSET, amount));
+	assert_eq!(Assets::balance(1, TEST_ASSET), amount);
 	assert_eq!(PoolBalance::get(TEST_ASSET), 0);
 }
 
 #[test]
 fn transferring_spent_coin_should_not_work() {
 	new_test_ext().execute_with(|| {
-		setup_for_private_transfer();
+		initialize_test(10_000_000);
 
 		let hash_param = HashParam::deserialize(HASH_PARAM.data);
 		let commit_param = CommitmentParam::deserialize(COMMIT_PARAM.data);
@@ -465,7 +452,7 @@ fn transferring_spent_coin_should_not_work() {
 #[test]
 fn transferring_existing_coins_should_not_work() {
 	new_test_ext().execute_with(|| {
-		setup_for_private_transfer();
+		initialize_test(10_000_000);
 
 		let hash_param = HashParam::deserialize(HASH_PARAM.data);
 		let commit_param = CommitmentParam::deserialize(COMMIT_PARAM.data);
@@ -550,7 +537,7 @@ fn transferring_existing_coins_should_not_work() {
 #[test]
 fn transferring_with_invalid_zkp_param_should_not_work() {
 	new_test_ext().execute_with(|| {
-		setup_for_private_transfer();
+		initialize_test(10_000_000);
 
 		let hash_param = HashParam::deserialize(HASH_PARAM.data);
 		let commit_param = CommitmentParam::deserialize(COMMIT_PARAM.data);
@@ -625,8 +612,7 @@ fn transferring_with_invalid_zkp_param_should_not_work() {
 #[test]
 fn destroying_asset_balance_with_positive_balance_should_work() {
 	new_test_ext().execute_with(|| {
-		assert_ok!(Assets::init_asset(Origin::signed(1), TEST_ASSET, 100));
-		assert_eq!(Assets::balance(1, TEST_ASSET), 100);
+		initialize_test(100);
 	});
 }
 
@@ -680,14 +666,8 @@ fn generate_mint_payload_helper(value: u64) -> [u8; MINT_PAYLOAD_SIZE] {
 	generate_mint_payload(&asset)
 }
 
-fn mint_tokens_setup_helper() {
-	assert_ok!(Assets::init_asset(Origin::signed(1), TEST_ASSET, 100));
-	assert_eq!(Assets::balance(1, TEST_ASSET), 100);
-	assert_eq!(PoolBalance::get(TEST_ASSET), 0);
-}
-
 fn transfer_test_helper(iter: usize) {
-	setup_for_private_transfer();
+	initialize_test(10_000_000);
 
 	let hash_param = HashParam::deserialize(HASH_PARAM.data);
 	let commit_param = CommitmentParam::deserialize(COMMIT_PARAM.data);
@@ -789,7 +769,7 @@ fn transfer_test_helper(iter: usize) {
 }
 
 fn reclaim_test_helper(iter: usize) {
-	setup_for_private_transfer();
+	initialize_test(10_000_000);
 
 	let hash_param = HashParam::deserialize(HASH_PARAM.data);
 	let commit_param = CommitmentParam::deserialize(COMMIT_PARAM.data);
