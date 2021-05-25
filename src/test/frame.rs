@@ -126,8 +126,8 @@ fn test_mint_should_work() {
 		assert_eq!(PoolBalance::get(TEST_ASSET), 10);
 		let coin_shards = CoinShards::get();
 		assert!(coin_shards.exist(&asset.commitment));
-		let sn_list = VNList::get();
-		assert_eq!(sn_list.len(), 0);
+		let vn_list = VNList::get();
+		assert_eq!(vn_list.len(), 0);
 	});
 }
 
@@ -230,13 +230,7 @@ fn transferring_more_units_than_total_supply_should_not_work() {
 #[test]
 fn transferring_with_hash_param_mismatch_should_not_work() {
 	new_test_ext().execute_with(|| {
-		assert_ok!(Assets::init_asset(
-			Origin::signed(1),
-			TEST_ASSET,
-			10_000_000
-		));
-		assert_eq!(Assets::balance(1, TEST_ASSET), 10_000_000);
-		assert_eq!(PoolBalance::get(TEST_ASSET), 0);
+		setup_for_private_transfer();
 
 		let payload = [0u8; 608];
 		HashParamChecksum::put([3u8; 32]);
@@ -246,6 +240,103 @@ fn transferring_with_hash_param_mismatch_should_not_work() {
 			Assets::private_transfer(Origin::signed(1), payload),
 			Error::<Test>::MintFail
 		);
+	});
+}
+
+fn load_zkp_keys() -> Groth16Pk {
+	let mut file = File::open("transfer_pk.bin").unwrap();
+	let mut transfer_key_bytes: Vec<u8> = vec![];
+	file.read_to_end(&mut transfer_key_bytes).unwrap();
+	let buf: &[u8] = transfer_key_bytes.as_ref();
+	let pk = Groth16Pk::deserialize_unchecked(buf).unwrap();
+	let vk = pk.vk.clone();
+	let mut vk_bytes = Vec::new();
+	vk.serialize_uncompressed(&mut vk_bytes).unwrap();
+	let vk = TRANSFER_PK;
+	let vk_checksum = TransferZKPKeyChecksum::get();
+	assert_eq!(vk.get_checksum(), vk_checksum);
+	pk
+}
+
+fn setup_for_private_transfer() {
+	assert_ok!(Assets::init_asset(
+		Origin::signed(1),
+		TEST_ASSET,
+		10_000_000
+	));
+	assert_eq!(Assets::balance(1, TEST_ASSET), 10_000_000);
+	assert_eq!(PoolBalance::get(TEST_ASSET), 0);
+}
+
+#[test]
+fn transferring_spent_coin_should_not_work() {
+	new_test_ext().execute_with(|| {
+		setup_for_private_transfer();
+
+		let hash_param = HashParam::deserialize(HASH_PARAM.data);
+		let commit_param = CommitmentParam::deserialize(COMMIT_PARAM.data);
+
+		let pk = load_zkp_keys();
+
+		let mut rng = ChaCha20Rng::from_seed([3u8; 32]);
+		let mut sk = [0u8; 32];
+
+		let iter = 1;
+		let size = iter << 1;
+		let senders = mint_tokens_helper(size);
+
+		let vn_list = VNList::get();
+		assert_eq!(vn_list.len(), 0);
+
+		// build receivers
+		let mut receivers_full = Vec::new();
+		let mut receivers_processed = Vec::new();
+		for i in 0usize..size {
+			// build a receiver token
+			rng.fill_bytes(&mut sk[..]);
+			let receiver_full =
+				MantaAssetFullReceiver::sample(&commit_param, &sk, &TEST_ASSET, &(), &mut rng);
+			let receiver = receiver_full.prepared.process(&(i as u64 + 10), &mut rng);
+			receivers_full.push(receiver_full);
+			receivers_processed.push(receiver);
+		}
+
+		for i in 0usize..iter {
+			let coin_shards = CoinShards::get();
+
+			// build sender meta data
+			let sender_1 = senders[i * 2].clone();
+			let sender_2 = senders[i * 2 + 1].clone();
+			let shard_index_1 = sender_1.commitment[0] as usize;
+			let shard_index_2 = sender_2.commitment[0] as usize;
+			let list_1 = coin_shards.shard[shard_index_1].list.clone();
+			let sender_1 = SenderMetaData::build(hash_param.clone(), sender_1, &list_1);
+			let list_2 = coin_shards.shard[shard_index_2].list.clone();
+			let sender_2 = SenderMetaData::build(hash_param.clone(), sender_2, &list_2);
+
+			// extract the receivers
+			let receiver_1 = receivers_processed[i * 2 + 1].clone();
+			let receiver_2 = receivers_processed[i * 2].clone();
+
+			// form the transaction payload
+			let payload = generate_private_transfer_payload(
+				commit_param.clone(),
+				hash_param.clone(),
+				&pk,
+				sender_1,
+				sender_2,
+				receiver_1,
+				receiver_2,
+				&mut rng,
+			);
+
+			assert_ok!(Assets::private_transfer(Origin::signed(1), payload));
+
+			assert_noop!(
+				Assets::private_transfer(Origin::signed(1), payload),
+				Error::<Test>::MantaCoinSpent
+			);
+		}
 	});
 }
 
@@ -299,30 +390,12 @@ fn mint_tokens_helper(size: usize) -> Vec<MantaAsset> {
 }
 
 fn transfer_test_helper(iter: usize) {
-	// setup
-	assert_ok!(Assets::init_asset(
-		Origin::signed(1),
-		TEST_ASSET,
-		10_000_000
-	));
-	assert_eq!(Assets::balance(1, TEST_ASSET), 10_000_000);
-	assert_eq!(PoolBalance::get(TEST_ASSET), 0);
+	setup_for_private_transfer();
 
 	let hash_param = HashParam::deserialize(HASH_PARAM.data);
 	let commit_param = CommitmentParam::deserialize(COMMIT_PARAM.data);
 
-	// load the ZKP keys
-	let mut file = File::open("transfer_pk.bin").unwrap();
-	let mut transfer_key_bytes: Vec<u8> = vec![];
-	file.read_to_end(&mut transfer_key_bytes).unwrap();
-	let buf: &[u8] = transfer_key_bytes.as_ref();
-	let pk = Groth16Pk::deserialize_unchecked(buf).unwrap();
-	let vk = pk.vk.clone();
-	let mut vk_bytes = Vec::new();
-	vk.serialize_uncompressed(&mut vk_bytes).unwrap();
-	let vk = TRANSFER_PK;
-	let vk_checksum = TransferZKPKeyChecksum::get();
-	assert_eq!(vk.get_checksum(), vk_checksum);
+	let pk = load_zkp_keys();
 
 	let mut rng = ChaCha20Rng::from_seed([3u8; 32]);
 	let mut sk = [0u8; 32];
@@ -331,8 +404,8 @@ fn transfer_test_helper(iter: usize) {
 	let senders = mint_tokens_helper(size);
 	let pool = PoolBalance::get(TEST_ASSET);
 
-	let sn_list = VNList::get();
-	assert_eq!(sn_list.len(), 0);
+	let vn_list = VNList::get();
+	assert_eq!(vn_list.len(), 0);
 
 	// build receivers
 	let mut receivers_full = Vec::new();
@@ -408,23 +481,15 @@ fn transfer_test_helper(iter: usize) {
 	// check the resulting status of the ledger storage
 	assert_eq!(TotalSupply::get(TEST_ASSET), 10_000_000);
 	let coin_shards = CoinShards::get();
-	let sn_list = VNList::get();
 	for i in 0usize..size {
 		assert!(coin_shards.exist(&senders[i].commitment));
 		assert!(coin_shards.exist(&receivers_processed[i].commitment));
-		assert_eq!(sn_list[i], senders[i].void_number);
+		assert_eq!(vn_list[i], senders[i].void_number);
 	}
 }
 
 fn reclaim_test_helper(iter: usize) {
-	// setup
-	assert_ok!(Assets::init_asset(
-		Origin::signed(1),
-		TEST_ASSET,
-		10_000_000
-	));
-	assert_eq!(Assets::balance(1, TEST_ASSET), 10_000_000);
-	assert_eq!(PoolBalance::get(TEST_ASSET), 0);
+	setup_for_private_transfer();
 
 	let hash_param = HashParam::deserialize(HASH_PARAM.data);
 	let commit_param = CommitmentParam::deserialize(COMMIT_PARAM.data);
@@ -436,18 +501,7 @@ fn reclaim_test_helper(iter: usize) {
 	let mut rng = ChaCha20Rng::from_seed([3u8; 32]);
 	let mut sk = [0u8; 32];
 
-	// load the ZKP keys
-	let mut file = File::open("reclaim_pk.bin").unwrap();
-	let mut reclaim_pk_bytes: Vec<u8> = vec![];
-	file.read_to_end(&mut reclaim_pk_bytes).unwrap();
-	let buf: &[u8] = reclaim_pk_bytes.as_ref();
-	let pk = Groth16Pk::deserialize_unchecked(buf).unwrap();
-	let vk = pk.vk.clone();
-	let mut vk_bytes = Vec::new();
-	vk.serialize_uncompressed(&mut vk_bytes).unwrap();
-	let vk = RECLAIM_PK;
-	let vk_checksum = ReclaimZKPKeyChecksum::get();
-	assert_eq!(vk.get_checksum(), vk_checksum);
+	let pk = load_zkp_keys();
 
 	for i in 0usize..iter {
 		let coin_shards = CoinShards::get();
@@ -490,10 +544,10 @@ fn reclaim_test_helper(iter: usize) {
 		pool -= reclaim_value;
 		assert_eq!(PoolBalance::get(TEST_ASSET), pool);
 
-		let sn_list = VNList::get();
-		assert_eq!(sn_list.len(), 2 * (i + 1));
-		assert_eq!(sn_list[i * 2], sender_1.asset.void_number);
-		assert_eq!(sn_list[i * 2 + 1], sender_2.asset.void_number);
+		let vn_list = VNList::get();
+		assert_eq!(vn_list.len(), 2 * (i + 1));
+		assert_eq!(vn_list[i * 2], sender_1.asset.void_number);
+		assert_eq!(vn_list[i * 2 + 1], sender_2.asset.void_number);
 	}
 	let enc_value_list = EncValueList::get();
 	assert_eq!(enc_value_list.len(), iter);
