@@ -99,7 +99,9 @@ impl Default for Shards {
 		}
 
 		Self {
-			shard: shard.try_into().unwrap_or_else(|_| panic!("The length is 256; qed"))
+			shard: shard
+				.try_into()
+				.unwrap_or_else(|_| panic!("The length is 256; qed")),
 		}
 	}
 }
