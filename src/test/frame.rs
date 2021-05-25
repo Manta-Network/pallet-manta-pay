@@ -228,6 +228,29 @@ fn transferring_more_units_than_total_supply_should_not_work() {
 }
 
 #[test]
+fn transferring_with_hash_param_mismatch_should_not_work() {
+	new_test_ext().execute_with(|| {
+		assert_ok!(Assets::init_asset(
+			Origin::signed(1),
+			TEST_ASSET,
+			10_000_000
+		));
+		assert_eq!(Assets::balance(1, TEST_ASSET), 10_000_000);
+		assert_eq!(PoolBalance::get(TEST_ASSET), 0);
+
+		let payload = [0u8; 608];
+		HashParamChecksum::put([3u8; 32]);
+
+		// invoke the transfer event
+		assert_noop!(
+			Assets::private_transfer(Origin::signed(1), payload),
+			Error::<Test>::MintFail
+		);
+	});
+}
+
+
+#[test]
 fn destroying_asset_balance_with_positive_balance_should_work() {
 	new_test_ext().execute_with(|| {
 		assert_ok!(Assets::init_asset(Origin::signed(1), TEST_ASSET, 100));
@@ -328,7 +351,7 @@ fn transfer_test_helper(iter: usize) {
 	for i in 0usize..iter {
 		let coin_shards = CoinShards::get();
 
-		// build sender mata data
+		// build sender meta data
 		let sender_1 = senders[i * 2].clone();
 		let sender_2 = senders[i * 2 + 1].clone();
 		let shard_index_1 = sender_1.commitment[0] as usize;
