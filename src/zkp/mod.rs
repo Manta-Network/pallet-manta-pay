@@ -34,7 +34,7 @@ use ark_serialize::CanonicalDeserialize;
 use ark_std::vec::Vec;
 use manta_asset::*;
 use manta_crypto::*;
-use manta_errors::MantaErrors;
+use manta_error::MantaError;
 
 /// A `SenderMetaData` is the data that a sender assembles from its `MantaAsset`
 /// and the current state of the ledger. This struct is an input to both
@@ -53,14 +53,14 @@ impl SenderMetaData {
 		param: HashParam,
 		sender: MantaAsset,
 		leaves: &[[u8; 32]],
-	) -> Result<Self, MantaErrors> {
+	) -> Result<Self, MantaError> {
 		let tree = LedgerMerkleTree::new(param, &leaves)?;
 		let root = tree.root();
 
 		let index = match leaves.iter().position(|x| *x == sender.commitment) {
 			Some(p) => p,
 			None => {
-				return Err(MantaErrors::LeavesNotFound);
+				return Err(MantaError::LeavesNotFound);
 			}
 		};
 		let membership = tree.generate_proof(index, &sender.commitment)?;

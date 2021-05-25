@@ -21,7 +21,7 @@ use ark_std::rand::{CryptoRng, RngCore};
 use frame_support::codec::{Decode, Encode};
 use manta_asset::*;
 use manta_crypto::*;
-use manta_errors::MantaErrors;
+use manta_error::MantaError;
 
 mod default;
 mod santiy;
@@ -76,7 +76,7 @@ pub struct ReceiverData {
 }
 
 /// Given the inputs, generate the payload for the mint_asset extrinsic.
-pub fn generate_mint_payload(asset: &MantaAsset) -> Result<[u8; MINT_PAYLOAD_SIZE], MantaErrors> {
+pub fn generate_mint_payload(asset: &MantaAsset) -> Result<[u8; MINT_PAYLOAD_SIZE], MantaError> {
 	let data = generate_mint_struct(asset);
 	let mut res = [0u8; MINT_PAYLOAD_SIZE];
 	data.serialize(res.as_mut())?;
@@ -119,7 +119,7 @@ pub fn generate_private_transfer_payload<R: RngCore + CryptoRng>(
 	receiver_1: MantaAssetProcessedReceiver,
 	receiver_2: MantaAssetProcessedReceiver,
 	rng: &mut R,
-) -> Result<[u8; PRIVATE_TRANSFER_PAYLOAD_SIZE], MantaErrors> {
+) -> Result<[u8; PRIVATE_TRANSFER_PAYLOAD_SIZE], MantaError> {
 	let data = generate_private_transfer_struct(
 		commit_param,
 		hash_param,
@@ -159,7 +159,7 @@ fn generate_private_transfer_struct<R: RngCore + CryptoRng>(
 	receiver_1: MantaAssetProcessedReceiver,
 	receiver_2: MantaAssetProcessedReceiver,
 	rng: &mut R,
-) -> Result<PrivateTransferData, MantaErrors> {
+) -> Result<PrivateTransferData, MantaError> {
 	// generate circuit
 	let circuit = TransferCircuit {
 		commit_param,
@@ -234,7 +234,7 @@ pub fn generate_reclaim_payload<R: RngCore + CryptoRng>(
 	receiver: MantaAssetProcessedReceiver,
 	reclaim_value: u64,
 	rng: &mut R,
-) -> Result<[u8; RECLAIM_PAYLOAD_SIZE], MantaErrors> {
+) -> Result<[u8; RECLAIM_PAYLOAD_SIZE], MantaError> {
 	let data = generate_reclaim_struct(
 		commit_param,
 		hash_param,
@@ -273,7 +273,7 @@ fn generate_reclaim_struct<R: RngCore + CryptoRng>(
 	receiver: MantaAssetProcessedReceiver,
 	reclaim_value: u64,
 	rng: &mut R,
-) -> Result<ReclaimData, MantaErrors> {
+) -> Result<ReclaimData, MantaError> {
 	// check the asset_ids match
 	// TODO: raise an `asset_id_not_match` error
 	assert_eq!(

@@ -43,7 +43,7 @@ sha2 = { version = "0.9.3", default-features = false }
 # Manta Dependencies
 manta-crypto = { branch = "error-wrapper", git = "https://github.com/Manta-Network/manta-crypto", default-features = false }
 manta-asset = { branch = "error-wrapper", git = "https://github.com/Manta-Network/manta-asset", default-features = false }
-manta-errors = { git = "https://github.com/Manta-Network/manta-errors", default-features = false }
+manta-error = { git = "https://github.com/Manta-Network/manta-error", default-features = false }
 
 [dev-dependencies]
 # benchmarking 

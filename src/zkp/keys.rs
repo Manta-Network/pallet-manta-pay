@@ -28,7 +28,7 @@ use manta_crypto::*;
 use rand_chacha::ChaCha20Rng;
 use sha2::Sha512Trunc256;
 
-use manta_errors::MantaErrors;
+use manta_error::MantaError;
 
 #[cfg(feature = "std")]
 use std::{fs::File, io::prelude::*};
@@ -44,7 +44,7 @@ pub const RECLAIM_PK: VerificationKey = VerificationKey {
 /// Generate the ZKP keys with a default seed, and write to
 /// `transfer_pk.bin` and `reclaim_pk.bin`.
 #[cfg(feature = "std")]
-pub fn write_zkp_keys() -> Result<(), MantaErrors> {
+pub fn write_zkp_keys() -> Result<(), MantaError> {
 	let hash_param_seed = [1u8; 32];
 	let commit_param_seed = [2u8; 32];
 	let seed = [3u8; 32];
@@ -90,7 +90,7 @@ fn manta_transfer_zkp_key_gen(
 	hash_param_seed: &[u8; 32],
 	commit_param_seed: &[u8; 32],
 	rng_seed: &[u8; 32],
-) -> Result<Vec<u8>, MantaErrors> {
+) -> Result<Vec<u8>, MantaError> {
 	// rebuild the parameters from the inputs
 	let mut rng = ChaCha20Rng::from_seed(*commit_param_seed);
 	let commit_param = CommitmentScheme::setup(&mut rng)?;
@@ -171,7 +171,7 @@ fn manta_reclaim_zkp_key_gen(
 	hash_param_seed: &[u8; 32],
 	commit_param_seed: &[u8; 32],
 	rng_seed: &[u8; 32],
-) -> Result<Vec<u8>, MantaErrors> {
+) -> Result<Vec<u8>, MantaError> {
 	// rebuild the parameters from the inputs
 	let mut rng = ChaCha20Rng::from_seed(*commit_param_seed);
 	let commit_param = CommitmentScheme::setup(&mut rng)?;

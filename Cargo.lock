@@ -802,6 +802,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "displaydoc"
+version = "0.2.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3274a6bc8a6a4521291b53b9dcb8345e963fe931c3fc462a7d3ead71d7ccd30d"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn",
+]
+
+[[package]]
 name = "dyn-clonable"
 version = "0.9.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1349,9 +1360,9 @@ checksum = "e2abad23fbc42b3700f2f279844dc832adb2b2eb069b2df918f455c4e18cc646"
 
 [[package]]
 name = "libc"
-version = "0.2.94"
+version = "0.2.95"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "18794a8ad5b29321f790b55d93dfba91e125cb1a9edbd4f8e3150acc771c1a5e"
+checksum = "789da6d93f1b866ffe175afc5322a4d76c038605a1c3319bb57b06967ca98a36"
 
 [[package]]
 name = "libm"
@@ -1406,7 +1417,7 @@ dependencies = [
 [[package]]
 name = "manta-asset"
 version = "0.1.0"
-source = "git+https://github.com/Manta-Network/manta-asset?branch=error-wrapper#cec58afcb13f3b3dff925de01645b4bf87712277"
+source = "git+https://github.com/Manta-Network/manta-asset?branch=error-wrapper#ab5134a4343a462eba086a447d3ed54e6906fa9a"
 dependencies = [
  "ark-crypto-primitives",
  "ark-ed-on-bls12-381",
@@ -1415,14 +1426,14 @@ dependencies = [
  "ark-std",
  "blake2",
  "manta-crypto",
- "manta-errors",
+ "manta-error",
  "parity-scale-codec",
 ]
 
 [[package]]
 name = "manta-crypto"
 version = "0.1.0"
-source = "git+https://github.com/Manta-Network/manta-crypto?branch=error-wrapper#9f91e87c88b3a1e4d65d253045afdc7b06054980"
+source = "git+https://github.com/Manta-Network/manta-crypto?branch=error-wrapper#7fee4c1850bcb5f284b526d8f45df0c8e11912b5"
 dependencies = [
  "aes",
  "ark-bls12-381",
@@ -1435,19 +1446,20 @@ dependencies = [
  "ark-std",
  "blake2",
  "generic-array 0.14.4",
- "manta-errors",
+ "manta-error",
  "x25519-dalek",
 ]
 
 [[package]]
-name = "manta-errors"
+name = "manta-error"
 version = "0.1.0"
-source = "git+https://github.com/Manta-Network/manta-errors#dbb352e0b4998df812c51c19838a701971053253"
+source = "git+https://github.com/Manta-Network/manta-error#13fe1ace32ee4b4a3b037640c2d4689bbbdb6759"
 dependencies = [
  "ark-crypto-primitives",
  "ark-relations",
  "ark-serialize",
  "ark-std",
+ "displaydoc",
 ]
 
 [[package]]
@@ -1722,7 +1734,7 @@ dependencies = [
  "log",
  "manta-asset",
  "manta-crypto",
- "manta-errors",
+ "manta-error",
  "parity-scale-codec",
  "rand_chacha 0.2.2",
  "serde",
