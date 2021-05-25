@@ -16,7 +16,7 @@
 
 use crate as pallet_manta_pay;
 use crate::*;
-use ark_serialize::{CanonicalDeserialize};
+use ark_serialize::CanonicalDeserialize;
 use ark_std::rand::{RngCore, SeedableRng};
 use frame_support::{assert_noop, assert_ok, parameter_types};
 use manta_asset::*;
