@@ -57,7 +57,12 @@ impl SenderMetaData {
 		let tree = LedgerMerkleTree::new(param, &leaves)?;
 		let root = tree.root();
 
-		let index = leaves.iter().position(|x| *x == sender.commitment).unwrap();
+		let index = match leaves.iter().position(|x| *x == sender.commitment) {
+			Some(p) => p,
+			None => {
+				return Err(MantaErrors::LeavesNotFound);
+			}
+		};
 		let membership = tree.generate_proof(index, &sender.commitment)?;
 
 		Ok(Self {

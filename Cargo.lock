@@ -1719,6 +1719,7 @@ dependencies = [
  "frame-support",
  "frame-system",
  "hkdf",
+ "log",
  "manta-asset",
  "manta-crypto",
  "manta-errors",

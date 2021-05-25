@@ -22,6 +22,7 @@ sp-std = { default-features = false, version = '3.0.0' }
 # Other Dependencies
 codec = { package = "parity-scale-codec", version = "2.0.0", default-features = false, features = ["derive"] }
 data-encoding = { version = "2.3.2", default-features = false, features = [ "alloc" ] }
+log = { version = "0.4.14", default-features = false }
 
 # Arkworks dependencies
 ark-ed-on-bls12-381 = { version = "0.2.0", default-features = false, features = [ "r1cs" ] }
