@@ -116,7 +116,10 @@ impl MantaZKPVerifier for PrivateTransferData {
 		]
 		.concat();
 
-		verify_proof(&pvk, &proof, &inputs[..]).unwrap()
+		match verify_proof(&pvk, &proof, &inputs[..]) {
+			Ok(p) => p,
+			Err(_e) => false,
+		}
 	}
 }
 
@@ -216,6 +219,9 @@ impl MantaZKPVerifier for ReclaimData {
 		]
 		.concat();
 
-		verify_proof(&pvk, &proof, &inputs[..]).unwrap()
+		match verify_proof(&pvk, &proof, &inputs[..]) {
+			Ok(p) => p,
+			Err(_e) => false,
+		}
 	}
 }

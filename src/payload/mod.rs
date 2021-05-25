@@ -76,11 +76,11 @@ pub struct ReceiverData {
 }
 
 /// Given the inputs, generate the payload for the mint_asset extrinsic.
-pub fn generate_mint_payload(asset: &MantaAsset) -> [u8; MINT_PAYLOAD_SIZE] {
+pub fn generate_mint_payload(asset: &MantaAsset) -> Result<[u8; MINT_PAYLOAD_SIZE], MantaErrors> {
 	let data = generate_mint_struct(asset);
 	let mut res = [0u8; MINT_PAYLOAD_SIZE];
-	data.serialize(res.as_mut()).unwrap();
-	res
+	data.serialize(res.as_mut())?;
+	Ok(res)
 }
 
 /// Given the inputs, generate the stuct that can be passed to

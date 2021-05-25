@@ -59,14 +59,26 @@ pub fn write_zkp_keys() -> Result<(), MantaErrors> {
 
 	let mut transfer_pk_bytes =
 		manta_transfer_zkp_key_gen(&hash_param_seed, &commit_param_seed, &rng_seed)?;
-	let mut file = File::create("transfer_pk.bin").unwrap();
-	file.write_all(transfer_pk_bytes.as_mut()).unwrap();
+	let mut file = match File::create("transfer_pk.bin") {
+		Ok(p) => p,
+		Err(e) => panic!("{}: failed to create transfer pk binary", e),
+	};
+	match file.write_all(transfer_pk_bytes.as_mut()) {
+		Ok(p) => p,
+		Err(e) => panic!("{}: failed to write transfer pk binary", e),
+	};
 	// println!("transfer circuit pk length: {}", transfer_pk_bytes.len());
 
 	let mut reclaim_pk_bytes =
 		manta_reclaim_zkp_key_gen(&hash_param_seed, &commit_param_seed, &rng_seed)?;
-	let mut file = File::create("reclaim_pk.bin").unwrap();
-	file.write_all(reclaim_pk_bytes.as_mut()).unwrap();
+	let mut file = match File::create("reclaim_pk.bin") {
+		Ok(p) => p,
+		Err(e) => panic!("{}: failed to create reclaim pk binary", e),
+	};
+	match file.write_all(reclaim_pk_bytes.as_mut()) {
+		Ok(p) => p,
+		Err(e) => panic!("{}: failed to write reclaim pk binary", e),
+	};
 	// println!("reclaim circuit pk length: {}", reclaim_pk_bytes.len());
 
 	Ok(())
@@ -162,10 +174,10 @@ fn manta_reclaim_zkp_key_gen(
 ) -> Result<Vec<u8>, MantaErrors> {
 	// rebuild the parameters from the inputs
 	let mut rng = ChaCha20Rng::from_seed(*commit_param_seed);
-	let commit_param = CommitmentScheme::setup(&mut rng).unwrap();
+	let commit_param = CommitmentScheme::setup(&mut rng)?;
 
 	let mut rng = ChaCha20Rng::from_seed(*hash_param_seed);
-	let hash_param = Hash::setup(&mut rng).unwrap();
+	let hash_param = Hash::setup(&mut rng)?;
 
 	let mut rng = ChaCha20Rng::from_seed(*rng_seed);
 	let mut coins = Vec::new();
@@ -212,22 +224,21 @@ fn manta_reclaim_zkp_key_gen(
 	let sanity_cs = ConstraintSystem::<Fq>::new_ref();
 	reclaim_circuit
 		.clone()
-		.generate_constraints(sanity_cs.clone())
-		.unwrap();
-	assert!(sanity_cs.is_satisfied().unwrap());
+		.generate_constraints(sanity_cs.clone())?;
+	assert!(sanity_cs.is_satisfied()?);
 
 	// reclaim pk_bytes
 	let mut rng = ChaCha20Rng::from_seed(*rng_seed);
-	let pk = generate_random_parameters::<Bls12_381, _, _>(reclaim_circuit, &mut rng).unwrap();
+	let pk = generate_random_parameters::<Bls12_381, _, _>(reclaim_circuit, &mut rng)?;
 	let mut reclaim_pk_bytes: Vec<u8> = Vec::new();
 
 	let mut vk_buf: Vec<u8> = vec![];
 	let reclaim_vk = &pk.vk;
-	reclaim_vk.serialize_uncompressed(&mut vk_buf).unwrap();
+	reclaim_vk.serialize_uncompressed(&mut vk_buf)?;
 	println!("pk_uncompressed len {}", reclaim_pk_bytes.len());
 	println!("vk: {:?}", vk_buf);
 
-	pk.serialize_uncompressed(&mut reclaim_pk_bytes).unwrap();
+	pk.serialize_uncompressed(&mut reclaim_pk_bytes)?;
 	Ok(reclaim_pk_bytes)
 }
 

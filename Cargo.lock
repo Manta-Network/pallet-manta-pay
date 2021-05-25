@@ -520,9 +520,9 @@ dependencies = [
 
 [[package]]
 name = "cc"
-version = "1.0.67"
+version = "1.0.68"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e3c69b077ad434294d3ce9f1f6143a2a4b89a8a2d54ef813d85003a4fd1137fd"
+checksum = "4a72c244c1ff497a746a7e1fb3d14bd08420ecda70c8f25c7112f2781652d787"
 
 [[package]]
 name = "cfg-if"
@@ -1406,7 +1406,7 @@ dependencies = [
 [[package]]
 name = "manta-asset"
 version = "3.0.0"
-source = "git+https://github.com/Manta-Network/manta-asset?branch=error-wrapper#3df6e017ee1a5838b93fda2711712154ca9004af"
+source = "git+https://github.com/Manta-Network/manta-asset?branch=error-wrapper#ade5f0b49df102c587686df8b96ee855321b440f"
 dependencies = [
  "ark-crypto-primitives",
  "ark-ed-on-bls12-381",
@@ -1443,12 +1443,13 @@ dependencies = [
 [[package]]
 name = "manta-errors"
 version = "0.1.0"
-source = "git+https://github.com/Manta-Network/manta-errors#e8ca909a31b17a50f17dd5481d1e0007403d6032"
+source = "git+https://github.com/Manta-Network/manta-errors#9f482bc2aa88fd0ce3eb6b8218133d4f21c1c3ad"
 dependencies = [
  "ark-crypto-primitives",
  "ark-relations",
  "ark-serialize",
  "ark-std",
+ "sp-runtime",
 ]
 
 [[package]]

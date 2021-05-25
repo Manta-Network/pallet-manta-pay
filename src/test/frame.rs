@@ -119,7 +119,7 @@ fn test_mint_should_work() {
 		rng.fill_bytes(&mut sk);
 		let asset = MantaAsset::sample(&commit_param, &sk, &TEST_ASSET, &10, &mut rng).unwrap();
 
-		let payload = generate_mint_payload(&asset);
+		let payload = generate_mint_payload(&asset).unwrap();
 		assert_ok!(Assets::mint_private_asset(Origin::signed(1), payload));
 
 		assert_eq!(TotalSupply::get(TEST_ASSET), 1000);
@@ -261,7 +261,7 @@ fn mint_tokens_helper(size: usize) -> Vec<MantaAsset> {
 		rng.fill_bytes(&mut sk);
 		let asset =
 			MantaAsset::sample(&commit_param, &sk, &TEST_ASSET, &token_value, &mut rng).unwrap();
-		let payload = generate_mint_payload(&asset);
+		let payload = generate_mint_payload(&asset).unwrap();
 
 		// mint a sender token
 		assert_ok!(Assets::mint_private_asset(Origin::signed(1), payload));
