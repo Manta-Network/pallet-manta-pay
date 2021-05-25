@@ -101,6 +101,7 @@
 
 // Ensure we're `no_std` when compiling for Wasm.
 #![cfg_attr(not(feature = "std"), no_std)]
+// #![no_std]
 
 mod ledger;
 mod payload;
@@ -182,10 +183,10 @@ decl_module! {
 			//  * hash parameter seed: [1u8; 32]
 			//  * commitment parameter seed: [2u8; 32]
 			// We may want to pass those two in for `init`
-			let hash_param = HashParam::deserialize(HASH_PARAM.data)?;
-			let commit_param = CommitmentParam::deserialize(COMMIT_PARAM.data)?;
-			let hash_param_checksum = hash_param.get_checksum()?;
-			let commit_param_checksum = commit_param.get_checksum()?;
+			let hash_param = HashParam::deserialize(HASH_PARAM.data).unwrap();
+			let commit_param = CommitmentParam::deserialize(COMMIT_PARAM.data).unwrap();
+			let hash_param_checksum = hash_param.get_checksum().unwrap();
+			let commit_param_checksum = commit_param.get_checksum().unwrap();
 			HashParamChecksum::put(hash_param_checksum);
 			CommitParamChecksum::put(commit_param_checksum);
 
@@ -199,10 +200,10 @@ decl_module! {
 			// for product we should use a MPC protocol to build the ZKP verification key
 			// and then deploy that vk
 			//
-			let transfer_key_digest = TRANSFER_PK.get_checksum()?;
+			let transfer_key_digest = TRANSFER_PK.get_checksum().unwrap();
 			TransferZKPKeyChecksum::put(transfer_key_digest);
 
-			let reclaim_key_digest = RECLAIM_PK.get_checksum()?;
+			let reclaim_key_digest = RECLAIM_PK.get_checksum().unwrap();
 			ReclaimZKPKeyChecksum::put(reclaim_key_digest);
 
 			// coin_shards are 256 lists of commitments
@@ -267,7 +268,7 @@ decl_module! {
 			// todo: Implement the fix denomination method
 
 			// parse the input_data into input
-			let input = MintData::deserialize(payload.as_ref())?;
+			let input = MintData::deserialize(payload.as_ref()).unwrap();
 
 			// if the asset_id has a total suply == 0, then this asset is initialized
 			ensure!(
@@ -284,8 +285,8 @@ decl_module! {
 
 			// get the parameter checksum from the ledger
 			// and make sure the parameters match
-			let hash_param_checksum_local = HASH_PARAM.get_checksum()?;
-			let commit_param_checksum_local = COMMIT_PARAM.get_checksum()?;
+			let hash_param_checksum_local = HASH_PARAM.get_checksum().unwrap();
+			let commit_param_checksum_local = COMMIT_PARAM.get_checksum().unwrap();
 
 			let hash_param_checksum = HashParamChecksum::get();
 			let commit_param_checksum = CommitParamChecksum::get();
@@ -298,12 +299,12 @@ decl_module! {
 				<Error<T>>::MintFail
 			);
 
-			let hash_param = HashParam::deserialize(HASH_PARAM.data)?;
-			let commit_param = CommitmentParam::deserialize(COMMIT_PARAM.data)?;
+			let hash_param = HashParam::deserialize(HASH_PARAM.data).unwrap();
+			let commit_param = CommitmentParam::deserialize(COMMIT_PARAM.data).unwrap();
 
 			// check the validity of the commitment
 			ensure!(
-				input.sanity(&commit_param)?,
+				input.sanity(&commit_param).unwrap(),
 				<Error<T>>::MintFail
 			);
 
@@ -315,7 +316,7 @@ decl_module! {
 			);
 
 			// update the shards
-			coin_shards.update(&input.cm, hash_param)?;
+			coin_shards.update(&input.cm, hash_param).unwrap();
 
 			// write back to ledger storage
 			Self::deposit_event(
@@ -347,19 +348,19 @@ decl_module! {
 			// this function does not know which asset_id is been transferred.
 			// so there will not be an initialization check
 
-			let data = PrivateTransferData::deserialize(payload.as_ref())?;
+			let data = PrivateTransferData::deserialize(payload.as_ref()).unwrap();
 			let origin = ensure_signed(origin)?;
 
 			// get the parameter checksum from the ledger
 			// and make sure the parameters match
-			let hash_param_checksum_local = HASH_PARAM.get_checksum()?;
+			let hash_param_checksum_local = HASH_PARAM.get_checksum().unwrap();
 
 			let hash_param_checksum = HashParamChecksum::get();
 			ensure!(
 				hash_param_checksum_local == hash_param_checksum,
 				<Error<T>>::MintFail
 			);
-			let hash_param = HashParam::deserialize(HASH_PARAM.data)?;
+			let hash_param = HashParam::deserialize(HASH_PARAM.data).unwrap();
 
 			// check if vn_old already spent
 			let mut sn_list = VNList::get();
@@ -394,19 +395,19 @@ decl_module! {
 				!coin_shards.exist(&data.receiver_1.cm),
 				<Error<T>>::MantaCoinExist
 			);
-			coin_shards.update(&data.receiver_1.cm, hash_param.clone())?;
+			coin_shards.update(&data.receiver_1.cm, hash_param.clone()).unwrap();
 			ensure!(
 				!coin_shards.exist(&data.receiver_2.cm),
 				<Error<T>>::MantaCoinExist
 			);
-			coin_shards.update(&data.receiver_2.cm, hash_param)?;
+			coin_shards.update(&data.receiver_2.cm, hash_param).unwrap();
 
 			// get the verification key from the ledger
 			let transfer_vk_checksum = TransferZKPKeyChecksum::get();
 			let transfer_vk = TRANSFER_PK;
 
 			ensure!(
-				transfer_vk.get_checksum()? == transfer_vk_checksum,
+				transfer_vk.get_checksum().unwrap() == transfer_vk_checksum,
 				<Error<T>>::ZkpParamFail,
 			);
 
@@ -443,7 +444,7 @@ decl_module! {
 			payload: ReclaimPayload,
 		) {
 
-			let data = ReclaimData::deserialize(payload.as_ref())?;
+			let data = ReclaimData::deserialize(payload.as_ref()).unwrap();
 
 			// if the asset_id has a total suply == 0, then this asset is initialized
 			ensure!(
@@ -457,14 +458,14 @@ decl_module! {
 
 			// get the parameter checksum from the ledger
 			// and make sure the parameters match
-			let hash_param_checksum_local = HASH_PARAM.get_checksum()?;
+			let hash_param_checksum_local = HASH_PARAM.get_checksum().unwrap();
 
 			let hash_param_checksum = HashParamChecksum::get();
 			ensure!(
 				hash_param_checksum_local == hash_param_checksum,
 				<Error<T>>::MintFail
 			);
-			let hash_param = HashParam::deserialize(HASH_PARAM.data)?;
+			let hash_param = HashParam::deserialize(HASH_PARAM.data).unwrap();
 
 			// check the balance is greater than amount
 			let mut pool = PoolBalance::get(data.asset_id);
@@ -491,7 +492,7 @@ decl_module! {
 			let reclaim_vk_checksum = ReclaimZKPKeyChecksum::get();
 			let reclaim_vk = RECLAIM_PK;
 			ensure!(
-				reclaim_vk.get_checksum()? == reclaim_vk_checksum,
+				reclaim_vk.get_checksum().unwrap() == reclaim_vk_checksum,
 				<Error<T>>::ZkpParamFail
 			);
 			// get the ledger state from the ledger
@@ -524,7 +525,7 @@ decl_module! {
 			enc_value_list.push(data.receiver.cipher);
 
 
-			coin_shards.update(&data.receiver.cm, hash_param)?;
+			coin_shards.update(&data.receiver.cm, hash_param).unwrap();
 			CoinShards::put(coin_shards);
 
 			Self::deposit_event(

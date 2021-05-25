@@ -47,9 +47,9 @@ checksum = "739f4a8db6605981345c5654f3a85b056ce52f37a39d34da03f25bf2151ea16e"
 
 [[package]]
 name = "ahash"
-version = "0.7.3"
+version = "0.7.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "11149c3eb723d15cb065a9ea5cc74ab57250f098ef33c9f6f7f39b48bd207750"
+checksum = "43bb833f0bf979d8475d38fbf09ed3b8a55e1885fe93ad3f93239fc6a4f17b98"
 dependencies = [
  "getrandom 0.2.3",
  "once_cell",
@@ -1186,7 +1186,7 @@ version = "0.11.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ab5ef0d4909ef3724cc8cce6ccc8572c5c817592e9285f5464f8e86f8bd3726e"
 dependencies = [
- "ahash 0.7.3",
+ "ahash 0.7.4",
 ]
 
 [[package]]
@@ -1405,8 +1405,8 @@ dependencies = [
 
 [[package]]
 name = "manta-asset"
-version = "3.0.0"
-source = "git+https://github.com/Manta-Network/manta-asset?branch=error-wrapper#ade5f0b49df102c587686df8b96ee855321b440f"
+version = "0.1.0"
+source = "git+https://github.com/Manta-Network/manta-asset?branch=error-wrapper#cec58afcb13f3b3dff925de01645b4bf87712277"
 dependencies = [
  "ark-crypto-primitives",
  "ark-ed-on-bls12-381",
@@ -1414,7 +1414,6 @@ dependencies = [
  "ark-serialize",
  "ark-std",
  "blake2",
- "frame-support",
  "manta-crypto",
  "manta-errors",
  "parity-scale-codec",
@@ -1422,8 +1421,8 @@ dependencies = [
 
 [[package]]
 name = "manta-crypto"
-version = "3.0.0"
-source = "git+https://github.com/Manta-Network/manta-crypto?branch=error-wrapper#7eac45aa848072cc25c097840d137fcf62394ae1"
+version = "0.1.0"
+source = "git+https://github.com/Manta-Network/manta-crypto?branch=error-wrapper#9f91e87c88b3a1e4d65d253045afdc7b06054980"
 dependencies = [
  "aes",
  "ark-bls12-381",
@@ -1443,13 +1442,12 @@ dependencies = [
 [[package]]
 name = "manta-errors"
 version = "0.1.0"
-source = "git+https://github.com/Manta-Network/manta-errors#9f482bc2aa88fd0ce3eb6b8218133d4f21c1c3ad"
+source = "git+https://github.com/Manta-Network/manta-errors#dbb352e0b4998df812c51c19838a701971053253"
 dependencies = [
  "ark-crypto-primitives",
  "ark-relations",
  "ark-serialize",
  "ark-std",
- "sp-runtime",
 ]
 
 [[package]]
