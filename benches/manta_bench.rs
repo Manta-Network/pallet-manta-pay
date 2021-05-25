@@ -398,8 +398,6 @@ fn bench_reclaim_verify(c: &mut Criterion) {
 	bench_group.finish();
 }
 
-
-
 fn bench_reclaim_prove(c: &mut Criterion) {
 	let hash_param_seed = HASH_PARAM_SEED;
 	let commit_param_seed = COMMIT_PARAM_SEED;
