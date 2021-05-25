@@ -532,7 +532,7 @@ fn transferring_existing_coins_should_not_work() {
 			if i == 0 {
 				coin_shards.update(&receiver_1.commitment, hash_param.clone());
 				CoinShards::put(coin_shards);
-	
+
 				assert_noop!(
 					Assets::private_transfer(Origin::signed(1), payload),
 					Error::<Test>::MantaCoinExist
@@ -548,7 +548,7 @@ fn transferring_existing_coins_should_not_work() {
 			}
 		}
 	});
-}			
+}
 
 #[test]
 fn destroying_asset_balance_with_positive_balance_should_work() {
@@ -706,6 +706,7 @@ fn transfer_test_helper(iter: usize) {
 	// check the resulting status of the ledger storage
 	assert_eq!(TotalSupply::get(TEST_ASSET), 10_000_000);
 	let coin_shards = CoinShards::get();
+	let vn_list = VNList::get();
 	for i in 0usize..size {
 		assert!(coin_shards.exist(&senders[i].commitment));
 		assert!(coin_shards.exist(&receivers_processed[i].commitment));
