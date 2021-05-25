@@ -249,7 +249,6 @@ fn transferring_with_hash_param_mismatch_should_not_work() {
 	});
 }
 
-
 #[test]
 fn destroying_asset_balance_with_positive_balance_should_work() {
 	new_test_ext().execute_with(|| {
