@@ -674,7 +674,7 @@ fn transferring_with_zkp_verification_fail_should_not_work() {
 			);
 
 			let mut data = PrivateTransferData::deserialize(payload.as_ref());
-			data.proof = [0u8;192];
+			data.proof = [0u8; 192];
 			let mut payload_with_bad_proof = [0u8; PRIVATE_TRANSFER_PAYLOAD_SIZE];
 			data.serialize(payload_with_bad_proof.as_mut());
 
