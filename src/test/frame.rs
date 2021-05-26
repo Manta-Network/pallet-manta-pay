@@ -610,6 +610,83 @@ fn transferring_with_invalid_zkp_param_should_not_work() {
 }
 
 #[test]
+fn transferring_with_zkp_verification_fail_should_not_work() {
+	new_test_ext().execute_with(|| {
+		initialize_test(10_000_000);
+
+		let hash_param = HashParam::deserialize(HASH_PARAM.data);
+		let commit_param = CommitmentParam::deserialize(COMMIT_PARAM.data);
+
+		let pk = load_zkp_keys("transfer_pk.bin");
+		let vk_checksum = TransferZKPKeyChecksum::get();
+		assert_eq!(TRANSFER_PK.get_checksum(), vk_checksum);
+
+		let mut rng = ChaCha20Rng::from_seed([3u8; 32]);
+		let mut sk = [0u8; 32];
+
+		let iter = 1;
+		let size = iter << 1;
+		let senders = mint_tokens_helper(size);
+
+		let vn_list = VNList::get();
+		assert_eq!(vn_list.len(), 0);
+
+		// build receivers
+		let mut receivers_full = Vec::new();
+		let mut receivers_processed = Vec::new();
+		for i in 0usize..size {
+			// build a receiver token
+			rng.fill_bytes(&mut sk[..]);
+			let receiver_full =
+				MantaAssetFullReceiver::sample(&commit_param, &sk, &TEST_ASSET, &(), &mut rng);
+			let receiver = receiver_full.prepared.process(&(i as u64 + 10), &mut rng);
+			receivers_full.push(receiver_full);
+			receivers_processed.push(receiver);
+		}
+
+		for i in 0usize..iter {
+			let coin_shards = CoinShards::get();
+
+			// build sender meta data
+			let sender_1 = senders[i * 2].clone();
+			let sender_2 = senders[i * 2 + 1].clone();
+			let shard_index_1 = sender_1.commitment[0] as usize;
+			let shard_index_2 = sender_2.commitment[0] as usize;
+			let list_1 = coin_shards.shard[shard_index_1].list.clone();
+			let sender_1 = SenderMetaData::build(hash_param.clone(), sender_1, &list_1);
+			let list_2 = coin_shards.shard[shard_index_2].list.clone();
+			let sender_2 = SenderMetaData::build(hash_param.clone(), sender_2, &list_2);
+
+			// extract the receivers
+			let receiver_1 = receivers_processed[i * 2 + 1].clone();
+			let receiver_2 = receivers_processed[i * 2].clone();
+
+			// form the transaction payload
+			let payload = generate_private_transfer_payload(
+				commit_param.clone(),
+				hash_param.clone(),
+				&pk,
+				sender_1,
+				sender_2,
+				receiver_1.clone(),
+				receiver_2.clone(),
+				&mut rng,
+			);
+
+			let mut data = PrivateTransferData::deserialize(payload.as_ref());
+			data.proof = [0u8;192];
+			let mut payload_with_bad_proof = [0u8; PRIVATE_TRANSFER_PAYLOAD_SIZE];
+			data.serialize(payload_with_bad_proof.as_mut());
+
+			assert_noop!(
+				Assets::private_transfer(Origin::signed(1), payload_with_bad_proof),
+				Error::<Test>::ZkpVerificationFail
+			);
+		}
+	});
+}
+
+#[test]
 fn destroying_asset_balance_with_positive_balance_should_work() {
 	new_test_ext().execute_with(|| {
 		initialize_test(100);

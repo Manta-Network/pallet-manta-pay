@@ -23,15 +23,56 @@ impl MantaZKPVerifier for PrivateTransferData {
 	/// This algorithm verifies the ZKP, given the verification key and the data.
 	fn verify(&self, transfer_key_bytes: &VerificationKey) -> bool {
 		let buf: &[u8] = transfer_key_bytes.data;
-		let vk = Groth16Vk::deserialize_unchecked(buf).unwrap();
+		let vk = match Groth16Vk::deserialize_unchecked(buf) {
+			Ok(p) => p,
+			Err(_e) => {
+				return false;
+			}
+		};
+
 		let pvk = Groth16Pvk::from(vk);
-		let proof = Groth16Proof::deserialize(self.proof.as_ref()).unwrap();
-		let k_old_1 = CommitmentOutput::deserialize(self.sender_1.k.as_ref()).unwrap();
-		let k_old_2 = CommitmentOutput::deserialize(self.sender_2.k.as_ref()).unwrap();
-		let cm_new_1 = CommitmentOutput::deserialize(self.receiver_1.cm.as_ref()).unwrap();
-		let cm_new_2 = CommitmentOutput::deserialize(self.receiver_2.cm.as_ref()).unwrap();
-		let merkle_root_1 = HashOutput::deserialize(self.sender_1.root.as_ref()).unwrap();
-		let merkle_root_2 = HashOutput::deserialize(self.sender_2.root.as_ref()).unwrap();
+		let proof = match Groth16Proof::deserialize(self.proof.as_ref()) {
+			Ok(p) => p,
+			Err(_e) => {
+				return false;
+			}
+		};
+		let k_old_1 = match CommitmentOutput::deserialize(self.sender_1.k.as_ref()) {
+			Ok(p) => p,
+			Err(_e) => {
+				return false;
+			}
+		};
+		let k_old_2 = match CommitmentOutput::deserialize(self.sender_2.k.as_ref()) {
+			Ok(p) => p,
+			Err(_e) => {
+				return false;
+			}
+		};
+		let cm_new_1 = match CommitmentOutput::deserialize(self.receiver_1.cm.as_ref()) {
+			Ok(p) => p,
+			Err(_e) => {
+				return false;
+			}
+		};
+		let cm_new_2 = match CommitmentOutput::deserialize(self.receiver_2.cm.as_ref()) {
+			Ok(p) => p,
+			Err(_e) => {
+				return false;
+			}
+		};
+		let merkle_root_1 = match HashOutput::deserialize(self.sender_1.root.as_ref()) {
+			Ok(p) => p,
+			Err(_e) => {
+				return false;
+			}
+		};
+		let merkle_root_2 = match HashOutput::deserialize(self.sender_2.root.as_ref()) {
+			Ok(p) => p,
+			Err(_e) => {
+				return false;
+			}
+		};
 
 		let mut inputs = [
 			k_old_1.x, k_old_1.y, // sender coin 1
@@ -41,12 +82,32 @@ impl MantaZKPVerifier for PrivateTransferData {
 		]
 		.to_vec();
 		let sn_1: Vec<Fq> =
-			ToConstraintField::<Fq>::to_field_elements(self.sender_1.void_number.as_ref()).unwrap();
+			match ToConstraintField::<Fq>::to_field_elements(self.sender_1.void_number.as_ref()) {
+				Some(p) => p,
+				None => {
+					return false;
+				}
+			};
 		let sn_2: Vec<Fq> =
-			ToConstraintField::<Fq>::to_field_elements(self.sender_2.void_number.as_ref()).unwrap();
+			match ToConstraintField::<Fq>::to_field_elements(self.sender_2.void_number.as_ref()) {
+				Some(p) => p,
+				None => {
+					return false;
+				}
+			};
 
-		let mr_1: Vec<Fq> = ToConstraintField::<Fq>::to_field_elements(&merkle_root_1).unwrap();
-		let mr_2: Vec<Fq> = ToConstraintField::<Fq>::to_field_elements(&merkle_root_2).unwrap();
+		let mr_1: Vec<Fq> = match ToConstraintField::<Fq>::to_field_elements(&merkle_root_1) {
+			Some(p) => p,
+			None => {
+				return false;
+			}
+		};
+		let mr_2: Vec<Fq> = match ToConstraintField::<Fq>::to_field_elements(&merkle_root_2) {
+			Some(p) => p,
+			None => {
+				return false;
+			}
+		};
 		inputs = [
 			inputs[..].as_ref(),
 			sn_1.as_ref(),
@@ -56,7 +117,10 @@ impl MantaZKPVerifier for PrivateTransferData {
 		]
 		.concat();
 
-		verify_proof(&pvk, &proof, &inputs[..]).unwrap()
+		match verify_proof(&pvk, &proof, &inputs[..]) {
+			Ok(p) => p,
+			Err(_e) => false,
+		}
 	}
 }
 
