@@ -543,6 +543,82 @@ fn transferring_existing_coins_should_not_work() {
 }
 
 #[test]
+fn transferring_with_invalid_ledger_state_should_not_work() {
+	new_test_ext().execute_with(|| {
+		initialize_test(10_000_000);
+
+		let hash_param = HashParam::deserialize(HASH_PARAM.data);
+		let commit_param = CommitmentParam::deserialize(COMMIT_PARAM.data);
+
+		let pk = load_zkp_keys("transfer_pk.bin");
+		let vk_checksum = TransferZKPKeyChecksum::get();
+		assert_eq!(TRANSFER_PK.get_checksum(), vk_checksum);
+
+		let mut rng = ChaCha20Rng::from_seed([3u8; 32]);
+		let mut sk = [0u8; 32];
+
+		let size = 4;
+		let senders = mint_tokens_helper(size);
+
+		let vn_list = VNList::get();
+		assert_eq!(vn_list.len(), 0);
+
+		// build receivers
+		let mut receivers_full = Vec::new();
+		let mut receivers_processed = Vec::new();
+		for i in 0usize..size {
+			// build a receiver token
+			rng.fill_bytes(&mut sk[..]);
+			let receiver_full =
+				MantaAssetFullReceiver::sample(&commit_param, &sk, &TEST_ASSET, &(), &mut rng);
+			let receiver = receiver_full.prepared.process(&(i as u64 + 10), &mut rng);
+			receivers_full.push(receiver_full);
+			receivers_processed.push(receiver);
+		}
+
+		let payload = prepare_private_transfer_payload(
+			&senders,
+			&commit_param,
+			&hash_param,
+			&pk,
+			&receivers_processed,
+			&mut rng,
+			0,
+		);
+
+		let mut data = PrivateTransferData::deserialize(payload.as_ref());
+		data.sender_1.root = [5u8; 32];
+		let mut payload_with_bad_root = [0u8; PRIVATE_TRANSFER_PAYLOAD_SIZE];
+		data.serialize(payload_with_bad_root.as_mut());
+
+		assert_noop!(
+			Assets::private_transfer(Origin::signed(1), payload_with_bad_root),
+			Error::<Test>::InvalidLedgerState
+		);
+
+		let payload = prepare_private_transfer_payload(
+			&senders,
+			&commit_param,
+			&hash_param,
+			&pk,
+			&receivers_processed,
+			&mut rng,
+			1,
+		);
+
+		let mut data = PrivateTransferData::deserialize(payload.as_ref());
+		data.sender_2.root = [5u8; 32];
+		let mut payload_with_bad_root = [0u8; PRIVATE_TRANSFER_PAYLOAD_SIZE];
+		data.serialize(payload_with_bad_root.as_mut());
+
+		assert_noop!(
+			Assets::private_transfer(Origin::signed(1), payload_with_bad_root),
+			Error::<Test>::InvalidLedgerState
+		);
+	});
+}
+
+#[test]
 fn transferring_with_invalid_zkp_param_should_not_work() {
 	new_test_ext().execute_with(|| {
 		initialize_test(10_000_000);
