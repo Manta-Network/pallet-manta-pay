@@ -411,32 +411,14 @@ fn transferring_spent_coin_should_not_work() {
 		}
 
 		for i in 0usize..iter {
-			let coin_shards = CoinShards::get();
-
-			// build sender meta data
-			let sender_1 = senders[i * 2].clone();
-			let sender_2 = senders[i * 2 + 1].clone();
-			let shard_index_1 = sender_1.commitment[0] as usize;
-			let shard_index_2 = sender_2.commitment[0] as usize;
-			let list_1 = coin_shards.shard[shard_index_1].list.clone();
-			let sender_1 = SenderMetaData::build(hash_param.clone(), sender_1, &list_1);
-			let list_2 = coin_shards.shard[shard_index_2].list.clone();
-			let sender_2 = SenderMetaData::build(hash_param.clone(), sender_2, &list_2);
-
-			// extract the receivers
-			let receiver_1 = receivers_processed[i * 2 + 1].clone();
-			let receiver_2 = receivers_processed[i * 2].clone();
-
-			// form the transaction payload
-			let payload = generate_private_transfer_payload(
-				commit_param.clone(),
-				hash_param.clone(),
+			let payload = prepare_private_transfer_payload(
+				&senders,
+				&commit_param,
+				&hash_param,
 				&pk,
-				sender_1,
-				sender_2,
-				receiver_1,
-				receiver_2,
+				&receivers_processed,
 				&mut rng,
+				i,
 			);
 
 			assert_ok!(Assets::private_transfer(Origin::signed(1), payload));
@@ -447,6 +429,44 @@ fn transferring_spent_coin_should_not_work() {
 			);
 		}
 	});
+}
+
+fn prepare_private_transfer_payload(
+	senders: &Vec<MantaAsset>,
+	commit_param: &CommitmentParam,
+	hash_param: &HashParam,
+	pk: &Groth16Pk,
+	receivers_processed: &Vec<MantaAssetProcessedReceiver>,
+	rng: &mut ChaCha20Rng,
+	idx: usize,
+) -> [u8; PRIVATE_TRANSFER_PAYLOAD_SIZE] {
+	let coin_shards = CoinShards::get();
+
+	// build sender meta data
+	let sender_1 = senders[idx * 2].clone();
+	let sender_2 = senders[idx * 2 + 1].clone();
+	let shard_index_1 = sender_1.commitment[0] as usize;
+	let shard_index_2 = sender_2.commitment[0] as usize;
+	let list_1 = coin_shards.shard[shard_index_1].list.clone();
+	let sender_1 = SenderMetaData::build(hash_param.clone(), sender_1, &list_1);
+	let list_2 = coin_shards.shard[shard_index_2].list.clone();
+	let sender_2 = SenderMetaData::build(hash_param.clone(), sender_2, &list_2);
+
+	// extract the receivers
+	let receiver_1 = receivers_processed[idx * 2 + 1].clone();
+	let receiver_2 = receivers_processed[idx * 2].clone();
+
+	// form the transaction payload
+	generate_private_transfer_payload(
+		commit_param.clone(),
+		hash_param.clone(),
+		&pk,
+		sender_1,
+		sender_2,
+		receiver_1,
+		receiver_2,
+		rng,
+	)
 }
 
 #[test]
@@ -487,30 +507,18 @@ fn transferring_existing_coins_should_not_work() {
 		for i in 0usize..iter {
 			let mut coin_shards = CoinShards::get();
 
-			// build sender meta data
-			let sender_1 = senders[i * 2].clone();
-			let sender_2 = senders[i * 2 + 1].clone();
-			let shard_index_1 = sender_1.commitment[0] as usize;
-			let shard_index_2 = sender_2.commitment[0] as usize;
-			let list_1 = coin_shards.shard[shard_index_1].list.clone();
-			let sender_1 = SenderMetaData::build(hash_param.clone(), sender_1, &list_1);
-			let list_2 = coin_shards.shard[shard_index_2].list.clone();
-			let sender_2 = SenderMetaData::build(hash_param.clone(), sender_2, &list_2);
-
 			// extract the receivers
 			let receiver_1 = receivers_processed[i * 2 + 1].clone();
 			let receiver_2 = receivers_processed[i * 2].clone();
 
-			// form the transaction payload
-			let payload = generate_private_transfer_payload(
-				commit_param.clone(),
-				hash_param.clone(),
+			let payload = prepare_private_transfer_payload(
+				&senders,
+				&commit_param,
+				&hash_param,
 				&pk,
-				sender_1,
-				sender_2,
-				receiver_1.clone(),
-				receiver_2.clone(),
+				&receivers_processed,
 				&mut rng,
+				i,
 			);
 
 			if i == 0 {
@@ -570,32 +578,14 @@ fn transferring_with_invalid_zkp_param_should_not_work() {
 		}
 
 		for i in 0usize..iter {
-			let coin_shards = CoinShards::get();
-
-			// build sender meta data
-			let sender_1 = senders[i * 2].clone();
-			let sender_2 = senders[i * 2 + 1].clone();
-			let shard_index_1 = sender_1.commitment[0] as usize;
-			let shard_index_2 = sender_2.commitment[0] as usize;
-			let list_1 = coin_shards.shard[shard_index_1].list.clone();
-			let sender_1 = SenderMetaData::build(hash_param.clone(), sender_1, &list_1);
-			let list_2 = coin_shards.shard[shard_index_2].list.clone();
-			let sender_2 = SenderMetaData::build(hash_param.clone(), sender_2, &list_2);
-
-			// extract the receivers
-			let receiver_1 = receivers_processed[i * 2 + 1].clone();
-			let receiver_2 = receivers_processed[i * 2].clone();
-
-			// form the transaction payload
-			let payload = generate_private_transfer_payload(
-				commit_param.clone(),
-				hash_param.clone(),
+			let payload = prepare_private_transfer_payload(
+				&senders,
+				&commit_param,
+				&hash_param,
 				&pk,
-				sender_1,
-				sender_2,
-				receiver_1.clone(),
-				receiver_2.clone(),
+				&receivers_processed,
 				&mut rng,
+				i,
 			);
 
 			let transfer_vk = VerificationKey { data: &[0u8; 2312] };
@@ -645,32 +635,14 @@ fn transferring_with_zkp_verification_fail_should_not_work() {
 		}
 
 		for i in 0usize..iter {
-			let coin_shards = CoinShards::get();
-
-			// build sender meta data
-			let sender_1 = senders[i * 2].clone();
-			let sender_2 = senders[i * 2 + 1].clone();
-			let shard_index_1 = sender_1.commitment[0] as usize;
-			let shard_index_2 = sender_2.commitment[0] as usize;
-			let list_1 = coin_shards.shard[shard_index_1].list.clone();
-			let sender_1 = SenderMetaData::build(hash_param.clone(), sender_1, &list_1);
-			let list_2 = coin_shards.shard[shard_index_2].list.clone();
-			let sender_2 = SenderMetaData::build(hash_param.clone(), sender_2, &list_2);
-
-			// extract the receivers
-			let receiver_1 = receivers_processed[i * 2 + 1].clone();
-			let receiver_2 = receivers_processed[i * 2].clone();
-
-			// form the transaction payload
-			let payload = generate_private_transfer_payload(
-				commit_param.clone(),
-				hash_param.clone(),
+			let payload = prepare_private_transfer_payload(
+				&senders,
+				&commit_param,
+				&hash_param,
 				&pk,
-				sender_1,
-				sender_2,
-				receiver_1.clone(),
-				receiver_2.clone(),
+				&receivers_processed,
 				&mut rng,
+				i,
 			);
 
 			let mut data = PrivateTransferData::deserialize(payload.as_ref());
@@ -777,32 +749,17 @@ fn transfer_test_helper(iter: usize) {
 	}
 
 	for i in 0usize..iter {
-		let coin_shards = CoinShards::get();
-
-		// build sender meta data
-		let sender_1 = senders[i * 2].clone();
-		let sender_2 = senders[i * 2 + 1].clone();
-		let shard_index_1 = sender_1.commitment[0] as usize;
-		let shard_index_2 = sender_2.commitment[0] as usize;
-		let list_1 = coin_shards.shard[shard_index_1].list.clone();
-		let sender_1 = SenderMetaData::build(hash_param.clone(), sender_1, &list_1);
-		let list_2 = coin_shards.shard[shard_index_2].list.clone();
-		let sender_2 = SenderMetaData::build(hash_param.clone(), sender_2, &list_2);
-
-		// extract the receivers
 		let receiver_1 = receivers_processed[i * 2 + 1].clone();
 		let receiver_2 = receivers_processed[i * 2].clone();
 
-		// form the transaction payload
-		let payload = generate_private_transfer_payload(
-			commit_param.clone(),
-			hash_param.clone(),
+		let payload = prepare_private_transfer_payload(
+			&senders,
+			&commit_param,
+			&hash_param,
 			&pk,
-			sender_1,
-			sender_2,
-			receiver_1.clone(),
-			receiver_2.clone(),
+			&receivers_processed,
 			&mut rng,
+			i,
 		);
 
 		// invoke the transfer event
