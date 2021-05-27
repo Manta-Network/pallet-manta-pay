@@ -381,22 +381,10 @@ fn transferring_spent_coin_should_not_work_sender_1() {
 	new_test_ext().execute_with(|| {
 		initialize_test(10_000_000);
 
-		let hash_param = HashParam::deserialize(HASH_PARAM.data);
-		let commit_param = CommitmentParam::deserialize(COMMIT_PARAM.data);
-
-		let pk = load_zkp_keys("transfer_pk.bin");
-		let vk_checksum = TransferZKPKeyChecksum::get();
-		assert_eq!(TRANSFER_PK.get_checksum(), vk_checksum);
-
-		let mut rng = ChaCha20Rng::from_seed([3u8; 32]);
-		let mut sk = [0u8; 32];
-
+		let (commit_param, hash_param, pk, mut sk, mut rng) = setup_params_for_transferring();
 		let iter = 1;
 		let size = iter << 1;
 		let senders = mint_tokens_helper(size);
-
-		let vn_list = VNList::get();
-		assert_eq!(vn_list.len(), 0);
 
 		let (_, receivers_processed) = build_receivers(&commit_param, &mut sk, &mut rng, size);
 
@@ -426,22 +414,11 @@ fn transferring_existing_coins_should_not_work() {
 	new_test_ext().execute_with(|| {
 		initialize_test(10_000_000);
 
-		let hash_param = HashParam::deserialize(HASH_PARAM.data);
-		let commit_param = CommitmentParam::deserialize(COMMIT_PARAM.data);
-
-		let pk = load_zkp_keys("transfer_pk.bin");
-		let vk_checksum = TransferZKPKeyChecksum::get();
-		assert_eq!(TRANSFER_PK.get_checksum(), vk_checksum);
-
-		let mut rng = ChaCha20Rng::from_seed([3u8; 32]);
-		let mut sk = [0u8; 32];
+		let (commit_param, hash_param, pk, mut sk, mut rng) = setup_params_for_transferring();
 
 		let iter = 2;
 		let size = iter << 1;
 		let senders = mint_tokens_helper(size);
-
-		let vn_list = VNList::get();
-		assert_eq!(vn_list.len(), 0);
 
 		let (_, receivers_processed) = build_receivers(&commit_param, &mut sk, &mut rng, size);
 
@@ -488,21 +465,10 @@ fn transferring_spent_coin_should_not_work_sender_2() {
 	new_test_ext().execute_with(|| {
 		initialize_test(10_000_000);
 
-		let hash_param = HashParam::deserialize(HASH_PARAM.data);
-		let commit_param = CommitmentParam::deserialize(COMMIT_PARAM.data);
-
-		let pk = load_zkp_keys("transfer_pk.bin");
-		let vk_checksum = TransferZKPKeyChecksum::get();
-		assert_eq!(TRANSFER_PK.get_checksum(), vk_checksum);
-
-		let mut rng = ChaCha20Rng::from_seed([3u8; 32]);
-		let mut sk = [0u8; 32];
+		let (commit_param, hash_param, pk, mut sk, mut rng) = setup_params_for_transferring();
 
 		let size = 4;
 		let senders = mint_tokens_helper(size);
-
-		let vn_list = VNList::get();
-		assert_eq!(vn_list.len(), 0);
 
 		let (_, receivers_processed) = build_receivers(&commit_param, &mut sk, &mut rng, size);
 
@@ -560,21 +526,10 @@ fn transferring_with_invalid_ledger_state_should_not_work() {
 	new_test_ext().execute_with(|| {
 		initialize_test(10_000_000);
 
-		let hash_param = HashParam::deserialize(HASH_PARAM.data);
-		let commit_param = CommitmentParam::deserialize(COMMIT_PARAM.data);
-
-		let pk = load_zkp_keys("transfer_pk.bin");
-		let vk_checksum = TransferZKPKeyChecksum::get();
-		assert_eq!(TRANSFER_PK.get_checksum(), vk_checksum);
-
-		let mut rng = ChaCha20Rng::from_seed([3u8; 32]);
-		let mut sk = [0u8; 32];
+		let (commit_param, hash_param, pk, mut sk, mut rng) = setup_params_for_transferring();
 
 		let size = 4;
 		let senders = mint_tokens_helper(size);
-
-		let vn_list = VNList::get();
-		assert_eq!(vn_list.len(), 0);
 
 		let (_, receivers_processed) = build_receivers(&commit_param, &mut sk, &mut rng, size);
 
@@ -625,22 +580,11 @@ fn transferring_with_invalid_zkp_param_should_not_work() {
 	new_test_ext().execute_with(|| {
 		initialize_test(10_000_000);
 
-		let hash_param = HashParam::deserialize(HASH_PARAM.data);
-		let commit_param = CommitmentParam::deserialize(COMMIT_PARAM.data);
-
-		let pk = load_zkp_keys("transfer_pk.bin");
-		let vk_checksum = TransferZKPKeyChecksum::get();
-		assert_eq!(TRANSFER_PK.get_checksum(), vk_checksum);
-
-		let mut rng = ChaCha20Rng::from_seed([3u8; 32]);
-		let mut sk = [0u8; 32];
+		let (commit_param, hash_param, pk, mut sk, mut rng) = setup_params_for_transferring();
 
 		let iter = 1;
 		let size = iter << 1;
 		let senders = mint_tokens_helper(size);
-
-		let vn_list = VNList::get();
-		assert_eq!(vn_list.len(), 0);
 
 		let (_, receivers_processed) = build_receivers(&commit_param, &mut sk, &mut rng, size);
 
@@ -671,22 +615,11 @@ fn transferring_with_zkp_verification_fail_should_not_work() {
 	new_test_ext().execute_with(|| {
 		initialize_test(10_000_000);
 
-		let hash_param = HashParam::deserialize(HASH_PARAM.data);
-		let commit_param = CommitmentParam::deserialize(COMMIT_PARAM.data);
-
-		let pk = load_zkp_keys("transfer_pk.bin");
-		let vk_checksum = TransferZKPKeyChecksum::get();
-		assert_eq!(TRANSFER_PK.get_checksum(), vk_checksum);
-
-		let mut rng = ChaCha20Rng::from_seed([3u8; 32]);
-		let mut sk = [0u8; 32];
+		let (commit_param, hash_param, pk, mut sk, mut rng) = setup_params_for_transferring();
 
 		let iter = 1;
 		let size = iter << 1;
 		let senders = mint_tokens_helper(size);
-
-		let vn_list = VNList::get();
-		assert_eq!(vn_list.len(), 0);
 
 		let (_, receivers_processed) = build_receivers(&commit_param, &mut sk, &mut rng, size);
 
@@ -760,19 +693,11 @@ fn reclaim_with_overdrawn_pool_should_not_work() {
 	new_test_ext().execute_with(|| {
 		initialize_test(10_000_000);
 
-		let hash_param = HashParam::deserialize(HASH_PARAM.data);
-		let commit_param = CommitmentParam::deserialize(COMMIT_PARAM.data);
+		let (commit_param, hash_param, pk, mut sk, mut rng) = setup_params_for_reclaim();
 
 		let iter = 1;
 		let size = iter << 1;
 		let senders = mint_tokens_helper(size);
-
-		let mut rng = ChaCha20Rng::from_seed([3u8; 32]);
-		let mut sk = [0u8; 32];
-
-		let pk = load_zkp_keys("reclaim_pk.bin");
-		let vk_checksum = ReclaimZKPKeyChecksum::get();
-		assert_eq!(RECLAIM_PK.get_checksum(), vk_checksum);
 
 		for i in 0usize..iter {
 			let (payload, _, _, _) = prepare_reclaim_payload(
@@ -839,22 +764,11 @@ fn generate_mint_payload_helper(value: u64) -> [u8; MINT_PAYLOAD_SIZE] {
 fn transfer_test_helper(iter: usize) {
 	initialize_test(10_000_000);
 
-	let hash_param = HashParam::deserialize(HASH_PARAM.data);
-	let commit_param = CommitmentParam::deserialize(COMMIT_PARAM.data);
-
-	let pk = load_zkp_keys("transfer_pk.bin");
-	let vk_checksum = TransferZKPKeyChecksum::get();
-	assert_eq!(TRANSFER_PK.get_checksum(), vk_checksum);
-
-	let mut rng = ChaCha20Rng::from_seed([3u8; 32]);
-	let mut sk = [0u8; 32];
+	let (commit_param, hash_param, pk, mut sk, mut rng) = setup_params_for_transferring();
 
 	let size = iter << 1;
 	let senders = mint_tokens_helper(size);
 	let pool = PoolBalance::get(TEST_ASSET);
-
-	let vn_list = VNList::get();
-	assert_eq!(vn_list.len(), 0);
 
 	let (receivers_full, receivers_processed) =
 		build_receivers(&commit_param, &mut sk, &mut rng, size);
@@ -916,19 +830,11 @@ fn transfer_test_helper(iter: usize) {
 fn reclaim_test_helper(iter: usize) {
 	initialize_test(10_000_000);
 
-	let hash_param = HashParam::deserialize(HASH_PARAM.data);
-	let commit_param = CommitmentParam::deserialize(COMMIT_PARAM.data);
+	let (commit_param, hash_param, pk, mut sk, mut rng) = setup_params_for_reclaim();
 
 	let size = iter << 1;
 	let senders = mint_tokens_helper(size);
 	let mut pool = PoolBalance::get(TEST_ASSET);
-
-	let mut rng = ChaCha20Rng::from_seed([3u8; 32]);
-	let mut sk = [0u8; 32];
-
-	let pk = load_zkp_keys("reclaim_pk.bin");
-	let vk_checksum = ReclaimZKPKeyChecksum::get();
-	assert_eq!(RECLAIM_PK.get_checksum(), vk_checksum);
 
 	for i in 0usize..iter {
 		let (payload, sender_1, sender_2, reclaim_value) = prepare_reclaim_payload(
@@ -1082,4 +988,36 @@ fn build_receivers(
 	}
 
 	(receivers_full, receivers_processed)
+}
+
+fn setup_params(file_name: &str) -> (CommitmentParam, HashParam, Groth16Pk, [u8; 32], ChaCha20Rng) {
+	let hash_param = HashParam::deserialize(HASH_PARAM.data);
+	let commit_param = CommitmentParam::deserialize(COMMIT_PARAM.data);
+
+	let pk = load_zkp_keys(file_name);
+	let vk_checksum = TransferZKPKeyChecksum::get();
+	assert_eq!(TRANSFER_PK.get_checksum(), vk_checksum);
+
+	let rng = ChaCha20Rng::from_seed([3u8; 32]);
+	let sk = [0u8; 32];
+
+	let vn_list = VNList::get();
+	assert_eq!(vn_list.len(), 0);
+
+	(commit_param, hash_param, pk, sk, rng)
+}
+
+fn setup_params_for_transferring() -> (CommitmentParam, HashParam, Groth16Pk, [u8; 32], ChaCha20Rng)
+{
+	let vk_checksum = TransferZKPKeyChecksum::get();
+	assert_eq!(TRANSFER_PK.get_checksum(), vk_checksum);
+
+	setup_params("transfer_pk.bin")
+}
+
+fn setup_params_for_reclaim() -> (CommitmentParam, HashParam, Groth16Pk, [u8; 32], ChaCha20Rng) {
+	let vk_checksum = ReclaimZKPKeyChecksum::get();
+	assert_eq!(RECLAIM_PK.get_checksum(), vk_checksum);
+
+	setup_params("reclaim_pk.bin")
 }
