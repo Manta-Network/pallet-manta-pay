@@ -398,18 +398,7 @@ fn transferring_spent_coin_should_not_work_sender_1() {
 		let vn_list = VNList::get();
 		assert_eq!(vn_list.len(), 0);
 
-		// build receivers
-		let mut receivers_full = Vec::new();
-		let mut receivers_processed = Vec::new();
-		for i in 0usize..size {
-			// build a receiver token
-			rng.fill_bytes(&mut sk[..]);
-			let receiver_full =
-				MantaAssetFullReceiver::sample(&commit_param, &sk, &TEST_ASSET, &(), &mut rng);
-			let receiver = receiver_full.prepared.process(&(i as u64 + 10), &mut rng);
-			receivers_full.push(receiver_full);
-			receivers_processed.push(receiver);
-		}
+		let (_, receivers_processed) = build_receivers(&commit_param, &mut sk, &mut rng, size);
 
 		for i in 0usize..iter {
 			let payload = prepare_private_transfer_payload(
@@ -454,18 +443,7 @@ fn transferring_existing_coins_should_not_work() {
 		let vn_list = VNList::get();
 		assert_eq!(vn_list.len(), 0);
 
-		// build receivers
-		let mut receivers_full = Vec::new();
-		let mut receivers_processed = Vec::new();
-		for i in 0usize..size {
-			// build a receiver token
-			rng.fill_bytes(&mut sk[..]);
-			let receiver_full =
-				MantaAssetFullReceiver::sample(&commit_param, &sk, &TEST_ASSET, &(), &mut rng);
-			let receiver = receiver_full.prepared.process(&(i as u64 + 10), &mut rng);
-			receivers_full.push(receiver_full);
-			receivers_processed.push(receiver);
-		}
+		let (_, receivers_processed) = build_receivers(&commit_param, &mut sk, &mut rng, size);
 
 		for i in 0usize..iter {
 			let mut coin_shards = CoinShards::get();
@@ -526,18 +504,7 @@ fn transferring_spent_coin_should_not_work_sender_2() {
 		let vn_list = VNList::get();
 		assert_eq!(vn_list.len(), 0);
 
-		// build receivers
-		let mut receivers_full = Vec::new();
-		let mut receivers_processed = Vec::new();
-		for i in 0usize..size {
-			// build a receiver token
-			rng.fill_bytes(&mut sk[..]);
-			let receiver_full =
-				MantaAssetFullReceiver::sample(&commit_param, &sk, &TEST_ASSET, &(), &mut rng);
-			let receiver = receiver_full.prepared.process(&(i as u64 + 10), &mut rng);
-			receivers_full.push(receiver_full);
-			receivers_processed.push(receiver);
-		}
+		let (_, receivers_processed) = build_receivers(&commit_param, &mut sk, &mut rng, size);
 
 		let mut coin_shards = CoinShards::get();
 
@@ -609,18 +576,7 @@ fn transferring_with_invalid_ledger_state_should_not_work() {
 		let vn_list = VNList::get();
 		assert_eq!(vn_list.len(), 0);
 
-		// build receivers
-		let mut receivers_full = Vec::new();
-		let mut receivers_processed = Vec::new();
-		for i in 0usize..size {
-			// build a receiver token
-			rng.fill_bytes(&mut sk[..]);
-			let receiver_full =
-				MantaAssetFullReceiver::sample(&commit_param, &sk, &TEST_ASSET, &(), &mut rng);
-			let receiver = receiver_full.prepared.process(&(i as u64 + 10), &mut rng);
-			receivers_full.push(receiver_full);
-			receivers_processed.push(receiver);
-		}
+		let (_, receivers_processed) = build_receivers(&commit_param, &mut sk, &mut rng, size);
 
 		let payload = prepare_private_transfer_payload(
 			&senders,
@@ -686,18 +642,7 @@ fn transferring_with_invalid_zkp_param_should_not_work() {
 		let vn_list = VNList::get();
 		assert_eq!(vn_list.len(), 0);
 
-		// build receivers
-		let mut receivers_full = Vec::new();
-		let mut receivers_processed = Vec::new();
-		for i in 0usize..size {
-			// build a receiver token
-			rng.fill_bytes(&mut sk[..]);
-			let receiver_full =
-				MantaAssetFullReceiver::sample(&commit_param, &sk, &TEST_ASSET, &(), &mut rng);
-			let receiver = receiver_full.prepared.process(&(i as u64 + 10), &mut rng);
-			receivers_full.push(receiver_full);
-			receivers_processed.push(receiver);
-		}
+		let (_, receivers_processed) = build_receivers(&commit_param, &mut sk, &mut rng, size);
 
 		for i in 0usize..iter {
 			let payload = prepare_private_transfer_payload(
@@ -743,18 +688,7 @@ fn transferring_with_zkp_verification_fail_should_not_work() {
 		let vn_list = VNList::get();
 		assert_eq!(vn_list.len(), 0);
 
-		// build receivers
-		let mut receivers_full = Vec::new();
-		let mut receivers_processed = Vec::new();
-		for i in 0usize..size {
-			// build a receiver token
-			rng.fill_bytes(&mut sk[..]);
-			let receiver_full =
-				MantaAssetFullReceiver::sample(&commit_param, &sk, &TEST_ASSET, &(), &mut rng);
-			let receiver = receiver_full.prepared.process(&(i as u64 + 10), &mut rng);
-			receivers_full.push(receiver_full);
-			receivers_processed.push(receiver);
-		}
+		let (_, receivers_processed) = build_receivers(&commit_param, &mut sk, &mut rng, size);
 
 		for i in 0usize..iter {
 			let payload = prepare_private_transfer_payload(
@@ -922,18 +856,8 @@ fn transfer_test_helper(iter: usize) {
 	let vn_list = VNList::get();
 	assert_eq!(vn_list.len(), 0);
 
-	// build receivers
-	let mut receivers_full = Vec::new();
-	let mut receivers_processed = Vec::new();
-	for i in 0usize..size {
-		// build a receiver token
-		rng.fill_bytes(&mut sk);
-		let receiver_full =
-			MantaAssetFullReceiver::sample(&commit_param, &sk, &TEST_ASSET, &(), &mut rng);
-		let receiver = receiver_full.prepared.process(&(i as u64 + 10), &mut rng);
-		receivers_full.push(receiver_full);
-		receivers_processed.push(receiver);
-	}
+	let (receivers_full, receivers_processed) =
+		build_receivers(&commit_param, &mut sk, &mut rng, size);
 
 	for i in 0usize..iter {
 		let receiver_1 = receivers_processed[i * 2 + 1].clone();
@@ -1133,4 +1057,29 @@ fn build_sender_meta_data(
 	let out_sender_2 = SenderMetaData::build(hash_param.clone(), sender_2, &list_2);
 
 	(out_sender_1, out_sender_2)
+}
+
+fn build_receivers(
+	commit_param: &CommitmentParam,
+	sk: &mut [u8; 32],
+	rng: &mut ChaCha20Rng,
+	size: usize,
+) -> (
+	Vec<MantaAssetFullReceiver>,
+	Vec<MantaAssetProcessedReceiver>,
+) {
+	// build receivers
+	let mut receivers_full = Vec::new();
+	let mut receivers_processed = Vec::new();
+	for i in 0usize..size {
+		// build a receiver token
+		rng.fill_bytes(&mut sk[..]);
+		let receiver_full =
+			MantaAssetFullReceiver::sample(&commit_param, &sk, &TEST_ASSET, &(), rng);
+		let receiver = receiver_full.prepared.process(&(i as u64 + 10), rng);
+		receivers_full.push(receiver_full);
+		receivers_processed.push(receiver);
+	}
+
+	(receivers_full, receivers_processed)
 }
