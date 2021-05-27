@@ -131,9 +131,7 @@ fn querying_total_supply_should_work() {
 
 #[test]
 fn destroying_asset_balance_with_positive_balance_should_work() {
-	new_test_ext().execute_with(|| {
-		initialize_test(100);
-	});
+	unimplemented!();
 }
 
 // Init tests:
