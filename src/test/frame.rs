@@ -128,7 +128,7 @@ fn querying_total_supply_should_work() {
 		assert_eq!(Assets::total_supply(TEST_ASSET), 100);
 	});
 }
-
+#[ignore]
 #[test]
 fn destroying_asset_balance_with_positive_balance_should_work() {
 	unimplemented!();
