@@ -822,7 +822,7 @@ fn reclaim_with_hash_param_mismatch_should_not_work() {
 }
 
 #[test]
-fn reclaim_spent_coin_should_not_work_sender_1() {
+fn reclaim_with_overdrawn_pool_should_not_work() {
 	new_test_ext().execute_with(|| {
 		initialize_test(10_000_000);
 
