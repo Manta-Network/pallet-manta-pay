@@ -376,7 +376,7 @@ fn initialize_test(amount: u64) {
 }
 
 #[test]
-fn transferring_spent_coin_should_not_work() {
+fn transferring_spent_coin_should_not_work_sender_1() {
 	new_test_ext().execute_with(|| {
 		initialize_test(10_000_000);
 
@@ -539,6 +539,89 @@ fn transferring_existing_coins_should_not_work() {
 				);
 			}
 		}
+	});
+}
+
+#[test]
+fn transferring_spent_coin_should_not_work_sender_2() {
+	new_test_ext().execute_with(|| {
+		initialize_test(10_000_000);
+
+		let hash_param = HashParam::deserialize(HASH_PARAM.data);
+		let commit_param = CommitmentParam::deserialize(COMMIT_PARAM.data);
+
+		let pk = load_zkp_keys("transfer_pk.bin");
+		let vk_checksum = TransferZKPKeyChecksum::get();
+		assert_eq!(TRANSFER_PK.get_checksum(), vk_checksum);
+
+		let mut rng = ChaCha20Rng::from_seed([3u8; 32]);
+		let mut sk = [0u8; 32];
+
+		let size = 4;
+		let senders = mint_tokens_helper(size);
+
+		let vn_list = VNList::get();
+		assert_eq!(vn_list.len(), 0);
+
+		// build receivers
+		let mut receivers_full = Vec::new();
+		let mut receivers_processed = Vec::new();
+		for i in 0usize..size {
+			// build a receiver token
+			rng.fill_bytes(&mut sk[..]);
+			let receiver_full =
+				MantaAssetFullReceiver::sample(&commit_param, &sk, &TEST_ASSET, &(), &mut rng);
+			let receiver = receiver_full.prepared.process(&(i as u64 + 10), &mut rng);
+			receivers_full.push(receiver_full);
+			receivers_processed.push(receiver);
+		}
+
+		let mut coin_shards = CoinShards::get();
+
+		let payload = prepare_private_transfer_payload(
+			&senders,
+			&commit_param,
+			&hash_param,
+			&pk,
+			&receivers_processed,
+			&mut rng,
+			0,
+		);
+
+		assert_ok!(Assets::private_transfer(Origin::signed(1), payload));
+
+		// extract the receivers
+		let receiver_1 = receivers_processed[0].clone();
+		let receiver_2 = receivers_processed[2].clone();
+
+		coin_shards.update(&receiver_1.commitment, hash_param.clone());
+		coin_shards.update(&receiver_2.commitment, hash_param.clone());
+
+		// build sender meta data
+		let sender_1 = senders[2].clone();
+		let sender_2 = senders[0].clone();
+		let shard_index_1 = sender_1.commitment[0] as usize;
+		let shard_index_2 = sender_2.commitment[0] as usize;
+		let list_1 = coin_shards.shard[shard_index_1].list.clone();
+		let sender_1 = SenderMetaData::build(hash_param.clone(), sender_1, &list_1);
+		let list_2 = coin_shards.shard[shard_index_2].list.clone();
+		let sender_2 = SenderMetaData::build(hash_param.clone(), sender_2, &list_2);
+
+		let payload = generate_private_transfer_payload(
+			commit_param.clone(),
+			hash_param.clone(),
+			&pk,
+			sender_1,
+			sender_2,
+			receiver_1,
+			receiver_2,
+			&mut rng,
+		);
+
+		assert_noop!(
+			Assets::private_transfer(Origin::signed(1), payload),
+			Error::<Test>::MantaCoinSpent
+		);
 	});
 }
 
