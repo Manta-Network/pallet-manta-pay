@@ -18,7 +18,6 @@ use crate::*;
 use ark_groth16::create_random_proof;
 use ark_serialize::CanonicalSerialize;
 use ark_std::rand::{CryptoRng, RngCore};
-use frame_support::codec::{Decode, Encode};
 use manta_asset::*;
 use manta_crypto::*;
 use manta_error::MantaError;
@@ -28,7 +27,7 @@ mod santiy;
 mod serdes;
 
 /// Input data to a mint extrinsic.
-#[derive(Encode, Debug, Decode, Clone, Default, PartialEq)]
+#[derive(Debug, Clone, Default, PartialEq)]
 pub struct MintData {
 	pub asset_id: AssetId,
 	pub amount: u64,
@@ -38,7 +37,7 @@ pub struct MintData {
 }
 
 /// Input data to a private transfer extrinsic.
-#[derive(Encode, Debug, Decode, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct PrivateTransferData {
 	pub sender_1: SenderData,
 	pub sender_2: SenderData,
@@ -48,7 +47,7 @@ pub struct PrivateTransferData {
 }
 
 /// Input data to a reclaim extrinsic.
-#[derive(Encode, Debug, Decode, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct ReclaimData {
 	pub asset_id: AssetId,
 	pub reclaim_amount: u64,
@@ -59,7 +58,7 @@ pub struct ReclaimData {
 }
 
 /// Data required for a sender to spend a coin.
-#[derive(Encode, Debug, Decode, Clone, Default, PartialEq)]
+#[derive(Debug, Clone, Default, PartialEq)]
 pub struct SenderData {
 	pub k: [u8; 32],
 	pub void_number: [u8; 32],
@@ -67,7 +66,7 @@ pub struct SenderData {
 }
 
 /// Data required for a receiver to receive a coin.
-#[derive(Encode, Debug, Decode, Clone, Default, PartialEq)]
+#[derive(Debug, Clone, Default, PartialEq)]
 pub struct ReceiverData {
 	pub k: [u8; 32],
 	pub cm: [u8; 32],
