@@ -1415,6 +1415,29 @@ dependencies = [
 ]
 
 [[package]]
+name = "manta-api"
+version = "0.1.0"
+source = "git+https://github.com/Manta-Network/manta-api#3386d999d2d08e242625d9aac3f0d27db39678a5"
+dependencies = [
+ "ark-bls12-381",
+ "ark-crypto-primitives",
+ "ark-ed-on-bls12-381",
+ "ark-ff",
+ "ark-groth16",
+ "ark-r1cs-std",
+ "ark-relations",
+ "ark-serialize",
+ "ark-std",
+ "hkdf",
+ "manta-asset",
+ "manta-crypto",
+ "manta-error",
+ "manta-types",
+ "rand_chacha 0.2.2",
+ "sha2 0.9.5",
+]
+
+[[package]]
 name = "manta-asset"
 version = "0.1.0"
 source = "git+https://github.com/Manta-Network/manta-asset?branch=error-wrapper#ab5134a4343a462eba086a447d3ed54e6906fa9a"
@@ -1460,6 +1483,21 @@ dependencies = [
  "ark-serialize",
  "ark-std",
  "displaydoc",
+]
+
+[[package]]
+name = "manta-types"
+version = "0.1.0"
+source = "git+https://github.com/Manta-Network/manta-types#168cbc030244a00caeaf4ff34145ba681aa7bb2e"
+dependencies = [
+ "ark-ed-on-bls12-381",
+ "ark-groth16",
+ "ark-relations",
+ "ark-serialize",
+ "ark-std",
+ "manta-asset",
+ "manta-crypto",
+ "manta-error",
 ]
 
 [[package]]
@@ -1732,9 +1770,11 @@ dependencies = [
  "frame-system",
  "hkdf",
  "log",
+ "manta-api",
  "manta-asset",
  "manta-crypto",
  "manta-error",
+ "manta-types",
  "parity-scale-codec",
  "rand_chacha 0.2.2",
  "serde",

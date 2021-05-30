@@ -104,9 +104,7 @@
 // #![no_std]
 
 mod ledger;
-mod payload;
 mod runtime_benchmark;
-mod zkp;
 
 #[cfg(test)]
 mod test;
@@ -116,8 +114,6 @@ extern crate std;
 
 pub use ledger::{Shard, Shards};
 pub use manta_crypto::MantaSerDes;
-pub use payload::*;
-pub use zkp::*;
 pub mod weights;
 pub use weights::WeightInfo;
 
@@ -125,8 +121,10 @@ use ark_std::vec::Vec;
 use frame_support::{decl_error, decl_event, decl_module, decl_storage, ensure};
 use frame_system::ensure_signed;
 use ledger::LedgerSharding;
+use manta_api::*;
 use manta_asset::SanityCheck;
 use manta_crypto::*;
+use manta_types::*;
 use sp_runtime::{
 	traits::{StaticLookup, Zero},
 	DispatchError,
@@ -135,15 +133,6 @@ use sp_std::prelude::*;
 
 /// An abstract struct for manta-pay.
 pub struct MantaPay;
-
-pub const MINT_PAYLOAD_SIZE: usize = 112;
-pub const PRIVATE_TRANSFER_PAYLOAD_SIZE: usize = 608;
-pub const RECLAIM_PAYLOAD_SIZE: usize = 512;
-
-/// Type aliases
-pub type MintPayload = [u8; MINT_PAYLOAD_SIZE];
-pub type PrivateTransferPayload = [u8; PRIVATE_TRANSFER_PAYLOAD_SIZE];
-pub type ReclaimPayload = [u8; RECLAIM_PAYLOAD_SIZE];
 
 /// The module configuration trait.
 pub trait Config: frame_system::Config {

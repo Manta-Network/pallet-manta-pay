@@ -55,8 +55,8 @@ fn test_transfer_zkp_local() {
 		list.push(cm_rand);
 	}
 
-	let sender_1 = SenderMetaData::build(hash_param.clone(), sender_1, &list).unwrap();
-	let sender_2 = SenderMetaData::build(hash_param.clone(), sender_2, &list).unwrap();
+	let sender_1 = sender_1.build(&hash_param, &list).unwrap();
+	let sender_2 = sender_2.build(&hash_param, &list).unwrap();
 
 	// receiver
 	rng.fill_bytes(&mut sk);
@@ -224,12 +224,12 @@ fn test_transfer_helper(
 	sender_2: MantaAsset,
 	receiver_1: MantaAssetProcessedReceiver,
 	receiver_2: MantaAssetProcessedReceiver,
-	list: &[[u8; 32]],
+	list: &Vec<[u8; 32]>,
 ) {
 	let mut rng = ChaCha20Rng::from_seed([8u8; 32]);
 
-	let sender_1 = SenderMetaData::build(hash_param.clone(), sender_1, &list).unwrap();
-	let sender_2 = SenderMetaData::build(hash_param.clone(), sender_2, &list).unwrap();
+	let sender_1 = sender_1.build(&hash_param, list).unwrap();
+	let sender_2 = sender_2.build(&hash_param, list).unwrap();
 
 	let circuit = TransferCircuit {
 		commit_param: commit_param.clone(),
@@ -311,8 +311,8 @@ fn test_reclaim_zkp_local() {
 		list.push(cm_rand);
 	}
 
-	let sender_1 = SenderMetaData::build(hash_param.clone(), sender_1, &list).unwrap();
-	let sender_2 = SenderMetaData::build(hash_param.clone(), sender_2, &list).unwrap();
+	let sender_1 = sender_1.build(&hash_param, &list).unwrap();
+	let sender_2 = sender_2.build(&hash_param, &list).unwrap();
 
 	// build the circuit
 	let circuit = ReclaimCircuit {
@@ -452,12 +452,12 @@ fn test_reclaim_helper(
 	sender_2: MantaAsset,
 	receiver: MantaAssetProcessedReceiver,
 	reclaim_value: u64,
-	list: &[[u8; 32]],
+	list: &Vec<[u8; 32]>,
 ) {
 	let mut rng = ChaCha20Rng::from_seed([8u8; 32]);
 
-	let sender_1 = SenderMetaData::build(hash_param.clone(), sender_1, &list).unwrap();
-	let sender_2 = SenderMetaData::build(hash_param.clone(), sender_2, &list).unwrap();
+	let sender_1 = sender_1.build(&hash_param, list).unwrap();
+	let sender_2 = sender_2.build(&hash_param, list).unwrap();
 
 	let circuit = ReclaimCircuit {
 		commit_param: commit_param.clone(),

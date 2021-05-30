@@ -14,9 +14,10 @@
 // You should have received a copy of the GNU General Public License
 // along with pallet-manta-pay.  If not, see <http://www.gnu.org/licenses/>.
 
+use manta_api::write_zkp_keys;
 use manta_error::MantaError;
 
 fn main() -> Result<(), MantaError> {
 	println!("Hello, Manta!");
-	pallet_manta_pay::write_zkp_keys()
+	write_zkp_keys()
 }

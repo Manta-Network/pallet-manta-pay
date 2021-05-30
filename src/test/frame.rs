@@ -481,9 +481,9 @@ fn transfer_test_helper(iter: usize) {
 		let shard_index_1 = sender_1.commitment[0] as usize;
 		let shard_index_2 = sender_2.commitment[0] as usize;
 		let list_1 = coin_shards.shard[shard_index_1].list.clone();
-		let sender_1 = SenderMetaData::build(hash_param.clone(), sender_1, &list_1).unwrap();
+		let sender_1 = sender_1.build(&hash_param, &list_1).unwrap();
 		let list_2 = coin_shards.shard[shard_index_2].list.clone();
-		let sender_2 = SenderMetaData::build(hash_param.clone(), sender_2, &list_2).unwrap();
+		let sender_2 = sender_2.build(&hash_param, &list_2).unwrap();
 
 		// extract the receivers
 		let receiver_1 = receivers_processed[i * 2 + 1].clone();
@@ -584,9 +584,9 @@ fn reclaim_test_helper(iter: usize) {
 		let shard_index_1 = sender_1.commitment[0] as usize;
 		let shard_index_2 = sender_2.commitment[0] as usize;
 		let list_1 = coin_shards.shard[shard_index_1].list.clone();
-		let sender_1 = SenderMetaData::build(hash_param.clone(), sender_1, &list_1).unwrap();
+		let sender_1 = sender_1.build(&hash_param, &list_1).unwrap();
 		let list_2 = coin_shards.shard[shard_index_2].list.clone();
-		let sender_2 = SenderMetaData::build(hash_param.clone(), sender_2, &list_2).unwrap();
+		let sender_2 = sender_2.build(&hash_param, &list_2).unwrap();
 
 		rng.fill_bytes(&mut sk);
 		let receiver_full =
