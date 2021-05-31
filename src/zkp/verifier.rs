@@ -29,7 +29,7 @@ impl MantaZKPVerifier for PrivateTransferData {
 				return false;
 			}
 		};
-		
+
 		let pvk = Groth16Pvk::from(vk);
 		let proof = match Groth16Proof::deserialize(self.proof.as_ref()) {
 			Ok(p) => p,

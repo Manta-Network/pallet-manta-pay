@@ -472,7 +472,6 @@ fn transferring_spent_coin_should_not_work_sender_2() {
 
 		let (_, receivers_processed) = build_receivers(&commit_param, &mut sk, &mut rng, size);
 
-
 		let payload = prepare_private_transfer_payload(
 			&senders,
 			&commit_param,
