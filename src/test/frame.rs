@@ -360,7 +360,7 @@ fn transferring_with_hash_param_mismatch_should_not_work() {
 		// invoke the transfer event
 		assert_noop!(
 			Assets::private_transfer(Origin::signed(1), payload),
-			Error::<Test>::MintFail
+			Error::<Test>::ParamFail
 		);
 	});
 }
@@ -683,7 +683,7 @@ fn reclaim_with_hash_param_mismatch_should_not_work() {
 		// invoke the transfer event
 		assert_noop!(
 			Assets::reclaim(Origin::signed(1), payload),
-			Error::<Test>::MintFail
+			Error::<Test>::ParamFail
 		);
 	});
 }
