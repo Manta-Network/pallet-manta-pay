@@ -682,29 +682,26 @@ fn reclaim_with_overdrawn_pool_should_not_work() {
 
 		let (commit_param, hash_param, pk, mut sk, mut rng) = setup_params_for_reclaim();
 
-		let iter = 1;
-		let size = iter << 1;
+		let size = 2;
 		let senders = mint_tokens_helper(size);
 
-		for i in 0usize..iter {
-			let (payload, _, _, _, _) = prepare_reclaim_payload(
-				&senders,
-				&commit_param,
-				&hash_param,
-				&pk,
-				&mut sk,
-				&mut rng,
-				i * 2,
-				i * 2 + 1,
-			);
+		let (payload, _, _, _, _) = prepare_reclaim_payload(
+			&senders,
+			&commit_param,
+			&hash_param,
+			&pk,
+			&mut sk,
+			&mut rng,
+			0,
+			1,
+		);
 
-			assert_ok!(Assets::reclaim(Origin::signed(1), payload));
+		assert_ok!(Assets::reclaim(Origin::signed(1), payload));
 
-			assert_noop!(
-				Assets::reclaim(Origin::signed(1), payload),
-				Error::<Test>::PoolOverdrawn
-			);
-		}
+		assert_noop!(
+			Assets::reclaim(Origin::signed(1), payload),
+			Error::<Test>::PoolOverdrawn
+		);
 	});
 }
 
