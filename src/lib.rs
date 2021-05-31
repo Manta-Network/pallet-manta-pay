@@ -362,17 +362,17 @@ decl_module! {
 			let hash_param = HashParam::deserialize(HASH_PARAM.data);
 
 			// check if vn_old already spent
-			let mut sn_list = VNList::get();
+			let mut vn_list = VNList::get();
 			ensure!(
-				!sn_list.contains(&data.sender_1.void_number),
+				!vn_list.contains(&data.sender_1.void_number),
 				<Error<T>>::MantaCoinSpent
 			);
-			sn_list.push(data.sender_1.void_number);
+			vn_list.push(data.sender_1.void_number);
 			ensure!(
-				!sn_list.contains(&data.sender_2.void_number),
+				!vn_list.contains(&data.sender_2.void_number),
 				<Error<T>>::MantaCoinSpent
 			);
-			sn_list.push(data.sender_2.void_number);
+			vn_list.push(data.sender_2.void_number);
 
 			// get the ledger state from the ledger
 			// and check the validity of the state
@@ -425,10 +425,9 @@ decl_module! {
 
 			Self::deposit_event(RawEvent::PrivateTransferred(origin));
 			CoinShards::put(coin_shards);
-			VNList::put(sn_list);
+			VNList::put(vn_list);
 			EncValueList::put(enc_value_list);
 		}
-
 
 		/// Manta's reclaim function that moves values from two
 		/// sender's private tokens into a receiver public account, and a private token.
@@ -472,17 +471,17 @@ decl_module! {
 			pool -= data.reclaim_amount;
 
 			// check if sn_old already spent
-			let mut sn_list = VNList::get();
+			let mut vn_list = VNList::get();
 			ensure!(
-				!sn_list.contains(&data.sender_1.void_number),
+				!vn_list.contains(&data.sender_1.void_number),
 				<Error<T>>::MantaCoinSpent
 			);
-			sn_list.push(data.sender_1.void_number);
+			vn_list.push(data.sender_1.void_number);
 			ensure!(
-				!sn_list.contains(&data.sender_2.void_number),
+				!vn_list.contains(&data.sender_2.void_number),
 				<Error<T>>::MantaCoinSpent
 			);
-			sn_list.push(data.sender_2.void_number);
+			vn_list.push(data.sender_2.void_number);
 
 			// get the coin list
 			let mut coin_shards = CoinShards::get();
@@ -523,14 +522,13 @@ decl_module! {
 			let mut enc_value_list = EncValueList::get();
 			enc_value_list.push(data.receiver.cipher);
 
-
 			coin_shards.update(&data.receiver.cm, hash_param);
 			CoinShards::put(coin_shards);
 
 			Self::deposit_event(
 				RawEvent::PrivateReclaimed(data.asset_id, origin, data.reclaim_amount)
 			);
-			VNList::put(sn_list);
+			VNList::put(vn_list);
 			PoolBalance::mutate(data.asset_id, |balance| *balance = pool);
 			EncValueList::put(enc_value_list);
 			<Balances<T>>::mutate(
