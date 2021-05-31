@@ -28,9 +28,10 @@ use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
 use ark_std::rand::{RngCore, SeedableRng};
 use criterion::Criterion;
 use data_encoding::BASE64;
+use manta_api::*;
 use manta_asset::*;
 use manta_crypto::*;
-use pallet_manta_pay::*;
+use manta_types::*;
 use rand_chacha::ChaCha20Rng;
 use std::{fs::File, io::prelude::*};
 
@@ -92,9 +93,9 @@ fn bench_transfer_verify(c: &mut Criterion) {
 	rng.fill_bytes(&mut sk);
 	let sender_2 = MantaAsset::sample(&commit_param, &sk, &TEST_ASSET, &300, &mut rng).unwrap();
 
-	let list = [sender_1.commitment, sender_2.commitment];
-	let sender_1 = SenderMetaData::build(hash_param.clone(), sender_1, &list).unwrap();
-	let sender_2 = SenderMetaData::build(hash_param.clone(), sender_2, &list).unwrap();
+	let list = vec![sender_1.commitment, sender_2.commitment];
+	let sender_1 = sender_1.build(&hash_param, &list).unwrap();
+	let sender_2 = sender_2.build(&hash_param, &list).unwrap();
 
 	// receiver
 	rng.fill_bytes(&mut sk);
@@ -274,9 +275,9 @@ fn bench_transfer_prove(c: &mut Criterion) {
 	rng.fill_bytes(&mut sk);
 	let sender_2 = MantaAsset::sample(&commit_param, &sk, &TEST_ASSET, &300, &mut rng).unwrap();
 
-	let list = [sender_1.commitment, sender_2.commitment];
-	let sender_1 = SenderMetaData::build(hash_param.clone(), sender_1, &list).unwrap();
-	let sender_2 = SenderMetaData::build(hash_param.clone(), sender_2, &list).unwrap();
+	let list = vec![sender_1.commitment, sender_2.commitment];
+	let sender_1 = sender_1.build(&hash_param, &list).unwrap();
+	let sender_2 = sender_2.build(&hash_param, &list).unwrap();
 
 	// receiver
 	rng.fill_bytes(&mut sk);
@@ -338,9 +339,9 @@ fn bench_reclaim_verify(c: &mut Criterion) {
 	rng.fill_bytes(&mut sk);
 	let sender_2 = MantaAsset::sample(&commit_param, &sk, &TEST_ASSET, &300, &mut rng).unwrap();
 
-	let list = [sender_1.commitment, sender_2.commitment];
-	let sender_1 = SenderMetaData::build(hash_param.clone(), sender_1, &list).unwrap();
-	let sender_2 = SenderMetaData::build(hash_param.clone(), sender_2, &list).unwrap();
+	let list = vec![sender_1.commitment, sender_2.commitment];
+	let sender_1 = sender_1.build(&hash_param, &list).unwrap();
+	let sender_2 = sender_2.build(&hash_param, &list).unwrap();
 
 	// receiver
 	rng.fill_bytes(&mut sk);
@@ -424,9 +425,9 @@ fn bench_reclaim_prove(c: &mut Criterion) {
 	rng.fill_bytes(&mut sk);
 	let sender_2 = MantaAsset::sample(&commit_param, &sk, &TEST_ASSET, &300, &mut rng).unwrap();
 
-	let list = [sender_1.commitment, sender_2.commitment];
-	let sender_1 = SenderMetaData::build(hash_param.clone(), sender_1, &list).unwrap();
-	let sender_2 = SenderMetaData::build(hash_param.clone(), sender_2, &list).unwrap();
+	let list = vec![sender_1.commitment, sender_2.commitment];
+	let sender_1 = sender_1.build(&hash_param, &list).unwrap();
+	let sender_2 = sender_2.build(&hash_param, &list).unwrap();
 
 	// receiver
 	rng.fill_bytes(&mut sk);

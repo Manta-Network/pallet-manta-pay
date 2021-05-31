@@ -41,9 +41,11 @@ hkdf = { version = "0.11", default-features = false }
 sha2 = { version = "0.9.3", default-features = false }
 
 # Manta Dependencies
-manta-crypto = { branch = "error-wrapper", git = "https://github.com/Manta-Network/manta-crypto", default-features = false }
-manta-asset = { branch = "error-wrapper", git = "https://github.com/Manta-Network/manta-asset", default-features = false }
-manta-error = { git = "https://github.com/Manta-Network/manta-error", default-features = false }
+manta-crypto = { branch = "manta", git = "https://github.com/Manta-Network/manta-crypto", default-features = false }
+manta-asset = { branch = "manta", git = "https://github.com/Manta-Network/manta-asset", default-features = false }
+manta-error = { branch = "manta", git = "https://github.com/Manta-Network/manta-error", default-features = false }
+manta-types = { branch = "manta", git = "https://github.com/Manta-Network/manta-types", default-features = false }
+manta-api = { branch = "manta", git = "https://github.com/Manta-Network/manta-api", default-features = false }
 
 [dev-dependencies]
 # benchmarking 
@@ -71,4 +73,5 @@ runtime-benchmarks = [
 std = [
 	"frame-benchmarking/std",
 	"frame-system/std",
+	"manta-api/std"
 ]

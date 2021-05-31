@@ -104,9 +104,7 @@
 // #![no_std]
 
 mod ledger;
-mod payload;
 mod runtime_benchmark;
-mod zkp;
 
 #[cfg(test)]
 mod test;
@@ -116,8 +114,6 @@ extern crate std;
 
 pub use ledger::{Shard, Shards};
 pub use manta_crypto::MantaSerDes;
-pub use payload::*;
-pub use zkp::*;
 pub mod weights;
 pub use weights::WeightInfo;
 
@@ -125,8 +121,10 @@ use ark_std::vec::Vec;
 use frame_support::{decl_error, decl_event, decl_module, decl_storage, ensure};
 use frame_system::ensure_signed;
 use ledger::LedgerSharding;
+use manta_api::*;
 use manta_asset::SanityCheck;
 use manta_crypto::*;
+use manta_types::*;
 use sp_runtime::{
 	traits::{StaticLookup, Zero},
 	DispatchError,
@@ -135,15 +133,6 @@ use sp_std::prelude::*;
 
 /// An abstract struct for manta-pay.
 pub struct MantaPay;
-
-pub const MINT_PAYLOAD_SIZE: usize = 112;
-pub const PRIVATE_TRANSFER_PAYLOAD_SIZE: usize = 608;
-pub const RECLAIM_PAYLOAD_SIZE: usize = 512;
-
-/// Type aliases
-pub type MintPayload = [u8; MINT_PAYLOAD_SIZE];
-pub type PrivateTransferPayload = [u8; PRIVATE_TRANSFER_PAYLOAD_SIZE];
-pub type ReclaimPayload = [u8; RECLAIM_PAYLOAD_SIZE];
 
 /// The module configuration trait.
 pub trait Config: frame_system::Config {
@@ -442,17 +431,17 @@ decl_module! {
 				})?;
 
 			// check if vn_old already spent
-			let mut sn_list = VNList::get();
+			let mut vn_list = VNList::get();
 			ensure!(
-				!sn_list.contains(&data.sender_1.void_number),
+				!vn_list.contains(&data.sender_1.void_number),
 				<Error<T>>::MantaCoinSpent
 			);
-			sn_list.push(data.sender_1.void_number);
+			vn_list.push(data.sender_1.void_number);
 			ensure!(
-				!sn_list.contains(&data.sender_2.void_number),
+				!vn_list.contains(&data.sender_2.void_number),
 				<Error<T>>::MantaCoinSpent
 			);
-			sn_list.push(data.sender_2.void_number);
+			vn_list.push(data.sender_2.void_number);
 
 			// get the ledger state from the ledger
 			// and check the validity of the state
@@ -521,10 +510,9 @@ decl_module! {
 
 			Self::deposit_event(RawEvent::PrivateTransferred(origin));
 			CoinShards::put(coin_shards);
-			VNList::put(sn_list);
+			VNList::put(vn_list);
 			EncValueList::put(enc_value_list);
 		}
-
 
 		/// Manta's reclaim function that moves values from two
 		/// sender's private tokens into a receiver public account, and a private token.
@@ -580,17 +568,17 @@ decl_module! {
 			pool -= data.reclaim_amount;
 
 			// check if sn_old already spent
-			let mut sn_list = VNList::get();
+			let mut vn_list = VNList::get();
 			ensure!(
-				!sn_list.contains(&data.sender_1.void_number),
+				!vn_list.contains(&data.sender_1.void_number),
 				<Error<T>>::MantaCoinSpent
 			);
-			sn_list.push(data.sender_1.void_number);
+			vn_list.push(data.sender_1.void_number);
 			ensure!(
-				!sn_list.contains(&data.sender_2.void_number),
+				!vn_list.contains(&data.sender_2.void_number),
 				<Error<T>>::MantaCoinSpent
 			);
-			sn_list.push(data.sender_2.void_number);
+			vn_list.push(data.sender_2.void_number);
 
 			// get the coin list
 			let mut coin_shards = CoinShards::get();
@@ -637,7 +625,6 @@ decl_module! {
 			let mut enc_value_list = EncValueList::get();
 			enc_value_list.push(data.receiver.cipher);
 
-
 			coin_shards
 				.update(&data.receiver.cm, hash_param)
 				.map_err::<DispatchError, _>(|e| {
@@ -650,7 +637,7 @@ decl_module! {
 			Self::deposit_event(
 				RawEvent::PrivateReclaimed(data.asset_id, origin, data.reclaim_amount)
 			);
-			VNList::put(sn_list);
+			VNList::put(vn_list);
 			PoolBalance::mutate(data.asset_id, |balance| *balance = pool);
 			EncValueList::put(enc_value_list);
 			<Balances<T>>::mutate(
