@@ -625,8 +625,6 @@ decl_module! {
 			let mut enc_value_list = EncValueList::get();
 			enc_value_list.push(data.receiver.cipher);
 
-<<<<<<< HEAD
-
 			coin_shards
 				.update(&data.receiver.cm, hash_param)
 				.map_err::<DispatchError, _>(|e| {
@@ -634,9 +632,6 @@ decl_module! {
 					<Error<T>>::LedgerUpdateFail.into()
 				})?;
 
-=======
-			coin_shards.update(&data.receiver.cm, hash_param);
->>>>>>> origin/calamari
 			CoinShards::put(coin_shards);
 
 			Self::deposit_event(
