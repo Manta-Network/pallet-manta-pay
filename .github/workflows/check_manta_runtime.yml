@@ -9,8 +9,8 @@ on:
   # but only for the calamari (default) branch.
   pull_request:
     branches: [calamari]
-  # push:
-  #  branches: [calamari]
+  push:
+    branches: [calamari]
 
   # Allows you to run this workflow manually from the Actions tab
   workflow_dispatch:
@@ -44,19 +44,7 @@ jobs:
           source ~/.cargo/env
           rustup update nightly
           rustup target add wasm32-unknown-unknown --toolchain nightly
-          rustup component add clippy
-          rustup component add rustfmt
-      - name: Check Formatting
-        run: |
-          cargo +nightly fmt --all -- --check
-      - name: Check Clippy
-        run: |
-          cargo clippy --release --all
-      - name: Check Build
-        run: |
-          cargo check --release
-          cargo +nightly check --release --features runtime-benchmarks
-      - name: Run Tests
-        run: |
-          cargo run --release --bin param_gen
-          cargo test --all-features --release
+
+      - name: Check Manta Runtime
+        run: bash ./scripts/check_manta_runtime.sh
+        shell: bash
