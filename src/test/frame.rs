@@ -439,7 +439,9 @@ fn transferring_existing_coins_should_not_work() {
 			);
 
 			if i == 0 {
-				coin_shards.update(&receiver_1.commitment, hash_param.clone()).unwrap();
+				coin_shards
+					.update(&receiver_1.commitment, hash_param.clone())
+					.unwrap();
 				CoinShards::put(coin_shards);
 
 				assert_noop!(
@@ -447,7 +449,9 @@ fn transferring_existing_coins_should_not_work() {
 					Error::<Test>::MantaCoinExist
 				);
 			} else {
-				coin_shards.update(&receiver_2.commitment, hash_param.clone()).unwrap();
+				coin_shards
+					.update(&receiver_2.commitment, hash_param.clone())
+					.unwrap();
 				CoinShards::put(coin_shards);
 
 				assert_noop!(
@@ -489,8 +493,12 @@ fn transferring_spent_coin_should_not_work_sender_2() {
 		let receiver_1 = receivers_processed[0].clone();
 		let receiver_2 = receivers_processed[2].clone();
 
-		coin_shards.update(&receiver_1.commitment, hash_param.clone()).unwrap();
-		coin_shards.update(&receiver_2.commitment, hash_param.clone()).unwrap();
+		coin_shards
+			.update(&receiver_1.commitment, hash_param.clone())
+			.unwrap();
+		coin_shards
+			.update(&receiver_2.commitment, hash_param.clone())
+			.unwrap();
 
 		// build sender meta data
 		let sender_1 = senders[2].clone();
