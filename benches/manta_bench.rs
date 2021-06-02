@@ -28,9 +28,10 @@ use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
 use ark_std::rand::{RngCore, SeedableRng};
 use criterion::Criterion;
 use data_encoding::BASE64;
+use manta_api::*;
 use manta_asset::*;
 use manta_crypto::*;
-use pallet_manta_pay::*;
+use manta_types::*;
 use rand_chacha::ChaCha20Rng;
 use std::{fs::File, io::prelude::*};
 
@@ -41,7 +42,9 @@ criterion_group!(
 	bench_pedersen_com,
 	bench_merkle_tree,
 	bench_transfer_verify,
+	bench_reclaim_verify,
 	bench_transfer_prove,
+	bench_reclaim_prove
 );
 criterion_main!(manta_bench);
 
@@ -51,14 +54,14 @@ fn bench_param_io(c: &mut Criterion) {
 	let bench_str = format!("hash param");
 	bench_group.bench_function(bench_str, move |b| {
 		b.iter(|| {
-			HashParam::deserialize(HASH_PARAM.data);
+			HashParam::deserialize(HASH_PARAM.data).unwrap();
 		})
 	});
 
 	let bench_str = format!("commit param");
 	bench_group.bench_function(bench_str, move |b| {
 		b.iter(|| {
-			CommitmentParam::deserialize(COMMIT_PARAM.data);
+			CommitmentParam::deserialize(COMMIT_PARAM.data).unwrap();
 		})
 	});
 	bench_group.finish();
@@ -85,25 +88,25 @@ fn bench_transfer_verify(c: &mut Criterion) {
 	// sender
 	let mut sk = [0u8; 32];
 	rng.fill_bytes(&mut sk);
-	let sender_1 = MantaAsset::sample(&commit_param, &sk, &TEST_ASSET, &100, &mut rng);
+	let sender_1 = MantaAsset::sample(&commit_param, &sk, &TEST_ASSET, &100, &mut rng).unwrap();
 
 	rng.fill_bytes(&mut sk);
-	let sender_2 = MantaAsset::sample(&commit_param, &sk, &TEST_ASSET, &300, &mut rng);
+	let sender_2 = MantaAsset::sample(&commit_param, &sk, &TEST_ASSET, &300, &mut rng).unwrap();
 
-	let list = [sender_1.commitment, sender_2.commitment];
-	let sender_1 = SenderMetaData::build(hash_param.clone(), sender_1, &list);
-	let sender_2 = SenderMetaData::build(hash_param.clone(), sender_2, &list);
+	let list = vec![sender_1.commitment, sender_2.commitment];
+	let sender_1 = sender_1.build(&hash_param, &list).unwrap();
+	let sender_2 = sender_2.build(&hash_param, &list).unwrap();
 
 	// receiver
 	rng.fill_bytes(&mut sk);
 	let receiver_1_full =
-		MantaAssetFullReceiver::sample(&commit_param, &sk, &TEST_ASSET, &(), &mut rng);
-	let receiver_1 = receiver_1_full.prepared.process(&150, &mut rng);
+		MantaAssetFullReceiver::sample(&commit_param, &sk, &TEST_ASSET, &(), &mut rng).unwrap();
+	let receiver_1 = receiver_1_full.prepared.process(&150, &mut rng).unwrap();
 
 	rng.fill_bytes(&mut sk);
 	let receiver_2_full =
-		MantaAssetFullReceiver::sample(&commit_param, &sk, &TEST_ASSET, &(), &mut rng);
-	let receiver_2 = receiver_2_full.prepared.process(&250, &mut rng);
+		MantaAssetFullReceiver::sample(&commit_param, &sk, &TEST_ASSET, &(), &mut rng).unwrap();
+	let receiver_2 = receiver_2_full.prepared.process(&250, &mut rng).unwrap();
 
 	let circuit = TransferCircuit {
 		commit_param: commit_param.clone(),
@@ -138,8 +141,9 @@ fn bench_transfer_verify(c: &mut Criterion) {
 		receiver_1,
 		receiver_2,
 		&mut rng,
-	);
-	let transfer_data = PrivateTransferData::deserialize(transfer_data.as_ref());
+	)
+	.unwrap();
+	let transfer_data = PrivateTransferData::deserialize(transfer_data.as_ref()).unwrap();
 
 	println!("start benchmarking proof verification");
 	let mut bench_group = c.benchmark_group("private transfer");
@@ -170,7 +174,8 @@ fn bench_merkle_tree(c: &mut Criterion) {
 
 	bench_group.bench_function(bench_str, move |b| {
 		b.iter(|| {
-			<MantaCrypto as MerkleTree>::root(hash_param_clone.clone(), &[cm_bytes1.clone()]);
+			<MantaCrypto as MerkleTree>::root(hash_param_clone.clone(), &[cm_bytes1.clone()])
+				.unwrap();
 		})
 	});
 
@@ -187,7 +192,8 @@ fn bench_merkle_tree(c: &mut Criterion) {
 			<MantaCrypto as MerkleTree>::root(
 				hash_param_clone.clone(),
 				&[cm_bytes1.clone(), cm_bytes2.clone()],
-			);
+			)
+			.unwrap();
 		})
 	});
 
@@ -204,7 +210,8 @@ fn bench_merkle_tree(c: &mut Criterion) {
 			<MantaCrypto as MerkleTree>::root(
 				hash_param_clone.clone(),
 				&[cm_bytes1.clone(), cm_bytes2.clone(), cm_bytes3.clone()],
-			);
+			)
+			.unwrap();
 		})
 	});
 
@@ -263,25 +270,25 @@ fn bench_transfer_prove(c: &mut Criterion) {
 	// sender
 	let mut sk = [0u8; 32];
 	rng.fill_bytes(&mut sk);
-	let sender_1 = MantaAsset::sample(&commit_param, &sk, &TEST_ASSET, &100, &mut rng);
+	let sender_1 = MantaAsset::sample(&commit_param, &sk, &TEST_ASSET, &100, &mut rng).unwrap();
 
 	rng.fill_bytes(&mut sk);
-	let sender_2 = MantaAsset::sample(&commit_param, &sk, &TEST_ASSET, &300, &mut rng);
+	let sender_2 = MantaAsset::sample(&commit_param, &sk, &TEST_ASSET, &300, &mut rng).unwrap();
 
-	let list = [sender_1.commitment, sender_2.commitment];
-	let sender_1 = SenderMetaData::build(hash_param.clone(), sender_1, &list);
-	let sender_2 = SenderMetaData::build(hash_param.clone(), sender_2, &list);
+	let list = vec![sender_1.commitment, sender_2.commitment];
+	let sender_1 = sender_1.build(&hash_param, &list).unwrap();
+	let sender_2 = sender_2.build(&hash_param, &list).unwrap();
 
 	// receiver
 	rng.fill_bytes(&mut sk);
 	let receiver_1_full =
-		MantaAssetFullReceiver::sample(&commit_param, &sk, &TEST_ASSET, &(), &mut rng);
-	let receiver_1 = receiver_1_full.prepared.process(&150, &mut rng);
+		MantaAssetFullReceiver::sample(&commit_param, &sk, &TEST_ASSET, &(), &mut rng).unwrap();
+	let receiver_1 = receiver_1_full.prepared.process(&150, &mut rng).unwrap();
 
 	rng.fill_bytes(&mut sk);
 	let receiver_2_full =
-		MantaAssetFullReceiver::sample(&commit_param, &sk, &TEST_ASSET, &(), &mut rng);
-	let receiver_2 = receiver_2_full.prepared.process(&250, &mut rng);
+		MantaAssetFullReceiver::sample(&commit_param, &sk, &TEST_ASSET, &(), &mut rng).unwrap();
+	let receiver_2 = receiver_2_full.prepared.process(&250, &mut rng).unwrap();
 
 	let circuit = TransferCircuit {
 		commit_param: commit_param.clone(),
@@ -295,6 +302,160 @@ fn bench_transfer_prove(c: &mut Criterion) {
 	};
 
 	let mut bench_group = c.benchmark_group("private transfer");
+	bench_group.sample_size(10);
+	let bench_str = format!("ZKP proof generation");
+	bench_group.bench_function(bench_str, move |b| {
+		b.iter(|| {
+			create_random_proof(circuit.clone(), &pk, &mut rng).unwrap();
+		})
+	});
+
+	bench_group.finish();
+}
+
+fn bench_reclaim_verify(c: &mut Criterion) {
+	let hash_param_seed = HASH_PARAM_SEED;
+	let commit_param_seed = COMMIT_PARAM_SEED;
+
+	let mut rng = ChaCha20Rng::from_seed(commit_param_seed);
+	let commit_param = CommitmentScheme::setup(&mut rng).unwrap();
+
+	let mut rng = ChaCha20Rng::from_seed(hash_param_seed);
+	let hash_param = Hash::setup(&mut rng).unwrap();
+
+	let mut file = File::open("reclaim_pk.bin").unwrap();
+	let mut reclaim_pk_bytes: Vec<u8> = vec![];
+	file.read_to_end(&mut reclaim_pk_bytes).unwrap();
+	let buf: &[u8] = reclaim_pk_bytes.as_ref();
+	let pk = Groth16Pk::deserialize_unchecked(buf).unwrap();
+
+	println!("proving key loaded from disk");
+
+	// sender
+	let mut sk = [0u8; 32];
+	rng.fill_bytes(&mut sk);
+	let sender_1 = MantaAsset::sample(&commit_param, &sk, &TEST_ASSET, &100, &mut rng).unwrap();
+
+	rng.fill_bytes(&mut sk);
+	let sender_2 = MantaAsset::sample(&commit_param, &sk, &TEST_ASSET, &300, &mut rng).unwrap();
+
+	let list = vec![sender_1.commitment, sender_2.commitment];
+	let sender_1 = sender_1.build(&hash_param, &list).unwrap();
+	let sender_2 = sender_2.build(&hash_param, &list).unwrap();
+
+	// receiver
+	rng.fill_bytes(&mut sk);
+	let receiver_full =
+		MantaAssetFullReceiver::sample(&commit_param, &sk, &TEST_ASSET, &(), &mut rng).unwrap();
+	let receiver = receiver_full.prepared.process(&150, &mut rng).unwrap();
+
+	let circuit = ReclaimCircuit {
+		commit_param: commit_param.clone(),
+		hash_param: hash_param.clone(),
+
+		sender_1: sender_1.clone(),
+		sender_2: sender_2.clone(),
+
+		receiver: receiver.clone(),
+
+		asset_id: TEST_ASSET,
+		reclaim_value: 250,
+	};
+
+	let sanity_cs = ConstraintSystem::<Fq>::new_ref();
+	circuit
+		.clone()
+		.generate_constraints(sanity_cs.clone())
+		.unwrap();
+	assert!(sanity_cs.is_satisfied().unwrap());
+
+	println!("creating the proof");
+	let proof = create_random_proof(circuit, &pk, &mut rng).unwrap();
+	let mut proof_bytes = [0u8; 192];
+	proof.serialize(proof_bytes.as_mut()).unwrap();
+
+	// form the transaction payload
+	let reclaim_data = generate_reclaim_payload(
+		commit_param.clone(),
+		hash_param.clone(),
+		&pk,
+		sender_1,
+		sender_2,
+		receiver,
+		250,
+		&mut rng,
+	)
+	.unwrap();
+	let reclaim_data = ReclaimData::deserialize(reclaim_data.as_ref()).unwrap();
+
+	println!("start benchmarking proof verification");
+	let mut bench_group = c.benchmark_group("reclaim");
+
+	let bench_str = format!("ZKP verification");
+	bench_group.bench_function(bench_str, move |b| {
+		b.iter(|| assert!(reclaim_data.verify(&RECLAIM_PK)))
+	});
+
+	bench_group.finish();
+}
+
+fn bench_reclaim_prove(c: &mut Criterion) {
+	let hash_param_seed = HASH_PARAM_SEED;
+	let commit_param_seed = COMMIT_PARAM_SEED;
+
+	let mut rng = ChaCha20Rng::from_seed(commit_param_seed);
+	let commit_param = CommitmentScheme::setup(&mut rng).unwrap();
+
+	let mut rng = ChaCha20Rng::from_seed(hash_param_seed);
+	let hash_param = Hash::setup(&mut rng).unwrap();
+
+	let mut file = File::open("reclaim_pk.bin").unwrap();
+	let mut reclaim_pk_bytes: Vec<u8> = vec![];
+	file.read_to_end(&mut reclaim_pk_bytes).unwrap();
+	let buf: &[u8] = reclaim_pk_bytes.as_ref();
+	let pk = Groth16Pk::deserialize_unchecked(buf).unwrap();
+
+	println!("proving key loaded from disk");
+
+	// sender
+	let mut sk = [0u8; 32];
+	rng.fill_bytes(&mut sk);
+	let sender_1 = MantaAsset::sample(&commit_param, &sk, &TEST_ASSET, &100, &mut rng).unwrap();
+
+	rng.fill_bytes(&mut sk);
+	let sender_2 = MantaAsset::sample(&commit_param, &sk, &TEST_ASSET, &300, &mut rng).unwrap();
+
+	let list = vec![sender_1.commitment, sender_2.commitment];
+	let sender_1 = sender_1.build(&hash_param, &list).unwrap();
+	let sender_2 = sender_2.build(&hash_param, &list).unwrap();
+
+	// receiver
+	rng.fill_bytes(&mut sk);
+	let receiver_full =
+		MantaAssetFullReceiver::sample(&commit_param, &sk, &TEST_ASSET, &(), &mut rng).unwrap();
+	let receiver = receiver_full.prepared.process(&150, &mut rng).unwrap();
+
+	let circuit = ReclaimCircuit {
+		commit_param: commit_param.clone(),
+		hash_param: hash_param.clone(),
+
+		sender_1: sender_1.clone(),
+		sender_2: sender_2.clone(),
+
+		receiver: receiver.clone(),
+
+		asset_id: TEST_ASSET,
+		reclaim_value: 250,
+	};
+
+	let sanity_cs = ConstraintSystem::<Fq>::new_ref();
+	circuit
+		.clone()
+		.generate_constraints(sanity_cs.clone())
+		.unwrap();
+	assert!(sanity_cs.is_satisfied().unwrap());
+
+	let mut bench_group = c.benchmark_group("reclaim");
 	bench_group.sample_size(10);
 	let bench_str = format!("ZKP proof generation");
 	bench_group.bench_function(bench_str, move |b| {

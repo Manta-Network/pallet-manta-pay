@@ -105,26 +105,22 @@ benchmarks! {
 		<Balances<T>>::insert(&caller, TEST_ASSET, 1000);
 		assert!(Module::<T>::init_asset(origin.clone(), TEST_ASSET, 1000).is_ok());
 
-		let hash_param = HashParam::deserialize(HASH_PARAM.data);
-		let commit_param = CommitmentParam::deserialize(COMMIT_PARAM.data);
+		let hash_param = HashParam::deserialize(HASH_PARAM.data).unwrap();
+		let commit_param = CommitmentParam::deserialize(COMMIT_PARAM.data).unwrap();
 
 		let mut rng = ChaCha20Rng::from_seed([3u8; 32]);
 		let mut sk = [0u8; 32];
 
 		// mint the tokens
 		rng.fill_bytes(&mut sk);
-		let asset_1 = MantaAsset::sample(&commit_param, &sk, &TEST_ASSET, &10, &mut rng);
-		let payload = generate_mint_payload(&asset_1);
+		let asset_1 = MantaAsset::sample(&commit_param, &sk, &TEST_ASSET, &10, &mut rng).unwrap();
+		let payload = generate_mint_payload(&asset_1).unwrap();
 		Module::<T>::mint_private_asset(origin.clone(), payload).unwrap();
 
 		rng.fill_bytes(&mut sk);
-		let asset_2 = MantaAsset::sample(&commit_param, &sk, &TEST_ASSET, &11, &mut rng);
-		let payload = generate_mint_payload(&asset_2);
+		let asset_2 = MantaAsset::sample(&commit_param, &sk, &TEST_ASSET, &11, &mut rng).unwrap();
+		let payload = generate_mint_payload(&asset_2).unwrap();
 		Module::<T>::mint_private_asset(origin, payload).unwrap();
-
-		// build the senders
-		let sender_1 = SenderMetaData::build(hash_param.clone(), asset_1.clone(), &[asset_1.commitment]);
-		let sender_2 = SenderMetaData::build(hash_param.clone(), asset_2.clone(), &[asset_2.commitment]);
 
 		// pre-computed transaction payload
 		let payload = [
@@ -178,26 +174,22 @@ benchmarks! {
 		<Balances<T>>::insert(&caller, TEST_ASSET, 1000);
 		assert!(Module::<T>::init_asset(origin.clone(), TEST_ASSET, 1000).is_ok());
 
-		let hash_param = HashParam::deserialize(HASH_PARAM.data);
-		let commit_param = CommitmentParam::deserialize(COMMIT_PARAM.data);
+		let hash_param = HashParam::deserialize(HASH_PARAM.data).unwrap();
+		let commit_param = CommitmentParam::deserialize(COMMIT_PARAM.data).unwrap();
 
 		let mut rng = ChaCha20Rng::from_seed([3u8; 32]);
 		let mut sk = [0u8; 32];
 
 		// mint the tokens
 		rng.fill_bytes(&mut sk);
-		let asset_1 = MantaAsset::sample(&commit_param, &sk,&TEST_ASSET, &10, &mut rng);
-		let payload = generate_mint_payload(&asset_1);
+		let asset_1 = MantaAsset::sample(&commit_param, &sk,&TEST_ASSET, &10, &mut rng).unwrap();
+		let payload = generate_mint_payload(&asset_1).unwrap();
 		Module::<T>::mint_private_asset(origin.clone(), payload).unwrap();
 
 		rng.fill_bytes(&mut sk);
-		let asset_2 = MantaAsset::sample(&commit_param, &sk,&TEST_ASSET, &11, &mut rng);
-		let payload = generate_mint_payload(&asset_2);
+		let asset_2 = MantaAsset::sample(&commit_param, &sk,&TEST_ASSET, &11, &mut rng).unwrap();
+		let payload = generate_mint_payload(&asset_2).unwrap();
 		Module::<T>::mint_private_asset(origin, payload).unwrap();
-
-		// build the senders
-		let sender_1 = SenderMetaData::build(hash_param.clone(), asset_1.clone(), &[asset_1.commitment]);
-		let sender_2 = SenderMetaData::build(hash_param.clone(), asset_2.clone(), &[asset_2.commitment]);
 
 		// pre-computed reclaimed circuit for a receiver of 10 assets
 		let reclaim_value = 11;
@@ -230,7 +222,6 @@ benchmarks! {
 			106, 249, 110, 68, 170, 101, 147, 232, 175, 78, 226, 175, 188, 118, 227, 184, 82, 130,
 			83, 31, 242, 84, 80, 37, 24, 137, 59, 34, 19, 99, 111, 95, 137, 229, 212, 56, 239, 146,
 		];
-
 
 	}: reclaim (
 		RawOrigin::Signed(caller.clone()),

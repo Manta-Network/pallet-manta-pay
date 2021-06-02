@@ -21,6 +21,7 @@
 #![cfg(feature = "runtime-benchmarks")]
 
 use crate::{self as pallet_manta_pay, Config};
+use ark_std::{boxed::Box, string::String, vec::Vec};
 use frame_support::parameter_types;
 use sp_core::H256;
 use sp_io;
