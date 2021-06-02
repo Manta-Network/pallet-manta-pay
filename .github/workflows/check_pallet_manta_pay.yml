@@ -46,32 +46,17 @@ jobs:
           rustup target add wasm32-unknown-unknown --toolchain nightly
           rustup component add clippy
           rustup component add rustfmt
-      # - name: Check Formatting
-      #   run: |
-      #     cargo +nightly fmt --all -- --check
-      # - name: Check Clippy
-      #   run: |
-      #     cargo clippy --release --all
-      # - name: Check Build
-      #   run: |
-      #     cargo check --release
-      #     cargo +nightly check --release --features runtime-benchmarks
-      # - name: Run Tests
-      #   run: |
-      #     cargo run --release --bin param_gen
-      #     cargo test --all-features --release
-      # - name: Check Manta Runtime
-      #   run: bash ./scripts/check_manta_runtime.sh
-      #   shell: bash
-      # - name: Install Rustup
-      #   run: |
-      #     git clone https://github.com/Manta-Network/Manta.git
-      #     cd Manta/
-      #     cat ./runtimes/manta/runtime/Cargo.toml
-      #     sed -i "s@pallet-manta-pay = \
-      #     {git='https://github.com/Manta-Network/pallet-manta-pay', \
-      #     branch='calamari', default-features = false }@pallet-manta-pay \
-      #     = {path= '../../../../', default-features = false }@g" \
-      #     ./runtimes/manta/runtime/Cargo.toml
-      #     cat ./runtimes/manta/runtime/Cargo.toml
-      #     cargo build --release --all-features
+      - name: Check Formatting
+        run: |
+          cargo +nightly fmt --all -- --check
+      - name: Check Clippy
+        run: |
+          cargo clippy --release --all
+      - name: Check Build
+        run: |
+          cargo check --release
+          cargo +nightly check --release --features runtime-benchmarks
+      - name: Run Tests
+        run: |
+          cargo run --release --bin param_gen
+          cargo test --all-features --release
