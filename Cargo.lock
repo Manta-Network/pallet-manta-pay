@@ -29,9 +29,9 @@ checksum = "f26201604c87b1e01bd3d98f8d5d9a8fcbb815e8cedb41ffccbeb4bf593a35fe"
 
 [[package]]
 name = "aes"
-version = "0.7.3"
+version = "0.7.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b2333ac5777aaa1beb8589f5374976ae7dc8aa4f09fd21ae3d8662ca97f5247d"
+checksum = "495ee669413bfbe9e8cace80f4d3d78e6d8c8d99579f97fb93bde351b185f2d4"
 dependencies = [
  "cfg-if 1.0.0",
  "cipher",
@@ -1428,7 +1428,7 @@ dependencies = [
  "ark-serialize",
  "ark-std",
  "hkdf",
- "manta-asset",
+ "manta-asset 0.1.0 (git+https://github.com/Manta-Network/manta-asset?branch=manta)",
  "manta-crypto",
  "manta-error",
  "manta-types",
@@ -1440,6 +1440,22 @@ dependencies = [
 name = "manta-asset"
 version = "0.1.0"
 source = "git+https://github.com/Manta-Network/manta-asset?branch=manta#da44f21e4c02acf4965fa49e3ba2854cdda3d420"
+dependencies = [
+ "ark-crypto-primitives",
+ "ark-ed-on-bls12-381",
+ "ark-ff",
+ "ark-serialize",
+ "ark-std",
+ "blake2",
+ "manta-crypto",
+ "manta-error",
+ "parity-scale-codec",
+]
+
+[[package]]
+name = "manta-asset"
+version = "0.1.0"
+source = "git+https://github.com/Manta-Network/manta-types?branch=manta#d093448461bc585b7eb0becac801c6fbc20d4217"
 dependencies = [
  "ark-crypto-primitives",
  "ark-ed-on-bls12-381",
@@ -1487,14 +1503,14 @@ dependencies = [
 [[package]]
 name = "manta-types"
 version = "0.1.0"
-source = "git+https://github.com/Manta-Network/manta-types?branch=manta#2f737daa27a322c5cf4ddec6b4ff47fe33d40c73"
+source = "git+https://github.com/Manta-Network/manta-types?branch=manta#d093448461bc585b7eb0becac801c6fbc20d4217"
 dependencies = [
  "ark-ed-on-bls12-381",
  "ark-groth16",
  "ark-relations",
  "ark-serialize",
  "ark-std",
- "manta-asset",
+ "manta-asset 0.1.0 (git+https://github.com/Manta-Network/manta-types?branch=manta)",
  "manta-crypto",
  "manta-error",
 ]
@@ -1770,7 +1786,7 @@ dependencies = [
  "hkdf",
  "log",
  "manta-api",
- "manta-asset",
+ "manta-asset 0.1.0 (git+https://github.com/Manta-Network/manta-asset?branch=manta)",
  "manta-crypto",
  "manta-error",
  "manta-types",
@@ -2175,11 +2191,10 @@ dependencies = [
 
 [[package]]
 name = "regex-automata"
-version = "0.1.9"
+version = "0.1.10"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ae1ded71d66a4a97f5e961fd0cb25a5f366a42a41570d16a763a69c092c26ae4"
+checksum = "6c230d73fb8d8c1b9c0b3135c5142a8acee3a0558fb8db5cf1cb65f8d7862132"
 dependencies = [
- "byteorder",
  "regex-syntax",
 ]
 
