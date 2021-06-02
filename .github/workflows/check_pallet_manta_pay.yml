@@ -62,5 +62,4 @@ jobs:
       #     cargo test --all-features --release
       - name: Check Manta Runtime
         run: bash ./scripts/check_manta_runtime.sh
-             cat Cargo.toml
         shell: bash
