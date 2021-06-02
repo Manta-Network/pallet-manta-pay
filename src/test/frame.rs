@@ -477,7 +477,6 @@ fn transferring_spent_coin_should_not_work_sender_2() {
 
 		let (_, receivers_processed) = build_receivers(&commit_param, &mut sk, &mut rng, size);
 
-
 		let payload = prepare_private_transfer_payload(
 			&senders,
 			&commit_param,
@@ -783,7 +782,9 @@ fn reclaim_spent_coin_should_not_work_2() {
 		);
 
 		let mut coin_shards = CoinShards::get();
-		coin_shards.update(&receiver.commitment, hash_param.clone()).unwrap();
+		coin_shards
+			.update(&receiver.commitment, hash_param.clone())
+			.unwrap();
 		CoinShards::put(coin_shards);
 
 		assert_noop!(
@@ -1105,7 +1106,7 @@ fn prepare_reclaim_payload(
 	SenderMetaData,
 	SenderMetaData,
 	u64,
-	MantaAssetProcessedReceiver,	
+	MantaAssetProcessedReceiver,
 ) {
 	let (sender_1, sender_2) =
 		build_sender_meta_data(&senders, &hash_param, sender_1_idx, sender_2_idx);
