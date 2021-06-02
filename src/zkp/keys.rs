@@ -24,7 +24,6 @@ use ark_serialize::CanonicalSerialize;
 use ark_std::rand::{RngCore, SeedableRng};
 use hkdf::Hkdf;
 use manta_asset::*;
-pub use manta_crypto::MantaSerDes;
 use manta_crypto::*;
 use rand_chacha::ChaCha20Rng;
 use sha2::Sha512Trunc256;
@@ -60,13 +59,13 @@ pub fn write_zkp_keys() {
 		manta_transfer_zkp_key_gen(&hash_param_seed, &commit_param_seed, &rng_seed);
 	let mut file = File::create("transfer_pk.bin").unwrap();
 	file.write_all(transfer_pk_bytes.as_mut()).unwrap();
-	println!("transfer circuit pk length: {}", transfer_pk_bytes.len());
+	// println!("transfer circuit pk length: {}", transfer_pk_bytes.len());
 
 	let mut reclaim_pk_bytes =
 		manta_reclaim_zkp_key_gen(&hash_param_seed, &commit_param_seed, &rng_seed);
 	let mut file = File::create("reclaim_pk.bin").unwrap();
 	file.write_all(reclaim_pk_bytes.as_mut()).unwrap();
-	println!("reclaim circuit pk length: {}", reclaim_pk_bytes.len());
+	// println!("reclaim circuit pk length: {}", reclaim_pk_bytes.len());
 }
 
 // Generate ZKP keys for `private_transfer` circuit.

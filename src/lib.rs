@@ -120,8 +120,7 @@ pub use zkp::*;
 pub mod weights;
 pub use weights::WeightInfo;
 
-use ark_std::io::Cursor;
-use ark_std::vec::Vec;
+use ark_std::{io::Cursor, vec::Vec};
 use frame_support::{decl_error, decl_event, decl_module, decl_storage, ensure};
 use frame_system::ensure_signed;
 pub use ledger::LedgerSharding;
@@ -140,19 +139,9 @@ use rand_chacha::{
 	rand_core::{RngCore, SeedableRng},
 	ChaCha20Rng,
 };
-use std::{
-	fs::File,
-	io::{Read, Write},
-};
 extern crate web_sys;
 use wasm_bindgen::prelude::*;
 use web_sys::console;
-
-#[wasm_bindgen]
-pub fn get_js_zkp_senders() {}
-
-#[wasm_bindgen]
-pub fn get_js_zkp_receivers() {}
 
 #[wasm_bindgen]
 pub fn init_panic_hook() {
@@ -274,15 +263,6 @@ pub fn js_zkp(
 	assert!(transfer_data.verify(&transfer_vk));
 	return Ok(payload.to_vec());
 }
-
-fn formating(input: Vec<u8>) -> String {
-	let mut res = "0x".to_string();
-	for e in input {
-		res = [res, format! {"{:02x}", e}].concat();
-	}
-	res
-}
-
 /// An abstract struct for manta-pay.
 pub struct MantaPay;
 

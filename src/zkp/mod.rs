@@ -19,7 +19,6 @@
 mod circuit;
 mod gadget;
 mod keys;
-mod serdes;
 mod verifier;
 
 pub use circuit::{ReclaimCircuit, TransferCircuit};
