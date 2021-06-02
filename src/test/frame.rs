@@ -166,7 +166,7 @@ fn test_mint_should_work() {
 		assert_eq!(TotalSupply::get(TEST_ASSET), 1000);
 		assert_eq!(PoolBalance::get(TEST_ASSET), 10);
 		let coin_shards = CoinShards::get();
-		assert!(coin_shards.exist(&asset.commitment));
+		assert!(coin_shards.exist(&asset.utxo));
 		let vn_list = VNList::get();
 		assert_eq!(vn_list.len(), 0);
 	});
@@ -440,7 +440,7 @@ fn transferring_existing_coins_should_not_work() {
 
 			if i == 0 {
 				coin_shards
-					.update(&receiver_1.commitment, hash_param.clone())
+					.update(&receiver_1.utxo, hash_param.clone())
 					.unwrap();
 				CoinShards::put(coin_shards);
 
@@ -450,7 +450,7 @@ fn transferring_existing_coins_should_not_work() {
 				);
 			} else {
 				coin_shards
-					.update(&receiver_2.commitment, hash_param.clone())
+					.update(&receiver_2.utxo, hash_param.clone())
 					.unwrap();
 				CoinShards::put(coin_shards);
 
@@ -494,17 +494,17 @@ fn transferring_spent_coin_should_not_work_sender_2() {
 		let receiver_2 = receivers_processed[2].clone();
 
 		coin_shards
-			.update(&receiver_1.commitment, hash_param.clone())
+			.update(&receiver_1.utxo, hash_param.clone())
 			.unwrap();
 		coin_shards
-			.update(&receiver_2.commitment, hash_param.clone())
+			.update(&receiver_2.utxo, hash_param.clone())
 			.unwrap();
 
 		// build sender meta data
 		let sender_1 = senders[2].clone();
 		let sender_2 = senders[0].clone();
-		let shard_index_1 = sender_1.commitment[0] as usize;
-		let shard_index_2 = sender_2.commitment[0] as usize;
+		let shard_index_1 = sender_1.utxo[0] as usize;
+		let shard_index_2 = sender_2.utxo[0] as usize;
 		let list_1 = coin_shards.shard[shard_index_1].list.clone();
 		let sender_1 = sender_1.build(&hash_param, &list_1).unwrap();
 		let list_2 = coin_shards.shard[shard_index_2].list.clone();
@@ -755,7 +755,7 @@ fn mint_tokens_helper(size: usize) -> Vec<MantaAsset> {
 		// sanity checks
 		assert_eq!(PoolBalance::get(TEST_ASSET), pool);
 		let coin_shards = CoinShards::get();
-		assert!(coin_shards.exist(&asset.commitment));
+		assert!(coin_shards.exist(&asset.utxo));
 		senders.push(asset);
 	}
 	senders
@@ -808,7 +808,7 @@ fn transfer_test_helper(iter: usize) {
 		let mut ciphertext_1 = [0u8; 48];
 		ciphertext_1[0..16].copy_from_slice(receiver_1.ciphertext.as_ref());
 		ciphertext_1[16..48].copy_from_slice(receiver_1.sender_pk.as_ref());
-		let sk_1 = receivers_full[i * 2 + 1].spend.ecsk.clone();
+		let sk_1 = receivers_full[i * 2 + 1].spending_info.ecsk.clone();
 		assert_eq!(
 			<MantaCrypto as Ecies>::decrypt(&sk_1, &ciphertext_1),
 			receiver_1.value
@@ -817,7 +817,7 @@ fn transfer_test_helper(iter: usize) {
 		let mut ciphertext_2 = [0u8; 48];
 		ciphertext_2[0..16].copy_from_slice(receiver_2.ciphertext.as_ref());
 		ciphertext_2[16..48].copy_from_slice(receiver_2.sender_pk.as_ref());
-		let sk_2 = receivers_full[i * 2].spend.ecsk.clone();
+		let sk_2 = receivers_full[i * 2].spending_info.ecsk.clone();
 		assert_eq!(
 			<MantaCrypto as Ecies>::decrypt(&sk_2, &ciphertext_2),
 			receiver_2.value
@@ -830,8 +830,8 @@ fn transfer_test_helper(iter: usize) {
 	let coin_shards = CoinShards::get();
 	let vn_list = VNList::get();
 	for i in 0usize..size {
-		assert!(coin_shards.exist(&senders[i].commitment));
-		assert!(coin_shards.exist(&receivers_processed[i].commitment));
+		assert!(coin_shards.exist(&senders[i].utxo));
+		assert!(coin_shards.exist(&receivers_processed[i].utxo));
 		assert_eq!(vn_list[i], senders[i].void_number);
 	}
 }
@@ -923,7 +923,7 @@ fn prepare_reclaim_payload(
 	rng.fill_bytes(&mut sk[..]);
 	let receiver_full =
 		MantaAssetFullReceiver::sample(&commit_param, &sk, &TEST_ASSET, &(), rng).unwrap();
-	let receiver = receiver_full.prepared.process(&10, rng).unwrap();
+	let receiver = receiver_full.shielded_address.process(&10, rng).unwrap();
 
 	let reclaim_value =
 		sender_1.asset.priv_info.value + sender_2.asset.priv_info.value - receiver.value;
@@ -967,8 +967,8 @@ fn build_sender_meta_data(
 
 	let sender_1 = senders[idx * 2].clone();
 	let sender_2 = senders[idx * 2 + 1].clone();
-	let shard_index_1 = sender_1.commitment[0] as usize;
-	let shard_index_2 = sender_2.commitment[0] as usize;
+	let shard_index_1 = sender_1.utxo[0] as usize;
+	let shard_index_2 = sender_2.utxo[0] as usize;
 	let list_1 = coin_shards.shard[shard_index_1].list.clone();
 	let out_sender_1 = sender_1.build(&hash_param, &list_1).unwrap();
 	let list_2 = coin_shards.shard[shard_index_2].list.clone();
@@ -995,7 +995,7 @@ fn build_receivers(
 		let receiver_full =
 			MantaAssetFullReceiver::sample(&commit_param, &sk, &TEST_ASSET, &(), rng).unwrap();
 		let receiver = receiver_full
-			.prepared
+			.shielded_address
 			.process(&(i as u64 + 10), rng)
 			.unwrap();
 		receivers_full.push(receiver_full);

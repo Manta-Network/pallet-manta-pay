@@ -124,7 +124,7 @@ use ledger::LedgerSharding;
 use manta_api::*;
 use manta_asset::SanityCheck;
 use manta_crypto::*;
-use manta_types::*;
+use manta_data::*;
 use sp_runtime::{
 	traits::{StaticLookup, Zero},
 	DispatchError,
