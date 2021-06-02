@@ -45,6 +45,6 @@ jobs:
           rustup update nightly
           rustup target add wasm32-unknown-unknown --toolchain nightly
 
-      # - name: Check Manta Runtime
-      #   run: bash ./scripts/check_manta_runtime.sh
-      #   shell: bash
+      - name: Check Manta Runtime
+        run: bash ./scripts/check_manta_runtime.sh
+        shell: bash
