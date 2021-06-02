@@ -120,14 +120,168 @@ pub use zkp::*;
 pub mod weights;
 pub use weights::WeightInfo;
 
+use ark_std::io::Cursor;
 use ark_std::vec::Vec;
 use frame_support::{decl_error, decl_event, decl_module, decl_storage, ensure};
 use frame_system::ensure_signed;
-use ledger::LedgerSharding;
+pub use ledger::LedgerSharding;
 use manta_asset::SanityCheck;
 use manta_crypto::*;
 use sp_runtime::traits::{StaticLookup, Zero};
 use sp_std::prelude::*;
+
+use crate::payload::SenderData;
+use ark_serialize::CanonicalDeserialize;
+use data_encoding::BASE64;
+use manta_asset::{
+	MantaAsset, MantaAssetFullReceiver, MantaAssetProcessedReceiver, Process, Sampling, TEST_ASSET,
+};
+use rand_chacha::{
+	rand_core::{RngCore, SeedableRng},
+	ChaCha20Rng,
+};
+use std::{
+	fs::File,
+	io::{Read, Write},
+};
+extern crate web_sys;
+use wasm_bindgen::prelude::*;
+use web_sys::console;
+
+#[wasm_bindgen]
+pub fn get_js_zkp_senders() {}
+
+#[wasm_bindgen]
+pub fn get_js_zkp_receivers() {}
+
+#[wasm_bindgen]
+pub fn init_panic_hook() {
+	unsafe {
+		console_error_panic_hook::set_once();
+	}
+}
+
+pub struct Timer<'a> {
+	name: &'a str,
+}
+
+impl<'a> Timer<'a> {
+	pub fn new(name: &'a str) -> Timer<'a> {
+		unsafe {
+			console::time_with_label(name);
+			Timer { name }
+		}
+	}
+}
+
+impl<'a> Drop for Timer<'a> {
+	fn drop(&mut self) {
+		unsafe {
+			console::time_end_with_label(self.name);
+		}
+	}
+}
+
+#[wasm_bindgen]
+pub fn js_zkp(
+	transfer_pk_bytes: &[u8], // Groth16Pk all good on rust side?
+	// sender_1: &[u8],    // MantaAsset because I can't serialize SenderMetaData
+	// sender_2: &[u8],    // MantaAsset because I can't serialize SenderMetaData
+	receiver_1_bytes: &[u8], // MantaAssetProcessedReceiver
+	receiver_2_bytes: &[u8], // MantaAssetProcessedReceiver
+) -> Result<Vec<u8>, JsValue> {
+	let _timer = Timer::new("Universe::tick");
+
+	unsafe {
+		web_sys::console::log_1(&"Hello from js zkp wasm!".into());
+	}
+
+	// constants
+	let mut rng = ChaCha20Rng::from_seed([3u8; 32]);
+	let mut sk = [0u8; 32];
+	let hash_param = HashParam::deserialize(HASH_PARAM.data);
+	let commit_param = CommitmentParam::deserialize(COMMIT_PARAM.data);
+	let transfer_vk = TRANSFER_PK;
+
+	// load the ZKP keys
+	let buf: &[u8] = transfer_pk_bytes.as_ref();
+	let transfer_pk = Groth16Pk::deserialize_unchecked(buf).unwrap();
+
+	unsafe {
+		web_sys::console::log_1(&"Loaded transfer pk".into());
+	}
+
+	// load the receivers
+	let receiver_1_reader = Cursor::new(receiver_1_bytes);
+	let receiver_1 = MantaAssetProcessedReceiver::deserialize(receiver_1_reader);
+	let receiver_2_reader = Cursor::new(receiver_2_bytes);
+	let receiver_2 = MantaAssetProcessedReceiver::deserialize(receiver_2_reader);
+
+	unsafe {
+		web_sys::console::log_1(&"Loaded receivers".into());
+	}
+
+	// build sender
+	let mut assets = Vec::new();
+	let mut senders = Vec::new();
+	let mut shards = Shards::default();
+	for i in 1..=4 {
+		// generate the i-th minting data
+		rng.fill_bytes(&mut sk);
+		let asset = MantaAsset::sample(&commit_param, &sk, &TEST_ASSET, &10, &mut rng);
+		let payload = generate_mint_payload(&asset);
+		shards.update(&asset.commitment, hash_param.clone());
+
+		let sender = SenderMetaData::build(
+			hash_param.clone(),
+			asset.clone(),
+			&shards.shard[asset.commitment[0] as usize].list,
+		);
+
+		senders.push(sender);
+		assets.push(asset);
+	}
+
+	unsafe {
+		web_sys::console::log_1(&"Built senders".into());
+	}
+
+	unsafe {
+		console::time_with_label("timer");
+	}
+
+	// make the transfer payload
+	let payload = generate_private_transfer_payload(
+		commit_param.clone(),
+		hash_param.clone(),
+		&transfer_pk,
+		senders[0].clone(),
+		senders[1].clone(),
+		receiver_1.clone(),
+		receiver_2.clone(),
+		&mut rng,
+	);
+
+	unsafe {
+		console::time_end_with_label("timer");
+	}
+
+	unsafe {
+		web_sys::console::log_1(&"Built payload".into());
+	}
+	// sanity checks
+	let transfer_data = PrivateTransferData::deserialize(payload.as_ref());
+	assert!(transfer_data.verify(&transfer_vk));
+	return Ok(payload.to_vec());
+}
+
+fn formating(input: Vec<u8>) -> String {
+	let mut res = "0x".to_string();
+	for e in input {
+		res = [res, format! {"{:02x}", e}].concat();
+	}
+	res
+}
 
 /// An abstract struct for manta-pay.
 pub struct MantaPay;

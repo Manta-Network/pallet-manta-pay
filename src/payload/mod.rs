@@ -148,6 +148,10 @@ pub fn generate_private_transfer_payload<R: RngCore + CryptoRng>(
 /// Outputs:
 ///     - a data struct, once serialized, can be passed to the
 ///       private_transfer extrinsic.
+extern crate web_sys;
+use wasm_bindgen::prelude::*;
+use web_sys::console;
+
 #[allow(clippy::too_many_arguments)]
 fn generate_private_transfer_struct<R: RngCore + CryptoRng>(
 	commit_param: CommitmentParam,
@@ -160,6 +164,12 @@ fn generate_private_transfer_struct<R: RngCore + CryptoRng>(
 	rng: &mut R,
 ) -> PrivateTransferData {
 	// generate circuit
+
+	unsafe {
+		web_sys::console::log_1(&"in building circuit".into());
+		let _timer = Timer::new("build_circuit");
+	}
+
 	let circuit = TransferCircuit {
 		commit_param,
 		hash_param,
@@ -171,17 +181,40 @@ fn generate_private_transfer_struct<R: RngCore + CryptoRng>(
 		receiver_2: receiver_2.clone(),
 	};
 
+	unsafe {
+		web_sys::console::log_1(&"built circuit".into());
+		console::time_end_with_label("build_circuit");
+	}
+
+	unsafe {
+		web_sys::console::log_1(&"generating proof".into());
+		let _timer = Timer::new("zkp");
+	}
 	// generate ZKP
 	let proof = create_random_proof(circuit, &pk, rng).unwrap();
+
+	unsafe {
+		web_sys::console::log_1(&"finished generating proof".into());
+		console::time_end_with_label("zkp");
+	}
+
+	unsafe {
+		web_sys::console::log_1(&"serializing proof".into());
+		let _timer = Timer::new("zkp_serialize");
+	}
 	let mut proof_bytes = [0u8; 192];
 	proof.serialize(proof_bytes.as_mut()).unwrap();
-
 	// serialize the roots
 	let mut root_1 = [0u8; 32];
 	sender_1.root.serialize(root_1.as_mut()).unwrap();
 
 	let mut root_2 = [0u8; 32];
 	sender_2.root.serialize(root_2.as_mut()).unwrap();
+
+	unsafe {
+		web_sys::console::log_1(&"finished serializing proof".into());
+		console::time_end_with_label("zkp_serialize");
+	}
 
 	PrivateTransferData {
 		sender_1: SenderData {

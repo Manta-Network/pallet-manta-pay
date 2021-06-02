@@ -11,6 +11,9 @@ readme = "README.md"
 [package.metadata.docs.rs]
 targets = ["x86_64-unknown-linux-gnu"]
 
+[lib]
+crate-type = ["cdylib", "rlib"]
+
 [dependencies]
 # Substrate dependencies
 frame-benchmarking = { default-features = false, version = '3.0.0', optional = true }
@@ -22,6 +25,10 @@ sp-std = { default-features = false, version = '3.0.0' }
 # Other Dependencies
 codec = { package = "parity-scale-codec", version = "2.0.0", default-features = false, features = ["derive"] }
 data-encoding = { version = "2.3.2", default-features = false, features = [ "alloc" ] }
+wasm-bindgen = { version = "0.2.74", default-features = false }
+getrandom = { version = "0.2", features = ["js"] }
+web-sys = { version = "0.3.51", default-features = false, features = [ "console"] }
+console_error_panic_hook = "0.1.6"
 
 # Arkworks dependencies
 ark-ed-on-bls12-381 = { version = "0.2.0", default-features = false, features = [ "r1cs" ] }
@@ -44,7 +51,7 @@ manta-crypto = { branch = "master", git = "https://github.com/Manta-Network/mant
 manta-asset = { branch = "master", git = "https://github.com/Manta-Network/manta-asset", default-features = false }
 
 [dev-dependencies]
-# benchmarking 
+# benchmarking
 bencher = "0.1.5"
 criterion = "0.3.4"
 
