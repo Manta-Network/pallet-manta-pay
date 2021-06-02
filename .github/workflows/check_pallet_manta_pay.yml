@@ -46,20 +46,21 @@ jobs:
           rustup target add wasm32-unknown-unknown --toolchain nightly
           rustup component add clippy
           rustup component add rustfmt
-      - name: Check Formatting
-        run: |
-          cargo +nightly fmt --all -- --check
-      - name: Check Clippy
-        run: |
-          cargo clippy --release --all
-      - name: Check Build
-        run: |
-          cargo check --release
-          cargo +nightly check --release --features runtime-benchmarks
-      - name: Run Tests
-        run: |
-          cargo run --release --bin param_gen
-          cargo test --all-features --release
+      # - name: Check Formatting
+      #   run: |
+      #     cargo +nightly fmt --all -- --check
+      # - name: Check Clippy
+      #   run: |
+      #     cargo clippy --release --all
+      # - name: Check Build
+      #   run: |
+      #     cargo check --release
+      #     cargo +nightly check --release --features runtime-benchmarks
+      # - name: Run Tests
+      #   run: |
+      #     cargo run --release --bin param_gen
+      #     cargo test --all-features --release
       - name: Check Manta Runtime
         run: bash ./scripts/check_manta_runtime.sh
+             cat Cargo.toml
         shell: bash
