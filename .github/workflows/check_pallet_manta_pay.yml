@@ -60,3 +60,7 @@ jobs:
         run: |
           cargo run --release --bin param_gen
           cargo test --all-features --release
+      - name: Check Manta Runtime
+        run: bash ./scripts/check_manta_runtime.sh
+        shell: bash
+
