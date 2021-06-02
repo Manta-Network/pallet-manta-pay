@@ -63,4 +63,3 @@ jobs:
       - name: Check Manta Runtime
         run: bash ./scripts/check_manta_runtime.sh
         shell: bash
-
