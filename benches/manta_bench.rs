@@ -101,12 +101,18 @@ fn bench_transfer_verify(c: &mut Criterion) {
 	rng.fill_bytes(&mut sk);
 	let receiver_1_full =
 		MantaAssetFullReceiver::sample(&commit_param, &sk, &TEST_ASSET, &(), &mut rng).unwrap();
-	let receiver_1 = receiver_1_full.shielded_address.process(&150, &mut rng).unwrap();
+	let receiver_1 = receiver_1_full
+		.shielded_address
+		.process(&150, &mut rng)
+		.unwrap();
 
 	rng.fill_bytes(&mut sk);
 	let receiver_2_full =
 		MantaAssetFullReceiver::sample(&commit_param, &sk, &TEST_ASSET, &(), &mut rng).unwrap();
-	let receiver_2 = receiver_2_full.shielded_address.process(&250, &mut rng).unwrap();
+	let receiver_2 = receiver_2_full
+		.shielded_address
+		.process(&250, &mut rng)
+		.unwrap();
 
 	let circuit = TransferCircuit {
 		commit_param: commit_param.clone(),
@@ -283,12 +289,18 @@ fn bench_transfer_prove(c: &mut Criterion) {
 	rng.fill_bytes(&mut sk);
 	let receiver_1_full =
 		MantaAssetFullReceiver::sample(&commit_param, &sk, &TEST_ASSET, &(), &mut rng).unwrap();
-	let receiver_1 = receiver_1_full.shielded_address.process(&150, &mut rng).unwrap();
+	let receiver_1 = receiver_1_full
+		.shielded_address
+		.process(&150, &mut rng)
+		.unwrap();
 
 	rng.fill_bytes(&mut sk);
 	let receiver_2_full =
 		MantaAssetFullReceiver::sample(&commit_param, &sk, &TEST_ASSET, &(), &mut rng).unwrap();
-	let receiver_2 = receiver_2_full.shielded_address.process(&250, &mut rng).unwrap();
+	let receiver_2 = receiver_2_full
+		.shielded_address
+		.process(&250, &mut rng)
+		.unwrap();
 
 	let circuit = TransferCircuit {
 		commit_param: commit_param.clone(),
@@ -347,7 +359,10 @@ fn bench_reclaim_verify(c: &mut Criterion) {
 	rng.fill_bytes(&mut sk);
 	let receiver_full =
 		MantaAssetFullReceiver::sample(&commit_param, &sk, &TEST_ASSET, &(), &mut rng).unwrap();
-	let receiver = receiver_full.shielded_address.process(&150, &mut rng).unwrap();
+	let receiver = receiver_full
+		.shielded_address
+		.process(&150, &mut rng)
+		.unwrap();
 
 	let circuit = ReclaimCircuit {
 		commit_param: commit_param.clone(),
@@ -433,7 +448,10 @@ fn bench_reclaim_prove(c: &mut Criterion) {
 	rng.fill_bytes(&mut sk);
 	let receiver_full =
 		MantaAssetFullReceiver::sample(&commit_param, &sk, &TEST_ASSET, &(), &mut rng).unwrap();
-	let receiver = receiver_full.shielded_address.process(&150, &mut rng).unwrap();
+	let receiver = receiver_full
+		.shielded_address
+		.process(&150, &mut rng)
+		.unwrap();
 
 	let circuit = ReclaimCircuit {
 		commit_param: commit_param.clone(),
