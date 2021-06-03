@@ -57,7 +57,7 @@ serde = { default-features = false, version = '1' }
 sp-core = { default-features = false, version = '3.0.0' }
 sp-io = { default-features = false, version = '3.0.0' }
 
-manta-api = { branch = "manta", git = "https://github.com/Manta-Network/manta-api", default-features = false }
+manta-api = { branch = "manta", git = "https://github.com/Manta-Network/manta-api", default-features = false, features = [ "std" ] }
 
 [[bench]]
 name = "manta_bench"
@@ -75,5 +75,4 @@ runtime-benchmarks = [
 std = [
 	"frame-benchmarking/std",
 	"frame-system/std",
-	"manta-api/std"
 ]
