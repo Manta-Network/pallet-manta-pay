@@ -19,6 +19,10 @@ use crate::*;
 use ark_serialize::CanonicalDeserialize;
 use ark_std::rand::{RngCore, SeedableRng};
 use frame_support::{assert_noop, assert_ok, parameter_types};
+use manta_api::{
+	generate_mint_payload, generate_private_transfer_payload, generate_reclaim_payload,
+	write_zkp_keys,
+};
 use manta_asset::*;
 use manta_crypto::*;
 use rand_chacha::ChaCha20Rng;
@@ -27,6 +31,7 @@ use sp_runtime::{
 	testing::Header,
 	traits::{BlakeTwo256, IdentityLookup},
 };
+use std::sync::Once;
 use std::{boxed::Box, fs::File, io::prelude::*, string::String};
 
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Test>;
@@ -944,7 +949,20 @@ fn prepare_reclaim_payload(
 	(payload, sender_1, sender_2, reclaim_value)
 }
 
+
+
+
+static INIT: Once = Once::new();
+fn manta_zkp_key_generation() {
+	INIT.call_once(|| {
+		write_zkp_keys().unwrap()
+    });
+	
+}
+
 fn load_zkp_keys(file_name: &str) -> Groth16Pk {
+	manta_zkp_key_generation();
+
 	let mut file = File::open(file_name).unwrap();
 	let mut transfer_key_bytes: Vec<u8> = vec![];
 	file.read_to_end(&mut transfer_key_bytes).unwrap();

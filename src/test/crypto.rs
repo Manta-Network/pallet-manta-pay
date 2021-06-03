@@ -22,6 +22,7 @@ use ark_groth16::{create_random_proof, generate_random_parameters, verify_proof}
 use ark_relations::r1cs::{ConstraintSynthesizer, ConstraintSystem};
 use ark_serialize::CanonicalDeserialize;
 use ark_std::rand::{RngCore, SeedableRng};
+use manta_api::{ReclaimCircuit, TransferCircuit};
 use manta_asset::*;
 use manta_crypto::*;
 use rand_chacha::ChaCha20Rng;

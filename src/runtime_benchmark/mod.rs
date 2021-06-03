@@ -18,7 +18,6 @@
 
 #![cfg(feature = "runtime-benchmarks")]
 
-#[cfg(test)]
 mod bench_composite;
 
 use super::*;
@@ -30,6 +29,7 @@ use ark_std::{
 };
 use frame_benchmarking::{account, benchmarks, whitelisted_caller};
 use frame_system::{EventRecord, RawOrigin};
+use manta_api::generate_mint_payload;
 use manta_asset::{MantaAsset, Sampling, TEST_ASSET};
 use rand_chacha::ChaCha20Rng;
 
