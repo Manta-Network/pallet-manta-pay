@@ -31,8 +31,7 @@ use sp_runtime::{
 	testing::Header,
 	traits::{BlakeTwo256, IdentityLookup},
 };
-use std::sync::Once;
-use std::{boxed::Box, fs::File, io::prelude::*, string::String};
+use std::{boxed::Box, fs::File, io::prelude::*, string::String, sync::Once};
 
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Test>;
 type Block = frame_system::mocking::MockBlock<Test>;
@@ -1140,15 +1139,9 @@ fn prepare_reclaim_payload(
 	(payload, sender_1, sender_2, reclaim_value, receiver)
 }
 
-
-
-
 static INIT: Once = Once::new();
 fn manta_zkp_key_generation() {
-	INIT.call_once(|| {
-		write_zkp_keys().unwrap()
-    });
-	
+	INIT.call_once(|| write_zkp_keys().unwrap());
 }
 
 fn load_zkp_keys(file_name: &str) -> Groth16Pk {
