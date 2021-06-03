@@ -100,8 +100,8 @@
 //! * [`Support`](../frame_support/index.html)
 
 // Ensure we're `no_std` when compiling for Wasm.
-#![cfg_attr(not(feature = "std"), no_std)]
-// #![no_std]
+// #![cfg_attr(not(feature = "std"), no_std)]
+#![no_std]
 
 #[cfg(test)]
 mod runtime_benchmark;
