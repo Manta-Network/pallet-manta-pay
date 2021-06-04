@@ -21,7 +21,7 @@
 mod bench_composite;
 
 use super::*;
-use ark_std::{boxed::Box, primitive::str, vec::Vec};
+use ark_std::{boxed::Box, primitive::str, vec, vec::Vec};
 use frame_benchmarking::{account, benchmarks, whitelisted_caller};
 use frame_system::{EventRecord, RawOrigin};
 use manta_asset::TEST_ASSET;
