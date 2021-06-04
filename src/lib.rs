@@ -103,7 +103,7 @@
 // #![cfg_attr(not(feature = "std"), no_std)]
 #![no_std]
 
-#[cfg(test)]
+#![cfg(feature = "runtime-benchmarks")]
 mod runtime_benchmark;
 
 #[cfg(test)]

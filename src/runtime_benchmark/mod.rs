@@ -16,8 +16,7 @@
 
 //! manta-pay pallet benchmarking.
 
-#![cfg(feature = "runtime-benchmarks")]
-
+#![cfg(test)]
 mod bench_composite;
 
 use super::*;
