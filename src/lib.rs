@@ -100,10 +100,9 @@
 //! * [`Support`](../frame_support/index.html)
 
 // Ensure we're `no_std` when compiling for Wasm.
-#![cfg_attr(not(feature = "std"), no_std)]
-// #![no_std]
-
-mod ledger;
+// #![cfg_attr(not(feature = "std"), no_std)]
+#![no_std]
+#![cfg(feature = "runtime-benchmarks")]
 mod runtime_benchmark;
 
 #[cfg(test)]
@@ -112,7 +111,6 @@ mod test;
 #[macro_use]
 extern crate std;
 
-pub use ledger::{Shard, Shards};
 pub use manta_crypto::MantaSerDes;
 pub mod weights;
 pub use weights::WeightInfo;
@@ -120,11 +118,10 @@ pub use weights::WeightInfo;
 use ark_std::vec::Vec;
 use frame_support::{decl_error, decl_event, decl_module, decl_storage, ensure};
 use frame_system::ensure_signed;
-use ledger::LedgerSharding;
-use manta_api::*;
 use manta_asset::SanityCheck;
 use manta_crypto::*;
-use manta_types::*;
+use manta_data::*;
+use manta_ledger::{LedgerSharding, MantaPrivateAssetLedger};
 use sp_runtime::{
 	traits::{StaticLookup, Zero},
 	DispatchError,
@@ -232,7 +229,7 @@ decl_module! {
 			Self::deposit_event(RawEvent::Issued(asset_id, origin.clone(), total));
 
 			// coin_shards are 256 lists of commitments
-			let coin_shards = Shards::default();
+			let coin_shards = MantaPrivateAssetLedger::default();
 			CoinShards::put(coin_shards);
 
 			// initialize the asset with `total` number of supplies
@@ -726,7 +723,7 @@ decl_storage! {
 		/// List of Coins that has ever been created.
 		/// We employ a sharding system to host all the coins
 		/// for better concurrency.
-		pub CoinShards get(fn coin_shards): Shards;
+		pub CoinShards get(fn coin_shards): MantaPrivateAssetLedger;
 
 		/// List of encrypted values.
 		pub EncValueList get(fn enc_value_list): Vec<[u8; 16]>;

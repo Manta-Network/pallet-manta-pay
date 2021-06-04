@@ -25,27 +25,14 @@ data-encoding = { version = "2.3.2", default-features = false, features = [ "all
 log = { version = "0.4.14", default-features = false }
 
 # Arkworks dependencies
-ark-ed-on-bls12-381 = { version = "0.2.0", default-features = false, features = [ "r1cs" ] }
-ark-bls12-381 = { version = "0.2.0", default-features = false, features = [ "curve" ] }
-ark-crypto-primitives = { version = "0.2.0", default-features = false, features = [ "r1cs" ] }
-ark-ff = { version = "0.2.0", default-features = false }
 ark-std = { version = "0.2.0", default-features = false }
-ark-groth16 = { version = "0.2.0", default-features = false, features = [ "r1cs" ] }
-ark-r1cs-std = { version = "0.2.0", default-features = false }
-ark-relations = { version = "0.2.0", default-features = false }
-ark-serialize = { version = "0.2.0", default-features = false, features = [ "derive" ] }
-
-# Additional cryptography dependencies
-rand_chacha = { version = "0.2.0", default-features = false }
-hkdf = { version = "0.11", default-features = false }
-sha2 = { version = "0.9.3", default-features = false }
 
 # Manta Dependencies
+manta-asset = { branch = "manta", git = "https://github.com/Manta-Network/manta-types", default-features = false }
 manta-crypto = { branch = "manta", git = "https://github.com/Manta-Network/manta-crypto", default-features = false }
-manta-asset = { branch = "manta", git = "https://github.com/Manta-Network/manta-asset", default-features = false }
+manta-data = { branch = "manta", git = "https://github.com/Manta-Network/manta-types", default-features = false }
 manta-error = { branch = "manta", git = "https://github.com/Manta-Network/manta-error", default-features = false }
-manta-types = { branch = "manta", git = "https://github.com/Manta-Network/manta-types", default-features = false }
-manta-api = { branch = "manta", git = "https://github.com/Manta-Network/manta-api", default-features = false }
+manta-ledger = { branch = "manta", git = "https://github.com/Manta-Network/manta-types", default-features = false }
 
 [dev-dependencies]
 # benchmarking 
@@ -56,6 +43,17 @@ criterion = "0.3.4"
 serde = { default-features = false, version = '1' }
 sp-core = { default-features = false, version = '3.0.0' }
 sp-io = { default-features = false, version = '3.0.0' }
+
+ark-bls12-381 = { version = "0.2.0", default-features = false, features = [ "curve" ] }
+ark-crypto-primitives = { version = "0.2.0", default-features = false, features = [ "r1cs" ] }
+ark-ed-on-bls12-381 = { version = "0.2.0", default-features = false, features = [ "r1cs" ] }
+ark-groth16 = { version = "0.2.0", default-features = false, features = [ "r1cs" ] }
+ark-ff = { version = "0.2.0", default-features = false }
+ark-relations = { version = "0.2.0", default-features = false }
+ark-serialize = { version = "0.2.0", default-features = false, features = [ "derive" ] }
+
+rand_chacha = { version = "0.2.0", default-features = false }
+manta-api = { branch = "manta", git = "https://github.com/Manta-Network/manta-api", default-features = false, features = [ "std" ] }
 
 [[bench]]
 name = "manta_bench"
@@ -73,5 +71,4 @@ runtime-benchmarks = [
 std = [
 	"frame-benchmarking/std",
 	"frame-system/std",
-	"manta-api/std"
 ]

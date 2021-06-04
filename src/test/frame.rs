@@ -19,6 +19,10 @@ use crate::*;
 use ark_serialize::CanonicalDeserialize;
 use ark_std::rand::{RngCore, SeedableRng};
 use frame_support::{assert_noop, assert_ok, parameter_types};
+use manta_api::{
+	generate_mint_payload, generate_private_transfer_payload, generate_reclaim_payload,
+	write_zkp_keys,
+};
 use manta_asset::*;
 use manta_crypto::*;
 use rand_chacha::ChaCha20Rng;
@@ -27,7 +31,7 @@ use sp_runtime::{
 	testing::Header,
 	traits::{BlakeTwo256, IdentityLookup},
 };
-use std::{boxed::Box, fs::File, io::prelude::*, string::String};
+use std::{boxed::Box, fs::File, io::prelude::*, string::String, sync::Once};
 
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Test>;
 type Block = frame_system::mocking::MockBlock<Test>;
@@ -166,7 +170,7 @@ fn test_mint_should_work() {
 		assert_eq!(TotalSupply::get(TEST_ASSET), 1000);
 		assert_eq!(PoolBalance::get(TEST_ASSET), 10);
 		let coin_shards = CoinShards::get();
-		assert!(coin_shards.exist(&asset.commitment));
+		assert!(coin_shards.exist(&asset.utxo));
 		let vn_list = VNList::get();
 		assert_eq!(vn_list.len(), 0);
 	});
@@ -442,7 +446,7 @@ fn transferring_existing_coins_should_not_work() {
 
 			if i == 0 {
 				coin_shards
-					.update(&receiver_1.commitment, hash_param.clone())
+					.update(&receiver_1.utxo, hash_param.clone())
 					.unwrap();
 				CoinShards::put(coin_shards);
 
@@ -452,7 +456,7 @@ fn transferring_existing_coins_should_not_work() {
 				);
 			} else {
 				coin_shards
-					.update(&receiver_2.commitment, hash_param.clone())
+					.update(&receiver_2.utxo, hash_param.clone())
 					.unwrap();
 				CoinShards::put(coin_shards);
 
@@ -783,7 +787,7 @@ fn reclaim_spent_coin_should_not_work_2() {
 
 		let mut coin_shards = CoinShards::get();
 		coin_shards
-			.update(&receiver.commitment, hash_param.clone())
+			.update(&receiver.utxo, hash_param.clone())
 			.unwrap();
 		CoinShards::put(coin_shards);
 
@@ -940,7 +944,7 @@ fn mint_tokens_helper(size: usize) -> Vec<MantaAsset> {
 		// sanity checks
 		assert_eq!(PoolBalance::get(TEST_ASSET), pool);
 		let coin_shards = CoinShards::get();
-		assert!(coin_shards.exist(&asset.commitment));
+		assert!(coin_shards.exist(&asset.utxo));
 		senders.push(asset);
 	}
 	senders
@@ -994,7 +998,7 @@ fn transfer_test_helper(iter: usize) {
 		let mut ciphertext_1 = [0u8; 48];
 		ciphertext_1[0..16].copy_from_slice(receiver_1.ciphertext.as_ref());
 		ciphertext_1[16..48].copy_from_slice(receiver_1.sender_pk.as_ref());
-		let sk_1 = receivers_full[i * 2 + 1].spend.ecsk.clone();
+		let sk_1 = receivers_full[i * 2 + 1].spending_info.ecsk.clone();
 		assert_eq!(
 			<MantaCrypto as Ecies>::decrypt(&sk_1, &ciphertext_1),
 			receiver_1.value
@@ -1003,7 +1007,7 @@ fn transfer_test_helper(iter: usize) {
 		let mut ciphertext_2 = [0u8; 48];
 		ciphertext_2[0..16].copy_from_slice(receiver_2.ciphertext.as_ref());
 		ciphertext_2[16..48].copy_from_slice(receiver_2.sender_pk.as_ref());
-		let sk_2 = receivers_full[i * 2].spend.ecsk.clone();
+		let sk_2 = receivers_full[i * 2].spending_info.ecsk.clone();
 		assert_eq!(
 			<MantaCrypto as Ecies>::decrypt(&sk_2, &ciphertext_2),
 			receiver_2.value
@@ -1016,8 +1020,8 @@ fn transfer_test_helper(iter: usize) {
 	let coin_shards = CoinShards::get();
 	let vn_list = VNList::get();
 	for i in 0usize..size {
-		assert!(coin_shards.exist(&senders[i].commitment));
-		assert!(coin_shards.exist(&receivers_processed[i].commitment));
+		assert!(coin_shards.exist(&senders[i].utxo));
+		assert!(coin_shards.exist(&receivers_processed[i].utxo));
 		assert_eq!(vn_list[i], senders[i].void_number);
 	}
 }
@@ -1114,7 +1118,7 @@ fn prepare_reclaim_payload(
 	rng.fill_bytes(&mut sk[..]);
 	let receiver_full =
 		MantaAssetFullReceiver::sample(&commit_param, &sk, &TEST_ASSET, &(), rng).unwrap();
-	let receiver = receiver_full.prepared.process(&10, rng).unwrap();
+	let receiver = receiver_full.shielded_address.process(&10, rng).unwrap();
 
 	let reclaim_value =
 		sender_1.asset.priv_info.value + sender_2.asset.priv_info.value - receiver.value;
@@ -1135,7 +1139,14 @@ fn prepare_reclaim_payload(
 	(payload, sender_1, sender_2, reclaim_value, receiver)
 }
 
+static INIT: Once = Once::new();
+fn manta_zkp_key_generation() {
+	INIT.call_once(|| write_zkp_keys().unwrap());
+}
+
 fn load_zkp_keys(file_name: &str) -> Groth16Pk {
+	manta_zkp_key_generation();
+
 	let mut file = File::open(file_name).unwrap();
 	let mut transfer_key_bytes: Vec<u8> = vec![];
 	file.read_to_end(&mut transfer_key_bytes).unwrap();
@@ -1159,8 +1170,8 @@ fn build_sender_meta_data(
 
 	let sender_1 = senders[sender_1_idx].clone();
 	let sender_2 = senders[sender_2_idx].clone();
-	let shard_index_1 = sender_1.commitment[0] as usize;
-	let shard_index_2 = sender_2.commitment[0] as usize;
+	let shard_index_1 = sender_1.utxo[0] as usize;
+	let shard_index_2 = sender_2.utxo[0] as usize;
 	let list_1 = coin_shards.shard[shard_index_1].list.clone();
 	let out_sender_1 = sender_1.build(&hash_param, &list_1).unwrap();
 	let list_2 = coin_shards.shard[shard_index_2].list.clone();
@@ -1187,7 +1198,7 @@ fn build_receivers(
 		let receiver_full =
 			MantaAssetFullReceiver::sample(&commit_param, &sk, &TEST_ASSET, &(), rng).unwrap();
 		let receiver = receiver_full
-			.prepared
+			.shielded_address
 			.process(&(i as u64 + 10), rng)
 			.unwrap();
 		receivers_full.push(receiver_full);
