@@ -19,6 +19,10 @@ use crate::*;
 use ark_serialize::CanonicalDeserialize;
 use ark_std::rand::{RngCore, SeedableRng};
 use frame_support::{assert_noop, assert_ok, parameter_types};
+use manta_api::{
+	generate_mint_payload, generate_private_transfer_payload, generate_reclaim_payload,
+	write_zkp_keys,
+};
 use manta_asset::*;
 use manta_crypto::*;
 use rand_chacha::ChaCha20Rng;
@@ -27,7 +31,7 @@ use sp_runtime::{
 	testing::Header,
 	traits::{BlakeTwo256, IdentityLookup},
 };
-use std::{boxed::Box, fs::File, io::prelude::*, string::String};
+use std::{boxed::Box, fs::File, io::prelude::*, string::String, sync::Once};
 
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Test>;
 type Block = frame_system::mocking::MockBlock<Test>;
@@ -166,7 +170,7 @@ fn test_mint_should_work() {
 		assert_eq!(TotalSupply::get(TEST_ASSET), 1000);
 		assert_eq!(PoolBalance::get(TEST_ASSET), 10);
 		let coin_shards = CoinShards::get();
-		assert!(coin_shards.exist(&asset.commitment));
+		assert!(coin_shards.exist(&asset.utxo));
 		let vn_list = VNList::get();
 		assert_eq!(vn_list.len(), 0);
 	});
@@ -395,7 +399,8 @@ fn transferring_spent_coin_should_not_work_sender_1() {
 				&pk,
 				&receivers_processed,
 				&mut rng,
-				i,
+				i * 2,
+				i * 2 + 1,
 			);
 
 			assert_ok!(Assets::private_transfer(Origin::signed(1), payload));
@@ -435,12 +440,13 @@ fn transferring_existing_coins_should_not_work() {
 				&pk,
 				&receivers_processed,
 				&mut rng,
-				i,
+				i * 2,
+				i * 2 + 1,
 			);
 
 			if i == 0 {
 				coin_shards
-					.update(&receiver_1.commitment, hash_param.clone())
+					.update(&receiver_1.utxo, hash_param.clone())
 					.unwrap();
 				CoinShards::put(coin_shards);
 
@@ -450,7 +456,7 @@ fn transferring_existing_coins_should_not_work() {
 				);
 			} else {
 				coin_shards
-					.update(&receiver_2.commitment, hash_param.clone())
+					.update(&receiver_2.utxo, hash_param.clone())
 					.unwrap();
 				CoinShards::put(coin_shards);
 
@@ -475,8 +481,6 @@ fn transferring_spent_coin_should_not_work_sender_2() {
 
 		let (_, receivers_processed) = build_receivers(&commit_param, &mut sk, &mut rng, size);
 
-		let mut coin_shards = CoinShards::get();
-
 		let payload = prepare_private_transfer_payload(
 			&senders,
 			&commit_param,
@@ -485,42 +489,21 @@ fn transferring_spent_coin_should_not_work_sender_2() {
 			&receivers_processed,
 			&mut rng,
 			0,
+			1,
 		);
 
 		assert_ok!(Assets::private_transfer(Origin::signed(1), payload));
 
-		// extract the receivers
-		let receiver_1 = receivers_processed[0].clone();
-		let receiver_2 = receivers_processed[2].clone();
-
-		coin_shards
-			.update(&receiver_1.commitment, hash_param.clone())
-			.unwrap();
-		coin_shards
-			.update(&receiver_2.commitment, hash_param.clone())
-			.unwrap();
-
-		// build sender meta data
-		let sender_1 = senders[2].clone();
-		let sender_2 = senders[0].clone();
-		let shard_index_1 = sender_1.commitment[0] as usize;
-		let shard_index_2 = sender_2.commitment[0] as usize;
-		let list_1 = coin_shards.shard[shard_index_1].list.clone();
-		let sender_1 = sender_1.build(&hash_param, &list_1).unwrap();
-		let list_2 = coin_shards.shard[shard_index_2].list.clone();
-		let sender_2 = sender_2.build(&hash_param, &list_2).unwrap();
-
-		let payload = generate_private_transfer_payload(
-			commit_param.clone(),
-			hash_param.clone(),
+		let payload = prepare_private_transfer_payload(
+			&senders,
+			&commit_param,
+			&hash_param,
 			&pk,
-			sender_1,
-			sender_2,
-			receiver_1,
-			receiver_2,
+			&receivers_processed,
 			&mut rng,
-		)
-		.unwrap();
+			2,
+			0,
+		);
 
 		assert_noop!(
 			Assets::private_transfer(Origin::signed(1), payload),
@@ -549,6 +532,7 @@ fn transferring_with_invalid_ledger_state_should_not_work() {
 			&receivers_processed,
 			&mut rng,
 			0,
+			1,
 		);
 
 		let mut data = PrivateTransferData::deserialize(payload.as_ref()).unwrap();
@@ -568,7 +552,8 @@ fn transferring_with_invalid_ledger_state_should_not_work() {
 			&pk,
 			&receivers_processed,
 			&mut rng,
-			1,
+			2,
+			3,
 		);
 
 		let mut data = PrivateTransferData::deserialize(payload.as_ref()).unwrap();
@@ -590,31 +575,29 @@ fn transferring_with_invalid_zkp_param_should_not_work() {
 
 		let (commit_param, hash_param, pk, mut sk, mut rng) = setup_params_for_transferring();
 
-		let iter = 1;
-		let size = iter << 1;
+		let size = 2;
 		let senders = mint_tokens_helper(size);
 
 		let (_, receivers_processed) = build_receivers(&commit_param, &mut sk, &mut rng, size);
 
-		for i in 0usize..iter {
-			let payload = prepare_private_transfer_payload(
-				&senders,
-				&commit_param,
-				&hash_param,
-				&pk,
-				&receivers_processed,
-				&mut rng,
-				i,
-			);
+		let payload = prepare_private_transfer_payload(
+			&senders,
+			&commit_param,
+			&hash_param,
+			&pk,
+			&receivers_processed,
+			&mut rng,
+			0,
+			1,
+		);
 
-			let transfer_vk = VerificationKey { data: &[0u8; 2312] };
-			let transfer_key_digest = transfer_vk.get_checksum().unwrap();
-			TransferZKPKeyChecksum::put(transfer_key_digest);
-			assert_noop!(
-				Assets::private_transfer(Origin::signed(1), payload),
-				Error::<Test>::ZkpParamFail
-			);
-		}
+		let transfer_vk = VerificationKey { data: &[0u8; 2312] };
+		let transfer_key_digest = transfer_vk.get_checksum().unwrap();
+		TransferZKPKeyChecksum::put(transfer_key_digest);
+		assert_noop!(
+			Assets::private_transfer(Origin::signed(1), payload),
+			Error::<Test>::ZkpParamFail
+		);
 	});
 }
 
@@ -625,33 +608,31 @@ fn transferring_with_zkp_verification_fail_should_not_work() {
 
 		let (commit_param, hash_param, pk, mut sk, mut rng) = setup_params_for_transferring();
 
-		let iter = 1;
-		let size = iter << 1;
+		let size = 2;
 		let senders = mint_tokens_helper(size);
 
 		let (_, receivers_processed) = build_receivers(&commit_param, &mut sk, &mut rng, size);
 
-		for i in 0usize..iter {
-			let payload = prepare_private_transfer_payload(
-				&senders,
-				&commit_param,
-				&hash_param,
-				&pk,
-				&receivers_processed,
-				&mut rng,
-				i,
-			);
+		let payload = prepare_private_transfer_payload(
+			&senders,
+			&commit_param,
+			&hash_param,
+			&pk,
+			&receivers_processed,
+			&mut rng,
+			0,
+			1,
+		);
 
-			let mut data = PrivateTransferData::deserialize(payload.as_ref()).unwrap();
-			data.proof = [0u8; 192];
-			let mut payload_with_bad_proof = [0u8; PRIVATE_TRANSFER_PAYLOAD_SIZE];
-			data.serialize(payload_with_bad_proof.as_mut()).unwrap();
+		let mut data = PrivateTransferData::deserialize(payload.as_ref()).unwrap();
+		data.proof = [0u8; 192];
+		let mut payload_with_bad_proof = [0u8; PRIVATE_TRANSFER_PAYLOAD_SIZE];
+		data.serialize(payload_with_bad_proof.as_mut()).unwrap();
 
-			assert_noop!(
-				Assets::private_transfer(Origin::signed(1), payload_with_bad_proof),
-				Error::<Test>::ZkpVerificationFail
-			);
-		}
+		assert_noop!(
+			Assets::private_transfer(Origin::signed(1), payload_with_bad_proof),
+			Error::<Test>::ZkpVerificationFail
+		);
 	});
 }
 
@@ -703,28 +684,236 @@ fn reclaim_with_overdrawn_pool_should_not_work() {
 
 		let (commit_param, hash_param, pk, mut sk, mut rng) = setup_params_for_reclaim();
 
+		let size = 2;
+		let senders = mint_tokens_helper(size);
+
+		let (payload, _, _, _, _) = prepare_reclaim_payload(
+			&senders,
+			&commit_param,
+			&hash_param,
+			&pk,
+			&mut sk,
+			&mut rng,
+			0,
+			1,
+		);
+
+		assert_ok!(Assets::reclaim(Origin::signed(1), payload));
+
+		assert_noop!(
+			Assets::reclaim(Origin::signed(1), payload),
+			Error::<Test>::PoolOverdrawn
+		);
+	});
+}
+
+#[test]
+fn reclaim_spent_coin_should_not_work() {
+	new_test_ext().execute_with(|| {
+		initialize_test(10_000_000);
+
+		let (commit_param, hash_param, pk, mut sk, mut rng) = setup_params_for_reclaim();
+
+		let size = 4;
+		let senders = mint_tokens_helper(size);
+
+		let (payload, _, _, _, _) = prepare_reclaim_payload(
+			&senders,
+			&commit_param,
+			&hash_param,
+			&pk,
+			&mut sk,
+			&mut rng,
+			0,
+			1,
+		);
+
+		assert_ok!(Assets::reclaim(Origin::signed(1), payload));
+
+		let (payload, _, _, _, _) = prepare_reclaim_payload(
+			&senders,
+			&commit_param,
+			&hash_param,
+			&pk,
+			&mut sk,
+			&mut rng,
+			0,
+			2,
+		);
+
+		assert_noop!(
+			Assets::reclaim(Origin::signed(1), payload),
+			Error::<Test>::MantaCoinSpent
+		);
+
+		let (payload, _, _, _, _) = prepare_reclaim_payload(
+			&senders,
+			&commit_param,
+			&hash_param,
+			&pk,
+			&mut sk,
+			&mut rng,
+			3,
+			0,
+		);
+
+		assert_noop!(
+			Assets::reclaim(Origin::signed(1), payload),
+			Error::<Test>::MantaCoinSpent
+		);
+	});
+}
+
+#[test]
+fn reclaim_spent_coin_should_not_work_2() {
+	new_test_ext().execute_with(|| {
+		initialize_test(10_000_000);
+
+		let (commit_param, hash_param, pk, mut sk, mut rng) = setup_params_for_reclaim();
+
+		let size = 4;
+		let senders = mint_tokens_helper(size);
+
+		let (payload, _, _, _, receiver) = prepare_reclaim_payload(
+			&senders,
+			&commit_param,
+			&hash_param,
+			&pk,
+			&mut sk,
+			&mut rng,
+			0,
+			1,
+		);
+
+		let mut coin_shards = CoinShards::get();
+		coin_shards
+			.update(&receiver.utxo, hash_param.clone())
+			.unwrap();
+		CoinShards::put(coin_shards);
+
+		assert_noop!(
+			Assets::reclaim(Origin::signed(1), payload),
+			Error::<Test>::MantaCoinSpent
+		);
+	});
+}
+
+#[test]
+fn reclaim_with_invalid_zkp_param_should_not_work() {
+	new_test_ext().execute_with(|| {
+		initialize_test(10_000_000);
+
+		let (commit_param, hash_param, pk, mut sk, mut rng) = setup_params_for_transferring();
+
 		let iter = 1;
 		let size = iter << 1;
 		let senders = mint_tokens_helper(size);
 
-		for i in 0usize..iter {
-			let (payload, _, _, _) = prepare_reclaim_payload(
-				&senders,
-				&commit_param,
-				&hash_param,
-				&pk,
-				&mut sk,
-				&mut rng,
-				i,
-			);
+		let (payload, _, _, _, _) = prepare_reclaim_payload(
+			&senders,
+			&commit_param,
+			&hash_param,
+			&pk,
+			&mut sk,
+			&mut rng,
+			0,
+			1,
+		);
 
-			assert_ok!(Assets::reclaim(Origin::signed(1), payload));
+		let reclaim_vk = VerificationKey { data: &[0u8; 2312] };
+		let reclaim_key_digest = reclaim_vk.get_checksum().unwrap();
+		ReclaimZKPKeyChecksum::put(reclaim_key_digest);
+		assert_noop!(
+			Assets::reclaim(Origin::signed(1), payload),
+			Error::<Test>::ZkpParamFail
+		);
+	});
+}
 
-			assert_noop!(
-				Assets::reclaim(Origin::signed(1), payload),
-				Error::<Test>::PoolOverdrawn
-			);
-		}
+#[test]
+fn reclaim_with_invalid_ledger_state_should_not_work() {
+	new_test_ext().execute_with(|| {
+		initialize_test(10_000_000);
+
+		let (commit_param, hash_param, pk, mut sk, mut rng) = setup_params_for_transferring();
+
+		let size = 4;
+		let senders = mint_tokens_helper(size);
+
+		let (payload, _, _, _, _) = prepare_reclaim_payload(
+			&senders,
+			&commit_param,
+			&hash_param,
+			&pk,
+			&mut sk,
+			&mut rng,
+			0,
+			1,
+		);
+
+		let mut data = ReclaimData::deserialize(payload.as_ref()).unwrap();
+		data.sender_1.root = [5u8; 32];
+		let mut payload_with_bad_root = [0u8; RECLAIM_PAYLOAD_SIZE];
+		data.serialize(payload_with_bad_root.as_mut()).unwrap();
+
+		assert_noop!(
+			Assets::reclaim(Origin::signed(1), payload_with_bad_root),
+			Error::<Test>::InvalidLedgerState
+		);
+
+		let (payload, _, _, _, _) = prepare_reclaim_payload(
+			&senders,
+			&commit_param,
+			&hash_param,
+			&pk,
+			&mut sk,
+			&mut rng,
+			2,
+			3,
+		);
+
+		let mut data = ReclaimData::deserialize(payload.as_ref()).unwrap();
+		data.sender_2.root = [5u8; 32];
+		let mut payload_with_bad_root = [0u8; RECLAIM_PAYLOAD_SIZE];
+		data.serialize(payload_with_bad_root.as_mut()).unwrap();
+
+		assert_noop!(
+			Assets::reclaim(Origin::signed(1), payload_with_bad_root),
+			Error::<Test>::InvalidLedgerState
+		);
+	});
+}
+
+#[test]
+fn reclaim_with_zkp_verification_fail_should_not_work() {
+	new_test_ext().execute_with(|| {
+		initialize_test(10_000_000);
+
+		let (commit_param, hash_param, pk, mut sk, mut rng) = setup_params_for_transferring();
+
+		let size = 2;
+		let senders = mint_tokens_helper(size);
+
+		let (payload, _, _, _, _) = prepare_reclaim_payload(
+			&senders,
+			&commit_param,
+			&hash_param,
+			&pk,
+			&mut sk,
+			&mut rng,
+			0,
+			1,
+		);
+
+		let mut data = ReclaimData::deserialize(payload.as_ref()).unwrap();
+		data.proof = [6u8; 192];
+		let mut payload_with_bad_proof = [0u8; RECLAIM_PAYLOAD_SIZE];
+		data.serialize(payload_with_bad_proof.as_mut()).unwrap();
+
+		assert_noop!(
+			Assets::reclaim(Origin::signed(1), payload_with_bad_proof),
+			Error::<Test>::ZkpVerificationFail
+		);
 	});
 }
 
@@ -755,7 +944,7 @@ fn mint_tokens_helper(size: usize) -> Vec<MantaAsset> {
 		// sanity checks
 		assert_eq!(PoolBalance::get(TEST_ASSET), pool);
 		let coin_shards = CoinShards::get();
-		assert!(coin_shards.exist(&asset.commitment));
+		assert!(coin_shards.exist(&asset.utxo));
 		senders.push(asset);
 	}
 	senders
@@ -793,7 +982,8 @@ fn transfer_test_helper(iter: usize) {
 			&pk,
 			&receivers_processed,
 			&mut rng,
-			i,
+			i * 2,
+			i * 2 + 1,
 		);
 
 		// invoke the transfer event
@@ -808,7 +998,7 @@ fn transfer_test_helper(iter: usize) {
 		let mut ciphertext_1 = [0u8; 48];
 		ciphertext_1[0..16].copy_from_slice(receiver_1.ciphertext.as_ref());
 		ciphertext_1[16..48].copy_from_slice(receiver_1.sender_pk.as_ref());
-		let sk_1 = receivers_full[i * 2 + 1].spend.ecsk.clone();
+		let sk_1 = receivers_full[i * 2 + 1].spending_info.ecsk.clone();
 		assert_eq!(
 			<MantaCrypto as Ecies>::decrypt(&sk_1, &ciphertext_1),
 			receiver_1.value
@@ -817,7 +1007,7 @@ fn transfer_test_helper(iter: usize) {
 		let mut ciphertext_2 = [0u8; 48];
 		ciphertext_2[0..16].copy_from_slice(receiver_2.ciphertext.as_ref());
 		ciphertext_2[16..48].copy_from_slice(receiver_2.sender_pk.as_ref());
-		let sk_2 = receivers_full[i * 2].spend.ecsk.clone();
+		let sk_2 = receivers_full[i * 2].spending_info.ecsk.clone();
 		assert_eq!(
 			<MantaCrypto as Ecies>::decrypt(&sk_2, &ciphertext_2),
 			receiver_2.value
@@ -830,8 +1020,8 @@ fn transfer_test_helper(iter: usize) {
 	let coin_shards = CoinShards::get();
 	let vn_list = VNList::get();
 	for i in 0usize..size {
-		assert!(coin_shards.exist(&senders[i].commitment));
-		assert!(coin_shards.exist(&receivers_processed[i].commitment));
+		assert!(coin_shards.exist(&senders[i].utxo));
+		assert!(coin_shards.exist(&receivers_processed[i].utxo));
 		assert_eq!(vn_list[i], senders[i].void_number);
 	}
 }
@@ -846,14 +1036,15 @@ fn reclaim_test_helper(iter: usize) {
 	let mut pool = PoolBalance::get(TEST_ASSET);
 
 	for i in 0usize..iter {
-		let (payload, sender_1, sender_2, reclaim_value) = prepare_reclaim_payload(
+		let (payload, sender_1, sender_2, reclaim_value, _) = prepare_reclaim_payload(
 			&senders,
 			&commit_param,
 			&hash_param,
 			&pk,
 			&mut sk,
 			&mut rng,
-			i,
+			i * 2,
+			i * 2 + 1,
 		);
 
 		// invoke the reclaim event
@@ -880,14 +1071,16 @@ fn prepare_private_transfer_payload(
 	pk: &Groth16Pk,
 	receivers_processed: &Vec<MantaAssetProcessedReceiver>,
 	rng: &mut ChaCha20Rng,
-	idx: usize,
+	sender_1_idx: usize,
+	sender_2_idx: usize,
 ) -> [u8; PRIVATE_TRANSFER_PAYLOAD_SIZE] {
 	// build sender mata data
-	let (sender_1, sender_2) = build_sender_meta_data(&senders, &hash_param, idx);
+	let (sender_1, sender_2) =
+		build_sender_meta_data(&senders, &hash_param, sender_1_idx, sender_2_idx);
 
 	// extract the receivers
-	let receiver_1 = receivers_processed[idx * 2 + 1].clone();
-	let receiver_2 = receivers_processed[idx * 2].clone();
+	let receiver_1 = receivers_processed[sender_2_idx].clone();
+	let receiver_2 = receivers_processed[sender_1_idx].clone();
 
 	// form the transaction payload
 	generate_private_transfer_payload(
@@ -910,20 +1103,22 @@ fn prepare_reclaim_payload(
 	pk: &Groth16Pk,
 	sk: &mut [u8; 32],
 	rng: &mut ChaCha20Rng,
-	idx: usize,
+	sender_1_idx: usize,
+	sender_2_idx: usize,
 ) -> (
 	[u8; RECLAIM_PAYLOAD_SIZE],
 	SenderMetaData,
 	SenderMetaData,
 	u64,
+	MantaAssetProcessedReceiver,
 ) {
-	// build sender mata data
-	let (sender_1, sender_2) = build_sender_meta_data(&senders, &hash_param, idx);
+	let (sender_1, sender_2) =
+		build_sender_meta_data(&senders, &hash_param, sender_1_idx, sender_2_idx);
 
 	rng.fill_bytes(&mut sk[..]);
 	let receiver_full =
 		MantaAssetFullReceiver::sample(&commit_param, &sk, &TEST_ASSET, &(), rng).unwrap();
-	let receiver = receiver_full.prepared.process(&10, rng).unwrap();
+	let receiver = receiver_full.shielded_address.process(&10, rng).unwrap();
 
 	let reclaim_value =
 		sender_1.asset.priv_info.value + sender_2.asset.priv_info.value - receiver.value;
@@ -935,16 +1130,23 @@ fn prepare_reclaim_payload(
 		&pk,
 		sender_1.clone(),
 		sender_2.clone(),
-		receiver,
+		receiver.clone(),
 		reclaim_value,
 		rng,
 	)
 	.unwrap();
 
-	(payload, sender_1, sender_2, reclaim_value)
+	(payload, sender_1, sender_2, reclaim_value, receiver)
+}
+
+static INIT: Once = Once::new();
+fn manta_zkp_key_generation() {
+	INIT.call_once(|| write_zkp_keys().unwrap());
 }
 
 fn load_zkp_keys(file_name: &str) -> Groth16Pk {
+	manta_zkp_key_generation();
+
 	let mut file = File::open(file_name).unwrap();
 	let mut transfer_key_bytes: Vec<u8> = vec![];
 	file.read_to_end(&mut transfer_key_bytes).unwrap();
@@ -961,14 +1163,15 @@ fn initialize_test(amount: u64) {
 fn build_sender_meta_data(
 	senders: &Vec<MantaAsset>,
 	hash_param: &HashParam,
-	idx: usize,
+	sender_1_idx: usize,
+	sender_2_idx: usize,
 ) -> (SenderMetaData, SenderMetaData) {
 	let coin_shards = CoinShards::get();
 
-	let sender_1 = senders[idx * 2].clone();
-	let sender_2 = senders[idx * 2 + 1].clone();
-	let shard_index_1 = sender_1.commitment[0] as usize;
-	let shard_index_2 = sender_2.commitment[0] as usize;
+	let sender_1 = senders[sender_1_idx].clone();
+	let sender_2 = senders[sender_2_idx].clone();
+	let shard_index_1 = sender_1.utxo[0] as usize;
+	let shard_index_2 = sender_2.utxo[0] as usize;
 	let list_1 = coin_shards.shard[shard_index_1].list.clone();
 	let out_sender_1 = sender_1.build(&hash_param, &list_1).unwrap();
 	let list_2 = coin_shards.shard[shard_index_2].list.clone();
@@ -995,7 +1198,7 @@ fn build_receivers(
 		let receiver_full =
 			MantaAssetFullReceiver::sample(&commit_param, &sk, &TEST_ASSET, &(), rng).unwrap();
 		let receiver = receiver_full
-			.prepared
+			.shielded_address
 			.process(&(i as u64 + 10), rng)
 			.unwrap();
 		receivers_full.push(receiver_full);

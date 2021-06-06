@@ -58,5 +58,4 @@ jobs:
           cargo +nightly check --release --features runtime-benchmarks
       - name: Run Tests
         run: |
-          cargo run --release --bin param_gen
           cargo test --all-features --release
