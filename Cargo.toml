@@ -24,6 +24,11 @@ codec = { package = "parity-scale-codec", version = "2.0.0", default-features = 
 data-encoding = { version = "2.3.2", default-features = false, features = [ "alloc" ] }
 log = { version = "0.4.14", default-features = false }
 
+# Arkworks dependencies
+
+# Attention! This needs to be included before the manta dependencies.
+ark-std = { version = "0.2.0", default-features = false }
+
 # Manta Dependencies
 
 # Attention! Our integration test scripts modify these dependencies with "sed" command.
@@ -46,8 +51,6 @@ serde = { default-features = false, version = '1' }
 sp-core = { default-features = false, version = '3.0.0' }
 sp-io = { default-features = false, version = '3.0.0' }
 
-# Arkworks dependencies
-ark-std = { version = "0.2.0", default-features = false }
 ark-bls12-381 = { version = "0.2.0", default-features = false, features = [ "curve" ] }
 ark-crypto-primitives = { version = "0.2.0", default-features = false, features = [ "r1cs" ] }
 ark-ed-on-bls12-381 = { version = "0.2.0", default-features = false, features = [ "r1cs" ] }
