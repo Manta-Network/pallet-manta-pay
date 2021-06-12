@@ -102,7 +102,8 @@
 // Ensure we're `no_std` when compiling for Wasm.
 // #![cfg_attr(not(feature = "std"), no_std)]
 #![no_std]
-#![cfg(feature = "runtime-benchmarks")]
+
+#[cfg(feature = "runtime-benchmarks")]
 mod runtime_benchmark;
 
 #[cfg(test)]
