@@ -1439,14 +1439,13 @@ dependencies = [
 [[package]]
 name = "manta-asset"
 version = "0.1.0"
-source = "git+https://github.com/Manta-Network/manta-types?branch=manta#097fe4ff38e59f8bf84f58326bd1c5024573e5a7"
+source = "git+https://github.com/Manta-Network/manta-types?branch=manta#3349da1275b78ee75984332d16cc44e3a5e241d1"
 dependencies = [
  "ark-crypto-primitives",
  "ark-ed-on-bls12-381",
  "ark-ff",
  "ark-serialize",
  "ark-std",
- "blake2",
  "manta-crypto",
  "manta-error",
  "parity-scale-codec",
@@ -1475,7 +1474,7 @@ dependencies = [
 [[package]]
 name = "manta-data"
 version = "0.1.0"
-source = "git+https://github.com/Manta-Network/manta-types?branch=manta#097fe4ff38e59f8bf84f58326bd1c5024573e5a7"
+source = "git+https://github.com/Manta-Network/manta-types?branch=manta#3349da1275b78ee75984332d16cc44e3a5e241d1"
 dependencies = [
  "ark-ed-on-bls12-381",
  "ark-groth16",
@@ -1502,7 +1501,7 @@ dependencies = [
 [[package]]
 name = "manta-ledger"
 version = "0.1.0"
-source = "git+https://github.com/Manta-Network/manta-types?branch=manta#097fe4ff38e59f8bf84f58326bd1c5024573e5a7"
+source = "git+https://github.com/Manta-Network/manta-types?branch=manta#3349da1275b78ee75984332d16cc44e3a5e241d1"
 dependencies = [
  "manta-crypto",
  "manta-error",
