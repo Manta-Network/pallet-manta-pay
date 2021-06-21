@@ -56,6 +56,9 @@ jobs:
         run: |
           cargo check --release
           cargo +nightly check --release --features runtime-benchmarks
+      - name: Check Wasm Build
+        run: |
+          cargo +nightly build --target wasm32-unknown-unknown --no-default-features
       - name: Run Tests
         run: |
           cargo test --all-features --release
