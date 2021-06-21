@@ -28,23 +28,19 @@ jobs:
       # Checks-out your repository under $GITHUB_WORKSPACE,
       # so your job can access it
       - uses: actions/checkout@v2
-
       - name: Run yamllint
         uses: actionshub/yamllint@main
-
       - name: Set-Up
         run: sudo apt install -y
              cmake pkg-config libssl-dev
              git build-essential clang
              libclang-dev curl
-
       - name: Install Rustup
         run: |
           curl https://sh.rustup.rs -sSf | sh -s -- -y
           source ~/.cargo/env
           rustup update nightly
           rustup target add wasm32-unknown-unknown --toolchain nightly
-
       - name: Check Manta Runtime
         run: bash ./scripts/check_manta_runtime.sh
         shell: bash

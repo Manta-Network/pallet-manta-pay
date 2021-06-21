@@ -48,17 +48,14 @@ jobs:
           rustup component add rustfmt
       - name: Check Formatting
         run: |
-          cargo +nightly fmt --all -- --check
+          cargo fmt -- --check
       - name: Check Clippy
         run: |
-          cargo clippy --release --all
+          cargo clippy --all
       - name: Check Build
         run: |
-          cargo check --release
-          cargo +nightly check --release --features runtime-benchmarks
-      - name: Check Wasm Build
-        run: |
-          cargo +nightly build --target wasm32-unknown-unknown --no-default-features
+          cargo check
+          cargo check --features runtime-benchmarks
       - name: Run Tests
         run: |
-          cargo test --all-features --release
+          cargo test --all-features
