@@ -77,5 +77,4 @@ runtime-benchmarks = [
 std = [
 	"frame-benchmarking/std",
 	"frame-system/std",
-	"manta-crypto/std",
 ]
