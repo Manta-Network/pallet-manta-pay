@@ -162,7 +162,7 @@ fn test_mint_should_work() {
 		let mut rng = ChaCha20Rng::from_seed([3u8; 32]);
 		let mut sk = [0u8; 32];
 		rng.fill_bytes(&mut sk);
-		let asset = MantaAsset::sample(&commit_param, &sk, &TEST_ASSET, &10, &mut rng).unwrap();
+		let asset = MantaAsset::sample(&commit_param, &sk, &TEST_ASSET, &10).unwrap();
 
 		let payload = generate_mint_payload(&asset).unwrap();
 		assert_ok!(Assets::mint_private_asset(Origin::signed(1), payload));
@@ -250,7 +250,7 @@ fn mint_with_invalid_commitment_should_not_work() {
 		let mut rng = ChaCha20Rng::from_seed([3u8; 32]);
 		let mut sk = [0u8; 32];
 		rng.fill_bytes(&mut sk);
-		let asset = MantaAsset::sample(&commit_param, &sk, &TEST_ASSET, &50, &mut rng).unwrap();
+		let asset = MantaAsset::sample(&commit_param, &sk, &TEST_ASSET, &50).unwrap();
 		let payload = generate_mint_payload(&asset).unwrap();
 
 		assert_noop!(
@@ -932,8 +932,7 @@ fn mint_tokens_helper(size: usize) -> Vec<MantaAsset> {
 		// build a sender token
 		let token_value = 10 + i as u64;
 		rng.fill_bytes(&mut sk);
-		let asset =
-			MantaAsset::sample(&commit_param, &sk, &TEST_ASSET, &token_value, &mut rng).unwrap();
+		let asset = MantaAsset::sample(&commit_param, &sk, &TEST_ASSET, &token_value).unwrap();
 		let payload = generate_mint_payload(&asset).unwrap();
 
 		// mint a sender token
@@ -955,7 +954,7 @@ fn generate_mint_payload_helper(value: u64) -> [u8; MINT_PAYLOAD_SIZE] {
 	let mut rng = ChaCha20Rng::from_seed([3u8; 32]);
 	let mut sk = [0u8; 32];
 	rng.fill_bytes(&mut sk);
-	let asset = MantaAsset::sample(&commit_param, &sk, &TEST_ASSET, &value, &mut rng).unwrap();
+	let asset = MantaAsset::sample(&commit_param, &sk, &TEST_ASSET, &value).unwrap();
 	generate_mint_payload(&asset).unwrap()
 }
 
@@ -1117,7 +1116,7 @@ fn prepare_reclaim_payload(
 
 	rng.fill_bytes(&mut sk[..]);
 	let receiver_full =
-		MantaAssetFullReceiver::sample(&commit_param, &sk, &TEST_ASSET, &(), rng).unwrap();
+		MantaAssetFullReceiver::sample(&commit_param, &sk, &TEST_ASSET, &()).unwrap();
 	let receiver = receiver_full.shielded_address.process(&10, rng).unwrap();
 
 	let reclaim_value =
@@ -1196,7 +1195,7 @@ fn build_receivers(
 		// build a receiver token
 		rng.fill_bytes(&mut sk[..]);
 		let receiver_full =
-			MantaAssetFullReceiver::sample(&commit_param, &sk, &TEST_ASSET, &(), rng).unwrap();
+			MantaAssetFullReceiver::sample(&commit_param, &sk, &TEST_ASSET, &()).unwrap();
 		let receiver = receiver_full
 			.shielded_address
 			.process(&(i as u64 + 10), rng)

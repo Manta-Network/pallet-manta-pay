@@ -88,10 +88,10 @@ fn bench_transfer_verify(c: &mut Criterion) {
 	// sender
 	let mut sk = [0u8; 32];
 	rng.fill_bytes(&mut sk);
-	let sender_1 = MantaAsset::sample(&commit_param, &sk, &TEST_ASSET, &100, &mut rng).unwrap();
+	let sender_1 = MantaAsset::sample(&commit_param, &sk, &TEST_ASSET, &100).unwrap();
 
 	rng.fill_bytes(&mut sk);
-	let sender_2 = MantaAsset::sample(&commit_param, &sk, &TEST_ASSET, &300, &mut rng).unwrap();
+	let sender_2 = MantaAsset::sample(&commit_param, &sk, &TEST_ASSET, &300).unwrap();
 
 	let list = vec![sender_1.utxo, sender_2.utxo];
 	let sender_1 = sender_1.build(&hash_param, &list).unwrap();
@@ -100,7 +100,7 @@ fn bench_transfer_verify(c: &mut Criterion) {
 	// receiver
 	rng.fill_bytes(&mut sk);
 	let receiver_1_full =
-		MantaAssetFullReceiver::sample(&commit_param, &sk, &TEST_ASSET, &(), &mut rng).unwrap();
+		MantaAssetFullReceiver::sample(&commit_param, &sk, &TEST_ASSET, &()).unwrap();
 	let receiver_1 = receiver_1_full
 		.shielded_address
 		.process(&150, &mut rng)
@@ -108,7 +108,7 @@ fn bench_transfer_verify(c: &mut Criterion) {
 
 	rng.fill_bytes(&mut sk);
 	let receiver_2_full =
-		MantaAssetFullReceiver::sample(&commit_param, &sk, &TEST_ASSET, &(), &mut rng).unwrap();
+		MantaAssetFullReceiver::sample(&commit_param, &sk, &TEST_ASSET, &()).unwrap();
 	let receiver_2 = receiver_2_full
 		.shielded_address
 		.process(&250, &mut rng)
@@ -276,10 +276,10 @@ fn bench_transfer_prove(c: &mut Criterion) {
 	// sender
 	let mut sk = [0u8; 32];
 	rng.fill_bytes(&mut sk);
-	let sender_1 = MantaAsset::sample(&commit_param, &sk, &TEST_ASSET, &100, &mut rng).unwrap();
+	let sender_1 = MantaAsset::sample(&commit_param, &sk, &TEST_ASSET, &100).unwrap();
 
 	rng.fill_bytes(&mut sk);
-	let sender_2 = MantaAsset::sample(&commit_param, &sk, &TEST_ASSET, &300, &mut rng).unwrap();
+	let sender_2 = MantaAsset::sample(&commit_param, &sk, &TEST_ASSET, &300).unwrap();
 
 	let list = vec![sender_1.utxo, sender_2.utxo];
 	let sender_1 = sender_1.build(&hash_param, &list).unwrap();
@@ -288,7 +288,7 @@ fn bench_transfer_prove(c: &mut Criterion) {
 	// receiver
 	rng.fill_bytes(&mut sk);
 	let receiver_1_full =
-		MantaAssetFullReceiver::sample(&commit_param, &sk, &TEST_ASSET, &(), &mut rng).unwrap();
+		MantaAssetFullReceiver::sample(&commit_param, &sk, &TEST_ASSET, &()).unwrap();
 	let receiver_1 = receiver_1_full
 		.shielded_address
 		.process(&150, &mut rng)
@@ -296,7 +296,7 @@ fn bench_transfer_prove(c: &mut Criterion) {
 
 	rng.fill_bytes(&mut sk);
 	let receiver_2_full =
-		MantaAssetFullReceiver::sample(&commit_param, &sk, &TEST_ASSET, &(), &mut rng).unwrap();
+		MantaAssetFullReceiver::sample(&commit_param, &sk, &TEST_ASSET, &()).unwrap();
 	let receiver_2 = receiver_2_full
 		.shielded_address
 		.process(&250, &mut rng)
@@ -346,10 +346,10 @@ fn bench_reclaim_verify(c: &mut Criterion) {
 	// sender
 	let mut sk = [0u8; 32];
 	rng.fill_bytes(&mut sk);
-	let sender_1 = MantaAsset::sample(&commit_param, &sk, &TEST_ASSET, &100, &mut rng).unwrap();
+	let sender_1 = MantaAsset::sample(&commit_param, &sk, &TEST_ASSET, &100).unwrap();
 
 	rng.fill_bytes(&mut sk);
-	let sender_2 = MantaAsset::sample(&commit_param, &sk, &TEST_ASSET, &300, &mut rng).unwrap();
+	let sender_2 = MantaAsset::sample(&commit_param, &sk, &TEST_ASSET, &300).unwrap();
 
 	let list = vec![sender_1.utxo, sender_2.utxo];
 	let sender_1 = sender_1.build(&hash_param, &list).unwrap();
@@ -358,7 +358,7 @@ fn bench_reclaim_verify(c: &mut Criterion) {
 	// receiver
 	rng.fill_bytes(&mut sk);
 	let receiver_full =
-		MantaAssetFullReceiver::sample(&commit_param, &sk, &TEST_ASSET, &(), &mut rng).unwrap();
+		MantaAssetFullReceiver::sample(&commit_param, &sk, &TEST_ASSET, &()).unwrap();
 	let receiver = receiver_full
 		.shielded_address
 		.process(&150, &mut rng)
@@ -435,10 +435,10 @@ fn bench_reclaim_prove(c: &mut Criterion) {
 	// sender
 	let mut sk = [0u8; 32];
 	rng.fill_bytes(&mut sk);
-	let sender_1 = MantaAsset::sample(&commit_param, &sk, &TEST_ASSET, &100, &mut rng).unwrap();
+	let sender_1 = MantaAsset::sample(&commit_param, &sk, &TEST_ASSET, &100).unwrap();
 
 	rng.fill_bytes(&mut sk);
-	let sender_2 = MantaAsset::sample(&commit_param, &sk, &TEST_ASSET, &300, &mut rng).unwrap();
+	let sender_2 = MantaAsset::sample(&commit_param, &sk, &TEST_ASSET, &300).unwrap();
 
 	let list = vec![sender_1.utxo, sender_2.utxo];
 	let sender_1 = sender_1.build(&hash_param, &list).unwrap();
@@ -447,7 +447,7 @@ fn bench_reclaim_prove(c: &mut Criterion) {
 	// receiver
 	rng.fill_bytes(&mut sk);
 	let receiver_full =
-		MantaAssetFullReceiver::sample(&commit_param, &sk, &TEST_ASSET, &(), &mut rng).unwrap();
+		MantaAssetFullReceiver::sample(&commit_param, &sk, &TEST_ASSET, &()).unwrap();
 	let receiver = receiver_full
 		.shielded_address
 		.process(&150, &mut rng)
