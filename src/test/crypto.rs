@@ -41,7 +41,6 @@ fn test_transfer_zkp_local() {
 
 	// sender
 	let mut sk = [0u8; 32];
-
 	rng.fill_bytes(&mut sk);
 	let sender_1 = MantaAsset::sample(&commit_param, &sk, &TEST_ASSET, &100).unwrap();
 
@@ -178,7 +177,7 @@ fn test_transfer_zkp_local() {
 	rng.fill_bytes(&mut sk);
 	let sender_1 = MantaAsset::sample(&commit_param, &sk, &TEST_ASSET, &111).unwrap();
 	rng.fill_bytes(&mut sk);
-	let sender_2 = MantaAsset::sample(&commit_param, &sk, &TEST_ASSET, &38).unwrap();
+	let sender_2 = MantaAsset::sample(&commit_param, &sk, &TEST_ASSET, &389).unwrap();
 	list.push(sender_1.utxo);
 	list.push(sender_2.utxo);
 
