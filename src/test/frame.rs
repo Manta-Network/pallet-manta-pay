@@ -932,8 +932,7 @@ fn mint_tokens_helper(size: usize) -> Vec<MantaAsset> {
 		// build a sender token
 		let token_value = 10 + i as u64;
 		rng.fill_bytes(&mut sk);
-		let asset =
-			MantaAsset::sample(&commit_param, &sk, &TEST_ASSET, &token_value).unwrap();
+		let asset = MantaAsset::sample(&commit_param, &sk, &TEST_ASSET, &token_value).unwrap();
 		let payload = generate_mint_payload(&asset).unwrap();
 
 		// mint a sender token
