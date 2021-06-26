@@ -189,16 +189,13 @@ fn mint_without_init_should_not_work() {
 }
 
 #[test]
-fn mint_zero_amount_should_not_work() {
+fn mint_zero_amount_should_work() {
 	new_test_ext().execute_with(|| {
 		initialize_test(100);
 
 		let payload = generate_mint_payload_helper(0);
 
-		assert_noop!(
-			Assets::mint_private_asset(Origin::signed(1), payload),
-			Error::<Test>::AmountZero
-		);
+		assert_ok!(Assets::mint_private_asset(Origin::signed(1), payload));
 	});
 }
 

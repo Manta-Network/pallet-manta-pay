@@ -295,7 +295,7 @@ decl_module! {
 					<Error<T>>::PayloadDesFail.into()
 				})?;
 
-			// if the asset_id has a total suply == 0, then this asset is initialized
+			// if the asset_id has a total supply > 0, then this asset is initialized
 			ensure!(
 				TotalSupply::contains_key(&input.asset_id),
 				<Error<T>>::BasecoinNotInit
@@ -304,7 +304,6 @@ decl_module! {
 			// get the original balance
 			let origin = ensure_signed(origin)?;
 			let origin_account = origin.clone();
-			ensure!(!input.amount.is_zero(), Error::<T>::AmountZero);
 			let origin_balance = <Balances<T>>::get(&origin_account, input.asset_id);
 			ensure!(origin_balance >= input.amount, Error::<T>::BalanceLow);
 
