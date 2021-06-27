@@ -9,7 +9,6 @@ cd Manta/
 sed -i "s@pallet-manta-pay = { git='https://github.com/Manta-Network/pallet-manta-pay', branch='calamari', default-features = false }@pallet-manta-pay = {path= '../../../../', default-features = false }@g" ./runtimes/manta/runtime/Cargo.toml
          
 cargo build
-cargo build --no-default-features
 cargo build --all-features
 
 # Check Wasm benchmarking 
