@@ -41,12 +41,11 @@ fn test_transfer_zkp_local() {
 
 	// sender
 	let mut sk = [0u8; 32];
+	rng.fill_bytes(&mut sk);
+	let sender_1 = MantaAsset::sample(&commit_param, &sk, &TEST_ASSET, &100).unwrap();
 
 	rng.fill_bytes(&mut sk);
-	let sender_1 = MantaAsset::sample(&commit_param, &sk, &TEST_ASSET, &100, &mut rng).unwrap();
-
-	rng.fill_bytes(&mut sk);
-	let sender_2 = MantaAsset::sample(&commit_param, &sk, &TEST_ASSET, &400, &mut rng).unwrap();
+	let sender_2 = MantaAsset::sample(&commit_param, &sk, &TEST_ASSET, &400).unwrap();
 
 	// list of commitment
 	let mut list = vec![sender_1.utxo, sender_2.utxo];
@@ -62,7 +61,7 @@ fn test_transfer_zkp_local() {
 	// receiver
 	rng.fill_bytes(&mut sk);
 	let receiver_1_full =
-		MantaAssetFullReceiver::sample(&commit_param, &sk, &TEST_ASSET, &(), &mut rng).unwrap();
+		MantaAssetFullReceiver::sample(&commit_param, &sk, &TEST_ASSET, &()).unwrap();
 	let receiver_1 = receiver_1_full
 		.shielded_address
 		.process(&240, &mut rng)
@@ -70,7 +69,7 @@ fn test_transfer_zkp_local() {
 
 	rng.fill_bytes(&mut sk);
 	let receiver_2_full =
-		MantaAssetFullReceiver::sample(&commit_param, &sk, &TEST_ASSET, &(), &mut rng).unwrap();
+		MantaAssetFullReceiver::sample(&commit_param, &sk, &TEST_ASSET, &()).unwrap();
 	let receiver_2 = receiver_2_full
 		.shielded_address
 		.process(&260, &mut rng)
@@ -102,15 +101,15 @@ fn test_transfer_zkp_local() {
 	// a normal test
 	// =============================
 	rng.fill_bytes(&mut sk);
-	let sender_1 = MantaAsset::sample(&commit_param, &sk, &TEST_ASSET, &100, &mut rng).unwrap();
+	let sender_1 = MantaAsset::sample(&commit_param, &sk, &TEST_ASSET, &100).unwrap();
 	rng.fill_bytes(&mut sk);
-	let sender_2 = MantaAsset::sample(&commit_param, &sk, &TEST_ASSET, &400, &mut rng).unwrap();
+	let sender_2 = MantaAsset::sample(&commit_param, &sk, &TEST_ASSET, &400).unwrap();
 	list.push(sender_1.utxo);
 	list.push(sender_2.utxo);
 
 	rng.fill_bytes(&mut sk);
 	let receiver_1_full =
-		MantaAssetFullReceiver::sample(&commit_param, &sk, &TEST_ASSET, &(), &mut rng).unwrap();
+		MantaAssetFullReceiver::sample(&commit_param, &sk, &TEST_ASSET, &()).unwrap();
 	let receiver_1 = receiver_1_full
 		.shielded_address
 		.process(&240, &mut rng)
@@ -118,7 +117,7 @@ fn test_transfer_zkp_local() {
 
 	rng.fill_bytes(&mut sk);
 	let receiver_2_full =
-		MantaAssetFullReceiver::sample(&commit_param, &sk, &TEST_ASSET, &(), &mut rng).unwrap();
+		MantaAssetFullReceiver::sample(&commit_param, &sk, &TEST_ASSET, &()).unwrap();
 	let receiver_2 = receiver_2_full
 		.shielded_address
 		.process(&260, &mut rng)
@@ -139,15 +138,15 @@ fn test_transfer_zkp_local() {
 	// test with a 0 sender token
 	// =============================
 	rng.fill_bytes(&mut sk);
-	let sender_1 = MantaAsset::sample(&commit_param, &sk, &TEST_ASSET, &0, &mut rng).unwrap();
+	let sender_1 = MantaAsset::sample(&commit_param, &sk, &TEST_ASSET, &0).unwrap();
 	rng.fill_bytes(&mut sk);
-	let sender_2 = MantaAsset::sample(&commit_param, &sk, &TEST_ASSET, &500, &mut rng).unwrap();
+	let sender_2 = MantaAsset::sample(&commit_param, &sk, &TEST_ASSET, &500).unwrap();
 	list.push(sender_1.utxo);
 	list.push(sender_2.utxo);
 
 	rng.fill_bytes(&mut sk);
 	let receiver_1_full =
-		MantaAssetFullReceiver::sample(&commit_param, &sk, &TEST_ASSET, &(), &mut rng).unwrap();
+		MantaAssetFullReceiver::sample(&commit_param, &sk, &TEST_ASSET, &()).unwrap();
 	let receiver_1 = receiver_1_full
 		.shielded_address
 		.process(&300, &mut rng)
@@ -155,7 +154,7 @@ fn test_transfer_zkp_local() {
 
 	rng.fill_bytes(&mut sk);
 	let receiver_2_full =
-		MantaAssetFullReceiver::sample(&commit_param, &sk, &TEST_ASSET, &(), &mut rng).unwrap();
+		MantaAssetFullReceiver::sample(&commit_param, &sk, &TEST_ASSET, &()).unwrap();
 	let receiver_2 = receiver_2_full
 		.shielded_address
 		.process(&200, &mut rng)
@@ -176,15 +175,15 @@ fn test_transfer_zkp_local() {
 	// test with a 0 receiver token
 	// =============================
 	rng.fill_bytes(&mut sk);
-	let sender_1 = MantaAsset::sample(&commit_param, &sk, &TEST_ASSET, &111, &mut rng).unwrap();
+	let sender_1 = MantaAsset::sample(&commit_param, &sk, &TEST_ASSET, &111).unwrap();
 	rng.fill_bytes(&mut sk);
-	let sender_2 = MantaAsset::sample(&commit_param, &sk, &TEST_ASSET, &389, &mut rng).unwrap();
+	let sender_2 = MantaAsset::sample(&commit_param, &sk, &TEST_ASSET, &389).unwrap();
 	list.push(sender_1.utxo);
 	list.push(sender_2.utxo);
 
 	rng.fill_bytes(&mut sk);
 	let receiver_1_full =
-		MantaAssetFullReceiver::sample(&commit_param, &sk, &TEST_ASSET, &(), &mut rng).unwrap();
+		MantaAssetFullReceiver::sample(&commit_param, &sk, &TEST_ASSET, &()).unwrap();
 	let receiver_1 = receiver_1_full
 		.shielded_address
 		.process(&0, &mut rng)
@@ -192,7 +191,7 @@ fn test_transfer_zkp_local() {
 
 	rng.fill_bytes(&mut sk);
 	let receiver_2_full =
-		MantaAssetFullReceiver::sample(&commit_param, &sk, &TEST_ASSET, &(), &mut rng).unwrap();
+		MantaAssetFullReceiver::sample(&commit_param, &sk, &TEST_ASSET, &()).unwrap();
 	let receiver_2 = receiver_2_full
 		.shielded_address
 		.process(&500, &mut rng)
@@ -213,15 +212,15 @@ fn test_transfer_zkp_local() {
 	// test with all 0 tokens
 	// =============================
 	rng.fill_bytes(&mut sk);
-	let sender_1 = MantaAsset::sample(&commit_param, &sk, &TEST_ASSET, &0, &mut rng).unwrap();
+	let sender_1 = MantaAsset::sample(&commit_param, &sk, &TEST_ASSET, &0).unwrap();
 	rng.fill_bytes(&mut sk);
-	let sender_2 = MantaAsset::sample(&commit_param, &sk, &TEST_ASSET, &0, &mut rng).unwrap();
+	let sender_2 = MantaAsset::sample(&commit_param, &sk, &TEST_ASSET, &0).unwrap();
 	list.push(sender_1.utxo);
 	list.push(sender_2.utxo);
 
 	rng.fill_bytes(&mut sk);
 	let receiver_1_full =
-		MantaAssetFullReceiver::sample(&commit_param, &sk, &TEST_ASSET, &(), &mut rng).unwrap();
+		MantaAssetFullReceiver::sample(&commit_param, &sk, &TEST_ASSET, &()).unwrap();
 	let receiver_1 = receiver_1_full
 		.shielded_address
 		.process(&0, &mut rng)
@@ -229,7 +228,7 @@ fn test_transfer_zkp_local() {
 
 	rng.fill_bytes(&mut sk);
 	let receiver_2_full =
-		MantaAssetFullReceiver::sample(&commit_param, &sk, &TEST_ASSET, &(), &mut rng).unwrap();
+		MantaAssetFullReceiver::sample(&commit_param, &sk, &TEST_ASSET, &()).unwrap();
 	let receiver_2 = receiver_2_full
 		.shielded_address
 		.process(&0, &mut rng)
@@ -323,15 +322,15 @@ fn test_reclaim_zkp_local() {
 	// sender
 	let mut sk = [0u8; 32];
 	rng.fill_bytes(&mut sk);
-	let sender_1 = MantaAsset::sample(&commit_param, &sk, &TEST_ASSET, &100, &mut rng).unwrap();
+	let sender_1 = MantaAsset::sample(&commit_param, &sk, &TEST_ASSET, &100).unwrap();
 	rng.fill_bytes(&mut sk);
-	let sender_2 = MantaAsset::sample(&commit_param, &sk, &TEST_ASSET, &400, &mut rng).unwrap();
+	let sender_2 = MantaAsset::sample(&commit_param, &sk, &TEST_ASSET, &400).unwrap();
 
 	// receiver
 	rng.fill_bytes(&mut sk);
 	rng.fill_bytes(&mut sk);
 	let receiver_full =
-		MantaAssetFullReceiver::sample(&commit_param, &sk, &TEST_ASSET, &(), &mut rng).unwrap();
+		MantaAssetFullReceiver::sample(&commit_param, &sk, &TEST_ASSET, &()).unwrap();
 	let receiver = receiver_full
 		.shielded_address
 		.process(&240, &mut rng)
@@ -375,15 +374,15 @@ fn test_reclaim_zkp_local() {
 	// =============================
 
 	rng.fill_bytes(&mut sk);
-	let sender_1 = MantaAsset::sample(&commit_param, &sk, &TEST_ASSET, &100, &mut rng).unwrap();
+	let sender_1 = MantaAsset::sample(&commit_param, &sk, &TEST_ASSET, &100).unwrap();
 	rng.fill_bytes(&mut sk);
-	let sender_2 = MantaAsset::sample(&commit_param, &sk, &TEST_ASSET, &400, &mut rng).unwrap();
+	let sender_2 = MantaAsset::sample(&commit_param, &sk, &TEST_ASSET, &400).unwrap();
 	list.push(sender_1.utxo);
 	list.push(sender_2.utxo);
 
 	rng.fill_bytes(&mut sk);
 	let receiver_full =
-		MantaAssetFullReceiver::sample(&commit_param, &sk, &TEST_ASSET, &(), &mut rng).unwrap();
+		MantaAssetFullReceiver::sample(&commit_param, &sk, &TEST_ASSET, &()).unwrap();
 	let receiver = receiver_full
 		.shielded_address
 		.process(&300, &mut rng)
@@ -405,15 +404,15 @@ fn test_reclaim_zkp_local() {
 	// =============================
 
 	rng.fill_bytes(&mut sk);
-	let sender_1 = MantaAsset::sample(&commit_param, &sk, &TEST_ASSET, &0, &mut rng).unwrap();
+	let sender_1 = MantaAsset::sample(&commit_param, &sk, &TEST_ASSET, &0).unwrap();
 	rng.fill_bytes(&mut sk);
-	let sender_2 = MantaAsset::sample(&commit_param, &sk, &TEST_ASSET, &500, &mut rng).unwrap();
+	let sender_2 = MantaAsset::sample(&commit_param, &sk, &TEST_ASSET, &500).unwrap();
 	list.push(sender_1.utxo);
 	list.push(sender_2.utxo);
 
 	rng.fill_bytes(&mut sk);
 	let receiver_full =
-		MantaAssetFullReceiver::sample(&commit_param, &sk, &TEST_ASSET, &(), &mut rng).unwrap();
+		MantaAssetFullReceiver::sample(&commit_param, &sk, &TEST_ASSET, &()).unwrap();
 	let receiver = receiver_full
 		.shielded_address
 		.process(&100, &mut rng)
@@ -435,15 +434,15 @@ fn test_reclaim_zkp_local() {
 	// =============================
 
 	rng.fill_bytes(&mut sk);
-	let sender_1 = MantaAsset::sample(&commit_param, &sk, &TEST_ASSET, &77, &mut rng).unwrap();
+	let sender_1 = MantaAsset::sample(&commit_param, &sk, &TEST_ASSET, &77).unwrap();
 	rng.fill_bytes(&mut sk);
-	let sender_2 = MantaAsset::sample(&commit_param, &sk, &TEST_ASSET, &423, &mut rng).unwrap();
+	let sender_2 = MantaAsset::sample(&commit_param, &sk, &TEST_ASSET, &423).unwrap();
 	list.push(sender_1.utxo);
 	list.push(sender_2.utxo);
 
 	rng.fill_bytes(&mut sk);
 	let receiver_full =
-		MantaAssetFullReceiver::sample(&commit_param, &sk, &TEST_ASSET, &(), &mut rng).unwrap();
+		MantaAssetFullReceiver::sample(&commit_param, &sk, &TEST_ASSET, &()).unwrap();
 	let receiver = receiver_full
 		.shielded_address
 		.process(&0, &mut rng)
@@ -464,15 +463,15 @@ fn test_reclaim_zkp_local() {
 	// =============================
 
 	rng.fill_bytes(&mut sk);
-	let sender_1 = MantaAsset::sample(&commit_param, &sk, &TEST_ASSET, &42, &mut rng).unwrap();
+	let sender_1 = MantaAsset::sample(&commit_param, &sk, &TEST_ASSET, &42).unwrap();
 	rng.fill_bytes(&mut sk);
-	let sender_2 = MantaAsset::sample(&commit_param, &sk, &TEST_ASSET, &458, &mut rng).unwrap();
+	let sender_2 = MantaAsset::sample(&commit_param, &sk, &TEST_ASSET, &458).unwrap();
 	list.push(sender_1.utxo);
 	list.push(sender_2.utxo);
 
 	rng.fill_bytes(&mut sk);
 	let receiver_full =
-		MantaAssetFullReceiver::sample(&commit_param, &sk, &TEST_ASSET, &(), &mut rng).unwrap();
+		MantaAssetFullReceiver::sample(&commit_param, &sk, &TEST_ASSET, &()).unwrap();
 	let receiver = receiver_full
 		.shielded_address
 		.process(&500, &mut rng)
