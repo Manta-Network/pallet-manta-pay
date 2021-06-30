@@ -164,8 +164,11 @@ fn test_mint_should_work() {
 		rng.fill_bytes(&mut sk);
 		let asset = MantaAsset::sample(&commit_param, &sk, &TEST_ASSET, &10).unwrap();
 
-		let payload = generate_mint_payload(&commit_param, &asset, &mut rng).unwrap();
-		assert_ok!(Assets::mint_private_asset(Origin::signed(1), payload));
+		let payload = generate_mint_payload(&asset);
+		assert_ok!(Assets::mint_private_asset(
+			Origin::signed(1),
+			payload.unwrap()
+		));
 
 		assert_eq!(TotalSupply::get(TEST_ASSET), 1000);
 		assert_eq!(PoolBalance::get(TEST_ASSET), 10);
@@ -248,7 +251,7 @@ fn mint_with_invalid_commitment_should_not_work() {
 		let mut sk = [0u8; 32];
 		rng.fill_bytes(&mut sk);
 		let asset = MantaAsset::sample(&commit_param, &sk, &TEST_ASSET, &50).unwrap();
-		let payload = generate_mint_payload(&commit_param, &asset, &mut rng).unwrap();
+		let payload = generate_mint_payload(&asset).unwrap();
 
 		assert_noop!(
 			Assets::mint_private_asset(Origin::signed(1), payload),
@@ -930,7 +933,7 @@ fn mint_tokens_helper(size: usize) -> Vec<MantaAsset> {
 		let token_value = 10 + i as u64;
 		rng.fill_bytes(&mut sk);
 		let asset = MantaAsset::sample(&commit_param, &sk, &TEST_ASSET, &token_value).unwrap();
-		let payload = generate_mint_payload(&commit_param, &asset, &mut rng).unwrap();
+		let payload = generate_mint_payload(&asset).unwrap();
 
 		// mint a sender token
 		assert_ok!(Assets::mint_private_asset(Origin::signed(1), payload));
@@ -952,7 +955,7 @@ fn generate_mint_payload_helper(value: u64) -> [u8; MINT_PAYLOAD_SIZE] {
 	let mut sk = [0u8; 32];
 	rng.fill_bytes(&mut sk);
 	let asset = MantaAsset::sample(&commit_param, &sk, &TEST_ASSET, &value).unwrap();
-	generate_mint_payload(&commit_param, &asset, &mut rng).unwrap()
+	generate_mint_payload(&asset).unwrap()
 }
 
 fn transfer_test_helper(iter: usize) {

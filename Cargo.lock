@@ -1396,7 +1396,7 @@ dependencies = [
 [[package]]
 name = "manta-api"
 version = "0.1.0"
-source = "git+https://github.com/Manta-Network/manta-api?branch=new-mint-payload#63e85912776bc145bc20c23cc0a7cb5dbeeae57b"
+source = "git+https://github.com/Manta-Network/manta-api?branch=new-mint-payload#0d4c4e9d7ff076bf86070af0b5b53aa417b701e0"
 dependencies = [
  "ark-bls12-381",
  "ark-crypto-primitives",
@@ -1419,7 +1419,7 @@ dependencies = [
 [[package]]
 name = "manta-asset"
 version = "0.1.1"
-source = "git+https://github.com/Manta-Network/manta-types?branch=new-mint-payload#2be74397b6325900759d8a1fed4aa80f0297bc1d"
+source = "git+https://github.com/Manta-Network/manta-types?branch=new-mint-payload#3026b98733c8da91707260b461fd6303da0a9520"
 dependencies = [
  "ark-crypto-primitives",
  "ark-ed-on-bls12-381",
@@ -1455,7 +1455,7 @@ dependencies = [
 [[package]]
 name = "manta-data"
 version = "0.1.0"
-source = "git+https://github.com/Manta-Network/manta-types?branch=new-mint-payload#2be74397b6325900759d8a1fed4aa80f0297bc1d"
+source = "git+https://github.com/Manta-Network/manta-types?branch=new-mint-payload#3026b98733c8da91707260b461fd6303da0a9520"
 dependencies = [
  "ark-ed-on-bls12-381",
  "ark-groth16",
@@ -1482,7 +1482,7 @@ dependencies = [
 [[package]]
 name = "manta-ledger"
 version = "0.1.0"
-source = "git+https://github.com/Manta-Network/manta-types?branch=new-mint-payload#2be74397b6325900759d8a1fed4aa80f0297bc1d"
+source = "git+https://github.com/Manta-Network/manta-types?branch=new-mint-payload#3026b98733c8da91707260b461fd6303da0a9520"
 dependencies = [
  "manta-crypto",
  "manta-error",
