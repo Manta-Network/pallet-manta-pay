@@ -164,7 +164,7 @@ fn test_mint_should_work() {
 		rng.fill_bytes(&mut sk);
 		let asset = MantaAsset::sample(&commit_param, &sk, &TEST_ASSET, &10).unwrap();
 
-		let payload = generate_mint_payload(&asset).unwrap();
+		let payload = generate_mint_payload(&commit_param, &asset, &mut rng).unwrap();
 		assert_ok!(Assets::mint_private_asset(Origin::signed(1), payload));
 
 		assert_eq!(TotalSupply::get(TEST_ASSET), 1000);
@@ -248,7 +248,7 @@ fn mint_with_invalid_commitment_should_not_work() {
 		let mut sk = [0u8; 32];
 		rng.fill_bytes(&mut sk);
 		let asset = MantaAsset::sample(&commit_param, &sk, &TEST_ASSET, &50).unwrap();
-		let payload = generate_mint_payload(&asset).unwrap();
+		let payload = generate_mint_payload(&commit_param, &asset, &mut rng).unwrap();
 
 		assert_noop!(
 			Assets::mint_private_asset(Origin::signed(1), payload),
@@ -930,7 +930,7 @@ fn mint_tokens_helper(size: usize) -> Vec<MantaAsset> {
 		let token_value = 10 + i as u64;
 		rng.fill_bytes(&mut sk);
 		let asset = MantaAsset::sample(&commit_param, &sk, &TEST_ASSET, &token_value).unwrap();
-		let payload = generate_mint_payload(&asset).unwrap();
+		let payload = generate_mint_payload(&commit_param, &asset, &mut rng).unwrap();
 
 		// mint a sender token
 		assert_ok!(Assets::mint_private_asset(Origin::signed(1), payload));
@@ -952,7 +952,7 @@ fn generate_mint_payload_helper(value: u64) -> [u8; MINT_PAYLOAD_SIZE] {
 	let mut sk = [0u8; 32];
 	rng.fill_bytes(&mut sk);
 	let asset = MantaAsset::sample(&commit_param, &sk, &TEST_ASSET, &value).unwrap();
-	generate_mint_payload(&asset).unwrap()
+	generate_mint_payload(&commit_param, &asset, &mut rng).unwrap()
 }
 
 fn transfer_test_helper(iter: usize) {
@@ -987,26 +987,32 @@ fn transfer_test_helper(iter: usize) {
 
 		// check the ciphertexts
 		let enc_value_list = EncValueList::get();
-		assert_eq!(enc_value_list.len(), 2 * (i + 1));
-		assert_eq!(enc_value_list[2 * i], receiver_1.ciphertext);
-		assert_eq!(enc_value_list[2 * i + 1], receiver_2.ciphertext);
+		assert_eq!(enc_value_list.len(), 2 * (i + 1) + size);
+		assert_eq!(enc_value_list[2 * i + size], receiver_1.ciphertext);
+		assert_eq!(enc_value_list[2 * i + 1 + size], receiver_2.ciphertext);
 
 		let mut ciphertext_1 = [0u8; 48];
 		ciphertext_1[0..16].copy_from_slice(receiver_1.ciphertext.as_ref());
 		ciphertext_1[16..48].copy_from_slice(receiver_1.sender_pk.as_ref());
 		let sk_1 = receivers_full[i * 2 + 1].spending_info.ecsk.clone();
+		let plaintext_1 = [receiver_1.prepared_data.asset_id.to_le_bytes().as_ref(), receiver_1.value.to_le_bytes().as_ref()].concat();
+		let mut plaintext_1_bytes = [0u8; 16];
+		plaintext_1_bytes.copy_from_slice(&plaintext_1);
 		assert_eq!(
 			<MantaCrypto as Ecies>::decrypt(&sk_1, &ciphertext_1),
-			receiver_1.value
+			plaintext_1_bytes
 		);
 
 		let mut ciphertext_2 = [0u8; 48];
 		ciphertext_2[0..16].copy_from_slice(receiver_2.ciphertext.as_ref());
 		ciphertext_2[16..48].copy_from_slice(receiver_2.sender_pk.as_ref());
 		let sk_2 = receivers_full[i * 2].spending_info.ecsk.clone();
+		let plaintext_2 = [receiver_2.prepared_data.asset_id.to_le_bytes().as_ref(), receiver_2.value.to_le_bytes().as_ref()].concat();
+		let mut plaintext_2_bytes = [0u8; 16];
+		plaintext_2_bytes.copy_from_slice(&plaintext_2);
 		assert_eq!(
 			<MantaCrypto as Ecies>::decrypt(&sk_2, &ciphertext_2),
-			receiver_2.value
+			plaintext_2_bytes
 		);
 		assert_eq!(PoolBalance::get(TEST_ASSET), pool);
 	}
@@ -1057,7 +1063,7 @@ fn reclaim_test_helper(iter: usize) {
 		assert_eq!(vn_list[i * 2 + 1], sender_2.asset.void_number);
 	}
 	let enc_value_list = EncValueList::get();
-	assert_eq!(enc_value_list.len(), iter);
+	assert_eq!(enc_value_list.len(), iter + size);
 }
 
 fn prepare_private_transfer_payload(
