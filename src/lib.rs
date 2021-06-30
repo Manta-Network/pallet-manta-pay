@@ -374,7 +374,7 @@ decl_module! {
 			let mut enc_value_list = EncValueList::get();
 			enc_value_list.push(input.ciphertext);
 			let old_pool_balance = PoolBalance::get(input.asset_id);
-		
+
 			// write back to ledger storage
 			Self::deposit_event(
 				RawEvent::Minted(input.asset_id, origin, input.amount)

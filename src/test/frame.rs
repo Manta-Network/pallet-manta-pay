@@ -995,7 +995,11 @@ fn transfer_test_helper(iter: usize) {
 		ciphertext_1[0..16].copy_from_slice(receiver_1.ciphertext.as_ref());
 		ciphertext_1[16..48].copy_from_slice(receiver_1.sender_pk.as_ref());
 		let sk_1 = receivers_full[i * 2 + 1].spending_info.ecsk.clone();
-		let plaintext_1 = [receiver_1.prepared_data.asset_id.to_le_bytes().as_ref(), receiver_1.value.to_le_bytes().as_ref()].concat();
+		let plaintext_1 = [
+			receiver_1.prepared_data.asset_id.to_le_bytes().as_ref(),
+			receiver_1.value.to_le_bytes().as_ref(),
+		]
+		.concat();
 		let mut plaintext_1_bytes = [0u8; 16];
 		plaintext_1_bytes.copy_from_slice(&plaintext_1);
 		assert_eq!(
@@ -1007,7 +1011,11 @@ fn transfer_test_helper(iter: usize) {
 		ciphertext_2[0..16].copy_from_slice(receiver_2.ciphertext.as_ref());
 		ciphertext_2[16..48].copy_from_slice(receiver_2.sender_pk.as_ref());
 		let sk_2 = receivers_full[i * 2].spending_info.ecsk.clone();
-		let plaintext_2 = [receiver_2.prepared_data.asset_id.to_le_bytes().as_ref(), receiver_2.value.to_le_bytes().as_ref()].concat();
+		let plaintext_2 = [
+			receiver_2.prepared_data.asset_id.to_le_bytes().as_ref(),
+			receiver_2.value.to_le_bytes().as_ref(),
+		]
+		.concat();
 		let mut plaintext_2_bytes = [0u8; 16];
 		plaintext_2_bytes.copy_from_slice(&plaintext_2);
 		assert_eq!(
