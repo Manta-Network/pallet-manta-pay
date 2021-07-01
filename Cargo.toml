@@ -38,7 +38,7 @@ manta-asset = { branch = "manta", git = "https://github.com/Manta-Network/manta-
 manta-crypto = { branch = "manta", git = "https://github.com/Manta-Network/manta-crypto", default-features = false }
 manta-data = { branch = "manta", git = "https://github.com/Manta-Network/manta-types", default-features = false }
 manta-error = { branch = "manta", git = "https://github.com/Manta-Network/manta-error", default-features = false }
-manta-ledger = { branch = "new-mint-payload", git = "https://github.com/Manta-Network/manta-types", default-features = false }
+manta-ledger = { branch = "manta", git = "https://github.com/Manta-Network/manta-types", default-features = false }
 manta-api = { branch = "manta", git = "https://github.com/Manta-Network/manta-api", default-features = false, features = [ "std" ] }
 
 [dev-dependencies]

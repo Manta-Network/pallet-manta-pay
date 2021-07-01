@@ -1482,7 +1482,7 @@ dependencies = [
 [[package]]
 name = "manta-ledger"
 version = "0.1.0"
-source = "git+https://github.com/Manta-Network/manta-types?branch=new-mint-payload#3026b98733c8da91707260b461fd6303da0a9520"
+source = "git+https://github.com/Manta-Network/manta-types?branch=manta#afbdf091c96c2827d161dc05a01c53edba551c42"
 dependencies = [
  "manta-crypto",
  "manta-error",
