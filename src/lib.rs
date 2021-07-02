@@ -370,13 +370,18 @@ decl_module! {
 					<Error<T>>::LedgerUpdateFail.into()
 				})?;
 
+			// update enc_value_list
+			let mut enc_value_list = EncValueList::get();
+			enc_value_list.push(input.ciphertext);
+			let old_pool_balance = PoolBalance::get(input.asset_id);
+
 			// write back to ledger storage
 			Self::deposit_event(
 				RawEvent::Minted(input.asset_id, origin, input.amount)
 			);
-			CoinShards::put(coin_shards);
 
-			let old_pool_balance = PoolBalance::get(input.asset_id);
+			CoinShards::put(coin_shards);
+			EncValueList::put(enc_value_list);
 			PoolBalance::mutate(
 				input.asset_id,
 				|balance| *balance = old_pool_balance + input.amount
