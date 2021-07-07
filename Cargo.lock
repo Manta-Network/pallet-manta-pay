@@ -558,6 +558,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "console_error_panic_hook"
+version = "0.1.6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b8d976903543e0c48546a91908f21588a680a8c8f984df9a5d69feccb2b2a211"
+dependencies = [
+ "cfg-if 0.1.10",
+ "wasm-bindgen",
+]
+
+[[package]]
 name = "constant_time_eq"
 version = "0.1.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1119,8 +1129,10 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8fc3cb4d91f53b50155bdcfd23f6a4c39ae1969c2ae85982b135750cccaf5fce"
 dependencies = [
  "cfg-if 1.0.0",
+ "js-sys",
  "libc",
  "wasi 0.9.0+wasi-snapshot-preview1",
+ "wasm-bindgen",
 ]
 
 [[package]]
@@ -1130,8 +1142,10 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7fcd999463524c52659517fe2cea98493cfe485d10565e7b0fb07dbba7ad2753"
 dependencies = [
  "cfg-if 1.0.0",
+ "js-sys",
  "libc",
  "wasi 0.10.2+wasi-snapshot-preview1",
+ "wasm-bindgen",
 ]
 
 [[package]]
@@ -1396,7 +1410,7 @@ dependencies = [
 [[package]]
 name = "manta-api"
 version = "0.1.0"
-source = "git+https://github.com/Manta-Network/manta-api?branch=manta#a161ae4346f2421abc6bdf777fe4af23281f1530"
+source = "git+https://github.com/Manta-Network/manta-api?branch=manta#6827af41556222c4b894283673d121464b7aeb59"
 dependencies = [
  "ark-bls12-381",
  "ark-crypto-primitives",
@@ -1407,13 +1421,20 @@ dependencies = [
  "ark-relations",
  "ark-serialize",
  "ark-std",
+ "blake2",
+ "console_error_panic_hook",
+ "getrandom 0.2.3",
  "hkdf",
  "manta-asset",
  "manta-crypto",
  "manta-data",
  "manta-error",
+ "rand 0.7.3",
  "rand_chacha 0.2.2",
  "sha2 0.9.5",
+ "wasm-bindgen",
+ "web-sys",
+ "zeroize",
 ]
 
 [[package]]
@@ -1470,7 +1491,7 @@ dependencies = [
 [[package]]
 name = "manta-error"
 version = "0.1.0"
-source = "git+https://github.com/Manta-Network/manta-error?branch=manta#17b9a995564bacd4557b98581d7bb1cf02819847"
+source = "git+https://github.com/Manta-Network/manta-error?branch=manta#201b4e70577fa282474ceee2008e4e24ba790e21"
 dependencies = [
  "ark-crypto-primitives",
  "ark-relations",
