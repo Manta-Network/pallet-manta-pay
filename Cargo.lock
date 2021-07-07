@@ -1456,7 +1456,7 @@ dependencies = [
 [[package]]
 name = "manta-crypto"
 version = "0.1.0"
-source = "git+https://github.com/Manta-Network/manta-crypto?branch=manta#45b49f1be4d0c756e471aa4b26b2fc5f581fa72f"
+source = "git+https://github.com/Manta-Network/manta-crypto?branch=manta#7daaea1f0fb2d2df0a461bb458fa837293968da6"
 dependencies = [
  "aes",
  "ark-bls12-381",
