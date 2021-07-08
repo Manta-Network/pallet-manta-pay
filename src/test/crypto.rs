@@ -90,9 +90,13 @@ fn test_transfer_zkp_local() {
 	let sanity_cs = ConstraintSystem::<Fq>::new_ref();
 	circuit
 		.clone()
-		.generate_constraints(sanity_cs.clone())
-		.unwrap();
-	assert!(sanity_cs.is_satisfied().unwrap());
+		.generate_constraints(sanity_cs.clone()).unwrap();
+
+	let re = sanity_cs.is_satisfied();
+	match re {
+		Ok(b) => assert!(b),
+		Err(e ) => println!("Error: {:?}", e),
+	}
 
 	// build the keys
 	let pk = generate_random_parameters::<Bls12_381, _, _>(circuit.clone(), &mut rng).unwrap();
@@ -496,7 +500,7 @@ fn test_reclaim_helper(
 	sender_1: MantaAsset,
 	sender_2: MantaAsset,
 	receiver: MantaAssetProcessedReceiver,
-	reclaim_value: u64,
+	reclaim_value: AssetBalance,
 	list: &Vec<[u8; 32]>,
 ) {
 	let mut rng = ChaCha20Rng::from_seed([8u8; 32]);
