@@ -1452,7 +1452,7 @@ dependencies = [
 [[package]]
 name = "manta-api"
 version = "0.1.0"
-source = "git+https://github.com/Manta-Network/manta-api?branch=refactor-asset-id-and-balance#9504f0e271f0858ee72c6ba1d432c0c728cabaa4"
+source = "git+https://github.com/Manta-Network/manta-api?branch=refactor-asset-id-and-balance#59e0d44e3af2dedce3afb14d5646d0ca0ad590d0"
 dependencies = [
  "ark-bls12-381",
  "ark-crypto-primitives",
@@ -1482,7 +1482,7 @@ dependencies = [
 [[package]]
 name = "manta-asset"
 version = "0.1.1"
-source = "git+https://github.com/Manta-Network/manta-types?branch=refactor-asset-id-and-balance#557f42fa1dde8435adaeb1cdbf14a372ea0736f2"
+source = "git+https://github.com/Manta-Network/manta-types?branch=refactor-asset-id-and-balance#ced519be60b74cf8294ddf8942eed7b5cfe200ec"
 dependencies = [
  "ark-crypto-primitives",
  "ark-ed-on-bls12-381",
@@ -1519,7 +1519,7 @@ dependencies = [
 [[package]]
 name = "manta-data"
 version = "0.1.0"
-source = "git+https://github.com/Manta-Network/manta-types?branch=refactor-asset-id-and-balance#557f42fa1dde8435adaeb1cdbf14a372ea0736f2"
+source = "git+https://github.com/Manta-Network/manta-types?branch=refactor-asset-id-and-balance#ced519be60b74cf8294ddf8942eed7b5cfe200ec"
 dependencies = [
  "ark-ed-on-bls12-381",
  "ark-groth16",
