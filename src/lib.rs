@@ -241,7 +241,7 @@ decl_module! {
 			<Balances<T>>::insert(&origin, asset_id, total);
 
 			VNList::put(Vec::<[u8; 32]>::new());
-			EncValueList::put(Vec::<[u8; 68]>::new());
+			EncValueList::put(Vec::<MantaEciesCiphertext>::new());
 
 		}
 
@@ -372,7 +372,7 @@ decl_module! {
 
 			// update enc_value_list
 			let mut enc_value_list = EncValueList::get();
-			enc_value_list.push(input.encrypted_note.ciphertext);
+			enc_value_list.push(input.encrypted_note);
 			let old_pool_balance = PoolBalance::get(input.asset_id);
 
 			// write back to ledger storage
@@ -507,8 +507,8 @@ decl_module! {
 
 			// update ledger storage
 			let mut enc_value_list = EncValueList::get();
-			enc_value_list.push(data.receiver_1.encrypted_note.ciphertext);
-			enc_value_list.push(data.receiver_2.encrypted_note.ciphertext);
+			enc_value_list.push(data.receiver_1.encrypted_note);
+			enc_value_list.push(data.receiver_2.encrypted_note);
 
 			Self::deposit_event(RawEvent::PrivateTransferred(origin));
 			CoinShards::put(coin_shards);
@@ -625,7 +625,7 @@ decl_module! {
 
 			// update ledger storage
 			let mut enc_value_list = EncValueList::get();
-			enc_value_list.push(data.receiver.encrypted_note.ciphertext);
+			enc_value_list.push(data.receiver.encrypted_note);
 
 			coin_shards
 				.update(&data.receiver.cm, hash_param)
@@ -731,7 +731,7 @@ decl_storage! {
 		pub CoinShards get(fn coin_shards): MantaPrivateAssetLedger;
 
 		/// List of encrypted values.
-		pub EncValueList get(fn enc_value_list): Vec<[u8; 68]>;
+		pub EncValueList get(fn enc_value_list): Vec<MantaEciesCiphertext>;
 
 		/// The balance of all minted coins for this asset_id.
 		pub PoolBalance: map hasher(blake2_128_concat) AssetId => AssetBalance;

@@ -35,7 +35,7 @@ ark-std = { version = "0.2.0", default-features = false }
 # If you need to change any of the below lines, make sure to reflect the changes in whichever script is supposed to modify them.
 # Search for "Check Pallet-Manta-Pay" in Manta-Network repositories to find the relevant scripts.
 manta-asset = { branch = "refactor-asset-id-and-balance", git = "https://github.com/Manta-Network/manta-types", default-features = false }
-manta-crypto = { branch = "refactor-asset-id-and-balance", git = "https://github.com/Manta-Network/manta-crypto", default-features = false }
+manta-crypto = { branch = "manta", git = "https://github.com/Manta-Network/manta-crypto", default-features = false }
 manta-data = { branch = "refactor-asset-id-and-balance", git = "https://github.com/Manta-Network/manta-types", default-features = false }
 manta-error = { branch = "manta", git = "https://github.com/Manta-Network/manta-error", default-features = false }
 manta-ledger = { branch = "refactor-asset-id-and-balance", git = "https://github.com/Manta-Network/manta-types", default-features = false }

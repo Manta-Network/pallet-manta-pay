@@ -991,10 +991,10 @@ fn transfer_test_helper(iter: usize) {
 		// check the ciphertexts
 		let enc_value_list = EncValueList::get();
 		assert_eq!(enc_value_list.len(), 2 * (i + 1) + size);
-		assert_eq!(enc_value_list[2 * i + size], receiver_1.encrypted_note.ciphertext);
-		assert_eq!(enc_value_list[2 * i + 1 + size], receiver_2.encrypted_note.ciphertext);
+		assert_eq!(enc_value_list[2 * i + size], receiver_1.encrypted_note);
+		assert_eq!(enc_value_list[2 * i + 1 + size], receiver_2.encrypted_note);
 
-		let ciphertext_1 = receiver_1.encrypted_note.ciphertext;
+		let ciphertext_1 = receiver_1.encrypted_note;
 		let sk_1 = receivers_full[i * 2 + 1].spending_info.ecsk.clone();
 		let plaintext_1 = [
 			receiver_1.prepared_data.asset_id.to_le_bytes().as_ref(),
@@ -1008,7 +1008,7 @@ fn transfer_test_helper(iter: usize) {
 			plaintext_1_bytes
 		);
 
-		let ciphertext_2 = receiver_2.encrypted_note.ciphertext;
+		let ciphertext_2 = receiver_2.encrypted_note;
 		let sk_2 = receivers_full[i * 2].spending_info.ecsk.clone();
 		let plaintext_2 = [
 			receiver_2.prepared_data.asset_id.to_le_bytes().as_ref(),
