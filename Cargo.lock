@@ -1546,7 +1546,7 @@ dependencies = [
 [[package]]
 name = "manta-ledger"
 version = "0.1.0"
-source = "git+https://github.com/Manta-Network/manta-types?branch=refactor-asset-id-and-balance#79c5f6e78adf5de7063ecb21d20866b357448943"
+source = "git+https://github.com/Manta-Network/manta-types?branch=refactor-asset-id-and-balance#ced519be60b74cf8294ddf8942eed7b5cfe200ec"
 dependencies = [
  "manta-crypto",
  "manta-error",

@@ -119,7 +119,7 @@ pub use weights::WeightInfo;
 use ark_std::vec::Vec;
 use frame_support::{decl_error, decl_event, decl_module, decl_storage, ensure};
 use frame_system::ensure_signed;
-use manta_asset::{AssetBalance, AssetId, MantaKey, SanityCheck};
+use manta_asset::{AssetBalance, AssetId, MantaRandomValue, SanityCheck};
 use manta_crypto::*;
 use manta_data::*;
 use manta_ledger::{LedgerSharding, MantaPrivateAssetLedger};
@@ -723,7 +723,7 @@ decl_storage! {
 		/// Each coin has a unique void number, and if this number is revealed,
 		/// the coin is voided.
 		/// The ledger maintains a list of all void numbers.
-		pub VNList get(fn vn_list): Vec<MantaKey>;
+		pub VNList get(fn vn_list): Vec<MantaRandomValue>;
 
 		/// List of Coins that has ever been created.
 		/// We employ a sharding system to host all the coins
