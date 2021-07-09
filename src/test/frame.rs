@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with pallet-manta-pay.  If not, see <http://www.gnu.org/licenses/>.
 
-use crate as pallet_manta_pay;
+use crate as pallet_manta_pay; 
 use crate::*;
 use ark_serialize::CanonicalDeserialize;
 use ark_std::rand::{RngCore, SeedableRng};
@@ -47,6 +47,7 @@ frame_support::construct_runtime!(
 		MantaModule: pallet_manta_pay::{Module, Call, Storage, Event<T>},
 	}
 );
+
 type BlockNumber = u64;
 
 parameter_types! {
@@ -79,13 +80,13 @@ impl frame_system::Config for Test {
 	type SS58Prefix = SS58Prefix;
 }
 
-impl Config for Test {
+impl pallet_manta_pay::pallet::Config for Test {
 	type Event = ();
 	type WeightInfo = ();
 }
 type Assets = Module<Test>;
 
-fn new_test_ext() -> sp_io::TestExternalities {
+pub(crate) fn new_test_ext() -> sp_io::TestExternalities {
 	frame_system::GenesisConfig::default()
 		.build_storage::<Test>()
 		.unwrap()
@@ -104,8 +105,8 @@ fn test_constants_should_work() {
 		let commit_param = CommitmentParam::deserialize(COMMIT_PARAM.data).unwrap();
 		let hash_param_checksum_local = hash_param.get_checksum().unwrap();
 		let commit_param_checksum_local = commit_param.get_checksum().unwrap();
-		let hash_param_checksum = HashParamChecksum::get();
-		let commit_param_checksum = CommitParamChecksum::get();
+		let hash_param_checksum = Test::HashParamChecksum::get();
+		let commit_param_checksum = Test::CommitParamChecksum::get();
 		assert_eq!(hash_param_checksum, hash_param_checksum_local);
 		assert_eq!(commit_param_checksum, commit_param_checksum_local);
 	});
@@ -170,11 +171,11 @@ fn test_mint_should_work() {
 			payload.unwrap()
 		));
 
-		assert_eq!(TotalSupply::get(TEST_ASSET), 1000);
-		assert_eq!(PoolBalance::get(TEST_ASSET), 10);
-		let coin_shards = CoinShards::get();
+		assert_eq!(Test::TotalSupply::get(TEST_ASSET), 1000);
+		assert_eq!(Test::PoolBalance::get(TEST_ASSET), 10);
+		let coin_shards = Test::CoinShards::get();
 		assert!(coin_shards.exist(&asset.utxo));
-		let vn_list = VNList::get();
+		let vn_list = Test::VNList::get();
 		assert_eq!(vn_list.len(), 0);
 	});
 }
@@ -268,7 +269,7 @@ fn mint_with_hash_param_mismatch_should_not_work() {
 		let payload = generate_mint_payload_helper(50);
 		assert_ok!(Assets::mint_private_asset(Origin::signed(1), payload));
 
-		HashParamChecksum::put([3u8; 32]);
+		Test::HashParamChecksum::put([3u8; 32]);
 
 		assert_noop!(
 			Assets::mint_private_asset(Origin::signed(1), payload),
@@ -285,7 +286,7 @@ fn mint_with_commit_param_mismatch_should_not_work() {
 		let payload = generate_mint_payload_helper(50);
 		assert_ok!(Assets::mint_private_asset(Origin::signed(1), payload));
 
-		CommitParamChecksum::put([3u8; 32]);
+		Test::CommitParamChecksum::put([3u8; 32]);
 
 		assert_noop!(
 			Assets::mint_private_asset(Origin::signed(1), payload),
@@ -359,7 +360,7 @@ fn transferring_with_hash_param_mismatch_should_not_work() {
 		initialize_test(10_000_000);
 
 		let payload = [0u8; PRIVATE_TRANSFER_PAYLOAD_SIZE];
-		HashParamChecksum::put([3u8; 32]);
+		Test::HashParamChecksum::put([3u8; 32]);
 
 		// invoke the transfer event
 		assert_noop!(
@@ -427,7 +428,7 @@ fn transferring_existing_coins_should_not_work() {
 		let (_, receivers_processed) = build_receivers(&commit_param, &mut sk, &mut rng, size);
 
 		for i in 0usize..iter {
-			let mut coin_shards = CoinShards::get();
+			let mut coin_shards = Test::CoinShards::get();
 
 			// extract the receivers
 			let receiver_1 = receivers_processed[i * 2 + 1].clone();
@@ -448,7 +449,7 @@ fn transferring_existing_coins_should_not_work() {
 				coin_shards
 					.update(&receiver_1.utxo, hash_param.clone())
 					.unwrap();
-				CoinShards::put(coin_shards);
+				Test::CoinShards::put(coin_shards);
 
 				assert_noop!(
 					Assets::private_transfer(Origin::signed(1), payload),
@@ -458,7 +459,7 @@ fn transferring_existing_coins_should_not_work() {
 				coin_shards
 					.update(&receiver_2.utxo, hash_param.clone())
 					.unwrap();
-				CoinShards::put(coin_shards);
+				Test::CoinShards::put(coin_shards);
 
 				assert_noop!(
 					Assets::private_transfer(Origin::signed(1), payload),
@@ -593,7 +594,7 @@ fn transferring_with_invalid_zkp_param_should_not_work() {
 
 		let transfer_vk = VerificationKey { data: &[0u8; 2312] };
 		let transfer_key_digest = transfer_vk.get_checksum().unwrap();
-		TransferZKPKeyChecksum::put(transfer_key_digest);
+		Test::TransferZKPKeyChecksum::put(transfer_key_digest);
 		assert_noop!(
 			Assets::private_transfer(Origin::signed(1), payload),
 			Error::<Test>::ZkpParamFail
@@ -667,7 +668,7 @@ fn reclaim_with_hash_param_mismatch_should_not_work() {
 		initialize_test(10_000_000);
 
 		let payload = [0u8; RECLAIM_PAYLOAD_SIZE];
-		HashParamChecksum::put([3u8; 32]);
+		Test::HashParamChecksum::put([3u8; 32]);
 
 		// invoke the transfer event
 		assert_noop!(
@@ -785,11 +786,11 @@ fn reclaim_spent_coin_should_not_work_2() {
 			1,
 		);
 
-		let mut coin_shards = CoinShards::get();
+		let mut coin_shards = Test::CoinShards::get();
 		coin_shards
 			.update(&receiver.utxo, hash_param.clone())
 			.unwrap();
-		CoinShards::put(coin_shards);
+		Test::CoinShards::put(coin_shards);
 
 		assert_noop!(
 			Assets::reclaim(Origin::signed(1), payload),
@@ -822,7 +823,7 @@ fn reclaim_with_invalid_zkp_param_should_not_work() {
 
 		let reclaim_vk = VerificationKey { data: &[0u8; 2312] };
 		let reclaim_key_digest = reclaim_vk.get_checksum().unwrap();
-		ReclaimZKPKeyChecksum::put(reclaim_key_digest);
+		Test::ReclaimZKPKeyChecksum::put(reclaim_key_digest);
 		assert_noop!(
 			Assets::reclaim(Origin::signed(1), payload),
 			Error::<Test>::ZkpParamFail
@@ -941,8 +942,8 @@ fn mint_tokens_helper(size: usize) -> Vec<MantaAsset> {
 		pool += token_value;
 
 		// sanity checks
-		assert_eq!(PoolBalance::get(TEST_ASSET), pool);
-		let coin_shards = CoinShards::get();
+		assert_eq!(Test::PoolBalance::get(TEST_ASSET), pool);
+		let coin_shards = Test::CoinShards::get();
 		assert!(coin_shards.exist(&asset.utxo));
 		senders.push(asset);
 	}
@@ -965,7 +966,7 @@ fn transfer_test_helper(iter: usize) {
 
 	let size = iter << 1;
 	let senders = mint_tokens_helper(size);
-	let pool = PoolBalance::get(TEST_ASSET);
+	let pool = Test::PoolBalance::get(TEST_ASSET);
 
 	let (receivers_full, receivers_processed) =
 		build_receivers(&commit_param, &mut sk, &mut rng, size);
@@ -989,10 +990,16 @@ fn transfer_test_helper(iter: usize) {
 		assert_ok!(Assets::private_transfer(Origin::signed(1), payload));
 
 		// check the ciphertexts
-		let enc_value_list = EncValueList::get();
+		let enc_value_list = Test::EncValueList::get();
 		assert_eq!(enc_value_list.len(), 2 * (i + 1) + size);
-		assert_eq!(enc_value_list[2 * i + size], receiver_1.encrypted_note.ciphertext);
-		assert_eq!(enc_value_list[2 * i + 1 + size], receiver_2.encrypted_note.ciphertext);
+		assert_eq!(
+			enc_value_list[2 * i + size],
+			receiver_1.encrypted_note.ciphertext
+		);
+		assert_eq!(
+			enc_value_list[2 * i + 1 + size],
+			receiver_2.encrypted_note.ciphertext
+		);
 
 		let ciphertext_1 = receiver_1.encrypted_note.ciphertext;
 		let sk_1 = receivers_full[i * 2 + 1].spending_info.ecsk.clone();
@@ -1021,13 +1028,13 @@ fn transfer_test_helper(iter: usize) {
 			<MantaCrypto as Ecies>::decrypt(&sk_2, &ciphertext_2).unwrap(),
 			plaintext_2_bytes
 		);
-		assert_eq!(PoolBalance::get(TEST_ASSET), pool);
+		assert_eq!(Test::PoolBalance::get(TEST_ASSET), pool);
 	}
 
 	// check the resulting status of the ledger storage
-	assert_eq!(TotalSupply::get(TEST_ASSET), 10_000_000);
-	let coin_shards = CoinShards::get();
-	let vn_list = VNList::get();
+	assert_eq!(Test::TotalSupply::get(TEST_ASSET), 10_000_000);
+	let coin_shards = Test::CoinShards::get();
+	let vn_list = Test::VNList::get();
 	for i in 0usize..size {
 		assert!(coin_shards.exist(&senders[i].utxo));
 		assert!(coin_shards.exist(&receivers_processed[i].utxo));
@@ -1042,7 +1049,7 @@ fn reclaim_test_helper(iter: usize) {
 
 	let size = iter << 1;
 	let senders = mint_tokens_helper(size);
-	let mut pool = PoolBalance::get(TEST_ASSET);
+	let mut pool = Test::PoolBalance::get(TEST_ASSET);
 
 	for i in 0usize..iter {
 		let (payload, sender_1, sender_2, reclaim_value, _) = prepare_reclaim_payload(
@@ -1060,16 +1067,16 @@ fn reclaim_test_helper(iter: usize) {
 		assert_ok!(Assets::reclaim(Origin::signed(1), payload));
 
 		// check the resulting status of the ledger storage
-		assert_eq!(TotalSupply::get(TEST_ASSET), 10_000_000);
+		assert_eq!(Test::TotalSupply::get(TEST_ASSET), 10_000_000);
 		pool -= reclaim_value;
-		assert_eq!(PoolBalance::get(TEST_ASSET), pool);
+		assert_eq!(Test::PoolBalance::get(TEST_ASSET), pool);
 
-		let vn_list = VNList::get();
+		let vn_list = Test::VNList::get();
 		assert_eq!(vn_list.len(), 2 * (i + 1));
 		assert_eq!(vn_list[i * 2], sender_1.asset.void_number);
 		assert_eq!(vn_list[i * 2 + 1], sender_2.asset.void_number);
 	}
-	let enc_value_list = EncValueList::get();
+	let enc_value_list = Test::EncValueList::get();
 	assert_eq!(enc_value_list.len(), iter + size);
 }
 
@@ -1166,7 +1173,7 @@ fn load_zkp_keys(file_name: &str) -> Groth16Pk {
 fn initialize_test(amount: AssetBalance) {
 	assert_ok!(Assets::init_asset(Origin::signed(1), TEST_ASSET, amount));
 	assert_eq!(Assets::balance(1, TEST_ASSET), amount);
-	assert_eq!(PoolBalance::get(TEST_ASSET), 0);
+	assert_eq!(Test::PoolBalance::get(TEST_ASSET), 0);
 }
 
 fn build_sender_meta_data(
@@ -1175,7 +1182,7 @@ fn build_sender_meta_data(
 	sender_1_idx: usize,
 	sender_2_idx: usize,
 ) -> (SenderMetaData, SenderMetaData) {
-	let coin_shards = CoinShards::get();
+	let coin_shards = Test::CoinShards::get();
 
 	let sender_1 = senders[sender_1_idx].clone();
 	let sender_2 = senders[sender_2_idx].clone();
@@ -1222,13 +1229,13 @@ fn setup_params(file_name: &str) -> (CommitmentParam, HashParam, Groth16Pk, [u8;
 	let commit_param = CommitmentParam::deserialize(COMMIT_PARAM.data).unwrap();
 
 	let pk = load_zkp_keys(file_name);
-	let vk_checksum = TransferZKPKeyChecksum::get();
+	let vk_checksum = Test::TransferZKPKeyChecksum::get();
 	assert_eq!(TRANSFER_PK.get_checksum().unwrap(), vk_checksum);
 
 	let rng = ChaCha20Rng::from_seed([3u8; 32]);
 	let sk = [0u8; 32];
 
-	let vn_list = VNList::get();
+	let vn_list = Test::VNList::get();
 	assert_eq!(vn_list.len(), 0);
 
 	(commit_param, hash_param, pk, sk, rng)
@@ -1236,14 +1243,14 @@ fn setup_params(file_name: &str) -> (CommitmentParam, HashParam, Groth16Pk, [u8;
 
 fn setup_params_for_transferring() -> (CommitmentParam, HashParam, Groth16Pk, [u8; 32], ChaCha20Rng)
 {
-	let vk_checksum = TransferZKPKeyChecksum::get();
+	let vk_checksum = Test::TransferZKPKeyChecksum::get();
 	assert_eq!(TRANSFER_PK.get_checksum().unwrap(), vk_checksum);
 
 	setup_params("transfer_pk.bin")
 }
 
 fn setup_params_for_reclaim() -> (CommitmentParam, HashParam, Groth16Pk, [u8; 32], ChaCha20Rng) {
-	let vk_checksum = ReclaimZKPKeyChecksum::get();
+	let vk_checksum = Test::ReclaimZKPKeyChecksum::get();
 	assert_eq!(RECLAIM_PK.get_checksum().unwrap(), vk_checksum);
 
 	setup_params("reclaim_pk.bin")

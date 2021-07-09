@@ -50,6 +50,7 @@ criterion = "0.3.4"
 serde = { default-features = false, version = '1' }
 sp-core = { default-features = false, version = '3.0.0' }
 sp-io = { default-features = false, version = '3.0.0' }
+pallet-balances = { default-features = false, version = '3.0.0'}
 
 ark-bls12-381 = { version = "0.2.0", default-features = false, features = [ "curve" ] }
 ark-crypto-primitives = { version = "0.2.0", default-features = false, features = [ "r1cs" ] }
