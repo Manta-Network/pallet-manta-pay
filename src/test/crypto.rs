@@ -90,12 +90,13 @@ fn test_transfer_zkp_local() {
 	let sanity_cs = ConstraintSystem::<Fq>::new_ref();
 	circuit
 		.clone()
-		.generate_constraints(sanity_cs.clone()).unwrap();
+		.generate_constraints(sanity_cs.clone())
+		.unwrap();
 
 	let re = sanity_cs.is_satisfied();
 	match re {
 		Ok(b) => assert!(b),
-		Err(e ) => println!("Error: {:?}", e),
+		Err(e) => println!("Error: {:?}", e),
 	}
 
 	// build the keys

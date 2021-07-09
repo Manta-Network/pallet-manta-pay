@@ -119,7 +119,7 @@ pub use weights::WeightInfo;
 use ark_std::vec::Vec;
 use frame_support::{decl_error, decl_event, decl_module, decl_storage, ensure};
 use frame_system::ensure_signed;
-use manta_asset::{SanityCheck, AssetId, MantaKey, AssetBalance};
+use manta_asset::{AssetBalance, AssetId, MantaKey, SanityCheck};
 use manta_crypto::*;
 use manta_data::*;
 use manta_ledger::{LedgerSharding, MantaPrivateAssetLedger};
