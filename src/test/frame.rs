@@ -93,7 +93,6 @@ fn new_test_ext() -> sp_io::TestExternalities {
 }
 
 // todo: write must-fail tests for cross-asset-id tests
-
 // Misc tests:
 
 #[test]
