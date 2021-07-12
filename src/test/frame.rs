@@ -934,6 +934,11 @@ fn mint_tokens_helper(size: usize) -> Vec<MantaAsset> {
 		let asset = MantaAsset::sample(&commit_param, &sk, &TEST_ASSET, &token_value).unwrap();
 		let payload = generate_mint_payload(&asset).unwrap();
 
+		//output precomputed coin
+		//println!("mint coin number: {:?}", i);
+		//println!("coin value: {:?}", token_value);
+		//println!("mint payload: {:?}", payload);
+
 		// mint a sender token
 		assert_ok!(Assets::mint_private_asset(Origin::signed(1), payload));
 
@@ -983,6 +988,8 @@ fn transfer_test_helper(iter: usize) {
 			i * 2,
 			i * 2 + 1,
 		);
+
+		//println!("transfer payload {:?}: {:?} ", i, payload);
 
 		// invoke the transfer event
 		assert_ok!(Assets::private_transfer(Origin::signed(1), payload));
@@ -1054,6 +1061,9 @@ fn reclaim_test_helper(iter: usize) {
 			i * 2,
 			i * 2 + 1,
 		);
+
+		//println!("reclaim value: {:?}", reclaim_value);
+		//println!("recalim payload: {:?}", payload);
 
 		// invoke the reclaim event
 		assert_ok!(Assets::reclaim(Origin::signed(1), payload));

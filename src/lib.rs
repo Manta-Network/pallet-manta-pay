@@ -115,6 +115,7 @@ extern crate std;
 pub use manta_crypto::MantaSerDes;
 pub mod weights;
 pub use weights::WeightInfo;
+pub mod precomputed_coins;
 
 use ark_std::vec::Vec;
 use frame_support::{decl_error, decl_event, decl_module, decl_storage, ensure};

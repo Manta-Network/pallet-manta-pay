@@ -96,7 +96,10 @@ fn test_transfer_zkp_local() {
 	let re = sanity_cs.is_satisfied();
 	match re {
 		Ok(b) => assert!(b),
-		Err(e) => {println!("Error: {:?}", e); assert!(false)},
+		Err(e) => {
+			println!("Error: {:?}", e);
+			assert!(false)
+		}
 	}
 
 	// build the keys
