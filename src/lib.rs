@@ -115,11 +115,12 @@ extern crate std;
 pub use manta_crypto::MantaSerDes;
 pub mod weights;
 pub use weights::WeightInfo;
+pub mod precomputed_coins;
 
 use ark_std::vec::Vec;
 use frame_support::{decl_error, decl_event, decl_module, decl_storage, ensure};
 use frame_system::ensure_signed;
-use manta_asset::SanityCheck;
+use manta_asset::{AssetBalance, AssetId, MantaRandomValue, SanityCheck};
 use manta_crypto::*;
 use manta_data::*;
 use manta_ledger::{LedgerSharding, MantaPrivateAssetLedger};
@@ -157,8 +158,8 @@ decl_module! {
 		/// # </weight>
 		#[weight = T::WeightInfo::init_asset()]
 		fn init_asset(origin,
-			asset_id: u64,
-			total: u64
+			asset_id: AssetId,
+			total: AssetBalance
 		) {
 
 			// if the asset_id has a total suply != 0, then this asset is initialized
@@ -241,7 +242,7 @@ decl_module! {
 			<Balances<T>>::insert(&origin, asset_id, total);
 
 			VNList::put(Vec::<[u8; 32]>::new());
-			EncValueList::put(Vec::<[u8; 16]>::new());
+			EncValueList::put(Vec::<MantaEciesCiphertext>::new());
 
 		}
 
@@ -256,8 +257,8 @@ decl_module! {
 		#[weight = T::WeightInfo::transfer_asset()]
 		fn transfer_asset(origin,
 			target: <T::Lookup as StaticLookup>::Source,
-			asset_id: u64,
-			amount: u64
+			asset_id: AssetId,
+			amount: AssetBalance
 		) {
 
 			// if the asset_id has a total suply == 0, then this asset is initialized
@@ -372,7 +373,7 @@ decl_module! {
 
 			// update enc_value_list
 			let mut enc_value_list = EncValueList::get();
-			enc_value_list.push(input.ciphertext);
+			enc_value_list.push(input.encrypted_note);
 			let old_pool_balance = PoolBalance::get(input.asset_id);
 
 			// write back to ledger storage
@@ -507,8 +508,8 @@ decl_module! {
 
 			// update ledger storage
 			let mut enc_value_list = EncValueList::get();
-			enc_value_list.push(data.receiver_1.cipher);
-			enc_value_list.push(data.receiver_2.cipher);
+			enc_value_list.push(data.receiver_1.encrypted_note);
+			enc_value_list.push(data.receiver_2.encrypted_note);
 
 			Self::deposit_event(RawEvent::PrivateTransferred(origin));
 			CoinShards::put(coin_shards);
@@ -625,7 +626,7 @@ decl_module! {
 
 			// update ledger storage
 			let mut enc_value_list = EncValueList::get();
-			enc_value_list.push(data.receiver.cipher);
+			enc_value_list.push(data.receiver.encrypted_note);
 
 			coin_shards
 				.update(&data.receiver.cm, hash_param)
@@ -656,15 +657,15 @@ decl_event! {
 		<T as frame_system::Config>::AccountId,
 	{
 		/// The asset was issued. \[asset_id, owner, total_supply\]
-		Issued(u64, AccountId, u64),
+		Issued(AssetId, AccountId, AssetBalance),
 		/// The asset was transferred. \[from, to, amount\]
-		Transferred(u64, AccountId, AccountId, u64),
+		Transferred(AssetId, AccountId, AccountId, AssetBalance),
 		/// The asset was minted to private
-		Minted(u64, AccountId, u64),
+		Minted(AssetId, AccountId, AssetBalance),
 		/// Private transfer
 		PrivateTransferred(AccountId),
 		/// The assets was reclaimed
-		PrivateReclaimed(u64, AccountId, u64),
+		PrivateReclaimed(AssetId, AccountId, AssetBalance),
 	}
 }
 
@@ -711,19 +712,19 @@ decl_storage! {
 		/// The number of units of assets held by any given account.
 		pub Balances: double_map
 			hasher(blake2_128_concat) T::AccountId,
-			hasher(blake2_128_concat) u64
-			=> u64;
+			hasher(blake2_128_concat) AssetId
+			=> AssetBalance;
 
 		/// The total unit supply of the asset.
 		/// If 0, then this asset is not initialized.
-		pub TotalSupply: map hasher(blake2_128_concat) u64 => u64;
+		pub TotalSupply: map hasher(blake2_128_concat) AssetId => AssetBalance;
 
 		/// List of _void number_s.
 		/// A void number is also known as a `serial number` or `nullifier` in other protocols.
 		/// Each coin has a unique void number, and if this number is revealed,
 		/// the coin is voided.
 		/// The ledger maintains a list of all void numbers.
-		pub VNList get(fn vn_list): Vec<[u8; 32]>;
+		pub VNList get(fn vn_list): Vec<MantaRandomValue>;
 
 		/// List of Coins that has ever been created.
 		/// We employ a sharding system to host all the coins
@@ -731,10 +732,10 @@ decl_storage! {
 		pub CoinShards get(fn coin_shards): MantaPrivateAssetLedger;
 
 		/// List of encrypted values.
-		pub EncValueList get(fn enc_value_list): Vec<[u8; 16]>;
+		pub EncValueList get(fn enc_value_list): Vec<MantaEciesCiphertext>;
 
 		/// The balance of all minted coins for this asset_id.
-		pub PoolBalance: map hasher(blake2_128_concat) u64 => u64;
+		pub PoolBalance: map hasher(blake2_128_concat) AssetId => AssetBalance;
 
 		/// The checksum of hash parameter.
 		pub HashParamChecksum get(fn hash_param_checksum): [u8; 32];
@@ -759,12 +760,12 @@ impl<T: Config> Module<T> {
 	// Public immutables
 
 	/// Get the asset `id` balance of `who`.
-	pub fn balance(who: T::AccountId, what: u64) -> u64 {
+	pub fn balance(who: T::AccountId, what: AssetId) -> AssetBalance {
 		<Balances<T>>::get(who, what)
 	}
 
 	/// Get the asset `id` total supply.
-	pub fn total_supply(what: u64) -> u64 {
+	pub fn total_supply(what: AssetId) -> AssetBalance {
 		TotalSupply::get(what)
 	}
 }
