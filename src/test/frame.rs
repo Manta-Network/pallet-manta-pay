@@ -93,7 +93,6 @@ fn new_test_ext() -> sp_io::TestExternalities {
 }
 
 // todo: write must-fail tests for cross-asset-id tests
-
 // Misc tests:
 
 #[test]
@@ -358,7 +357,7 @@ fn transferring_with_hash_param_mismatch_should_not_work() {
 	new_test_ext().execute_with(|| {
 		initialize_test(10_000_000);
 
-		let payload = [0u8; 608];
+		let payload = [0u8; PRIVATE_TRANSFER_PAYLOAD_SIZE];
 		HashParamChecksum::put([3u8; 32]);
 
 		// invoke the transfer event
@@ -930,10 +929,15 @@ fn mint_tokens_helper(size: usize) -> Vec<MantaAsset> {
 	let mut senders = Vec::new();
 	for i in 0usize..size {
 		// build a sender token
-		let token_value = 10 + i as u64;
+		let token_value = 10 + i as AssetBalance;
 		rng.fill_bytes(&mut sk);
 		let asset = MantaAsset::sample(&commit_param, &sk, &TEST_ASSET, &token_value).unwrap();
 		let payload = generate_mint_payload(&asset).unwrap();
+
+		//output precomputed coin
+		//println!("mint coin number: {:?}", i);
+		//println!("coin value: {:?}", token_value);
+		//println!("mint payload: {:?}", payload);
 
 		// mint a sender token
 		assert_ok!(Assets::mint_private_asset(Origin::signed(1), payload));
@@ -949,7 +953,7 @@ fn mint_tokens_helper(size: usize) -> Vec<MantaAsset> {
 	senders
 }
 
-fn generate_mint_payload_helper(value: u64) -> [u8; MINT_PAYLOAD_SIZE] {
+fn generate_mint_payload_helper(value: AssetBalance) -> [u8; MINT_PAYLOAD_SIZE] {
 	let commit_param = CommitmentParam::deserialize(COMMIT_PARAM.data).unwrap();
 	let mut rng = ChaCha20Rng::from_seed([3u8; 32]);
 	let mut sk = [0u8; 32];
@@ -985,44 +989,42 @@ fn transfer_test_helper(iter: usize) {
 			i * 2 + 1,
 		);
 
+		//println!("transfer payload {:?}: {:?} ", i, payload);
+
 		// invoke the transfer event
 		assert_ok!(Assets::private_transfer(Origin::signed(1), payload));
 
 		// check the ciphertexts
 		let enc_value_list = EncValueList::get();
 		assert_eq!(enc_value_list.len(), 2 * (i + 1) + size);
-		assert_eq!(enc_value_list[2 * i + size], receiver_1.ciphertext);
-		assert_eq!(enc_value_list[2 * i + 1 + size], receiver_2.ciphertext);
+		assert_eq!(enc_value_list[2 * i + size], receiver_1.encrypted_note);
+		assert_eq!(enc_value_list[2 * i + 1 + size], receiver_2.encrypted_note);
 
-		let mut ciphertext_1 = [0u8; 48];
-		ciphertext_1[0..16].copy_from_slice(receiver_1.ciphertext.as_ref());
-		ciphertext_1[16..48].copy_from_slice(receiver_1.sender_pk.as_ref());
+		let ciphertext_1 = receiver_1.encrypted_note;
 		let sk_1 = receivers_full[i * 2 + 1].spending_info.ecsk.clone();
 		let plaintext_1 = [
 			receiver_1.prepared_data.asset_id.to_le_bytes().as_ref(),
 			receiver_1.value.to_le_bytes().as_ref(),
 		]
 		.concat();
-		let mut plaintext_1_bytes = [0u8; 16];
+		let mut plaintext_1_bytes = [0u8; 20];
 		plaintext_1_bytes.copy_from_slice(&plaintext_1);
 		assert_eq!(
-			<MantaCrypto as Ecies>::decrypt(&sk_1, &ciphertext_1),
+			<MantaCrypto as Ecies>::decrypt(&sk_1, &ciphertext_1).unwrap(),
 			plaintext_1_bytes
 		);
 
-		let mut ciphertext_2 = [0u8; 48];
-		ciphertext_2[0..16].copy_from_slice(receiver_2.ciphertext.as_ref());
-		ciphertext_2[16..48].copy_from_slice(receiver_2.sender_pk.as_ref());
+		let ciphertext_2 = receiver_2.encrypted_note;
 		let sk_2 = receivers_full[i * 2].spending_info.ecsk.clone();
 		let plaintext_2 = [
 			receiver_2.prepared_data.asset_id.to_le_bytes().as_ref(),
 			receiver_2.value.to_le_bytes().as_ref(),
 		]
 		.concat();
-		let mut plaintext_2_bytes = [0u8; 16];
+		let mut plaintext_2_bytes = [0u8; 20];
 		plaintext_2_bytes.copy_from_slice(&plaintext_2);
 		assert_eq!(
-			<MantaCrypto as Ecies>::decrypt(&sk_2, &ciphertext_2),
+			<MantaCrypto as Ecies>::decrypt(&sk_2, &ciphertext_2).unwrap(),
 			plaintext_2_bytes
 		);
 		assert_eq!(PoolBalance::get(TEST_ASSET), pool);
@@ -1059,6 +1061,9 @@ fn reclaim_test_helper(iter: usize) {
 			i * 2,
 			i * 2 + 1,
 		);
+
+		//println!("reclaim value: {:?}", reclaim_value);
+		//println!("recalim payload: {:?}", payload);
 
 		// invoke the reclaim event
 		assert_ok!(Assets::reclaim(Origin::signed(1), payload));
@@ -1122,7 +1127,7 @@ fn prepare_reclaim_payload(
 	[u8; RECLAIM_PAYLOAD_SIZE],
 	SenderMetaData,
 	SenderMetaData,
-	u64,
+	AssetBalance,
 	MantaAssetProcessedReceiver,
 ) {
 	let (sender_1, sender_2) =
@@ -1167,7 +1172,7 @@ fn load_zkp_keys(file_name: &str) -> Groth16Pk {
 	Groth16Pk::deserialize_unchecked(buf).unwrap()
 }
 
-fn initialize_test(amount: u64) {
+fn initialize_test(amount: AssetBalance) {
 	assert_ok!(Assets::init_asset(Origin::signed(1), TEST_ASSET, amount));
 	assert_eq!(Assets::balance(1, TEST_ASSET), amount);
 	assert_eq!(PoolBalance::get(TEST_ASSET), 0);
@@ -1212,7 +1217,7 @@ fn build_receivers(
 			MantaAssetFullReceiver::sample(&commit_param, &sk, &TEST_ASSET, &()).unwrap();
 		let receiver = receiver_full
 			.shielded_address
-			.process(&(i as u64 + 10), rng)
+			.process(&(i as AssetBalance + 10), rng)
 			.unwrap();
 		receivers_full.push(receiver_full);
 		receivers_processed.push(receiver);
