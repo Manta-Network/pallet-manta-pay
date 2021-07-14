@@ -1234,7 +1234,8 @@ fn setup_params(file_name: &str) -> (CommitmentParam, HashParam, Groth16Pk, [u8;
 	let vk_checksum = TransferZKPKeyChecksum::get();
 	assert_eq!(TRANSFER_PK.get_checksum().unwrap(), vk_checksum);
 
-	let rng = ChaCha20Rng::from_seed([3u8; 32]);
+	// need to use a different seed than the mint_tokens_helper
+	let rng = ChaCha20Rng::from_seed([5u8; 32]);
 	let sk = [0u8; 32];
 
 	let vn_list = VNList::get();
