@@ -592,7 +592,7 @@ fn transferring_with_invalid_zkp_param_should_not_work() {
 
 		let transfer_vk = VerificationKey { data: &[0u8; 2312] };
 		let transfer_key_digest = transfer_vk.get_checksum().unwrap();
-		TransferZKPKeyChecksum::put(transfer_key_digest);
+		TransferZkpKeyChecksum::put(transfer_key_digest);
 		assert_noop!(
 			Assets::private_transfer(Origin::signed(1), payload),
 			Error::<Test>::ZkpParamFail
@@ -1231,7 +1231,7 @@ fn setup_params(file_name: &str) -> (CommitmentParam, HashParam, Groth16Pk, [u8;
 	let commit_param = CommitmentParam::deserialize(COMMIT_PARAM.data).unwrap();
 
 	let pk = load_zkp_keys(file_name);
-	let vk_checksum = TransferZKPKeyChecksum::get();
+	let vk_checksum = TransferZkpKeyChecksum::get();
 	assert_eq!(TRANSFER_PK.get_checksum().unwrap(), vk_checksum);
 
 	let rng = ChaCha20Rng::from_seed([3u8; 32]);
@@ -1245,14 +1245,14 @@ fn setup_params(file_name: &str) -> (CommitmentParam, HashParam, Groth16Pk, [u8;
 
 fn setup_params_for_transferring() -> (CommitmentParam, HashParam, Groth16Pk, [u8; 32], ChaCha20Rng)
 {
-	let vk_checksum = TransferZKPKeyChecksum::get();
+	let vk_checksum = TransferZkpKeyChecksum::get();
 	assert_eq!(TRANSFER_PK.get_checksum().unwrap(), vk_checksum);
 
 	setup_params("transfer_pk.bin")
 }
 
 fn setup_params_for_reclaim() -> (CommitmentParam, HashParam, Groth16Pk, [u8; 32], ChaCha20Rng) {
-	let vk_checksum = ReclaimZKPKeyChecksum::get();
+	let vk_checksum = ReclaimZkpKeyChecksum::get();
 	assert_eq!(RECLAIM_PK.get_checksum().unwrap(), vk_checksum);
 
 	setup_params("reclaim_pk.bin")
