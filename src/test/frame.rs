@@ -821,7 +821,7 @@ fn reclaim_with_invalid_zkp_param_should_not_work() {
 
 		let reclaim_vk = VerificationKey { data: &[0u8; 2312] };
 		let reclaim_key_digest = reclaim_vk.get_checksum().unwrap();
-		ReclaimZKPKeyChecksum::put(reclaim_key_digest);
+		ReclaimZkpKeyChecksum::put(reclaim_key_digest);
 		assert_noop!(
 			Assets::reclaim(Origin::signed(1), payload),
 			Error::<Test>::ZkpParamFail
