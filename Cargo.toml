@@ -34,12 +34,12 @@ ark-std = { version = "0.2.0", default-features = false }
 # Attention! Our integration test scripts modify these dependencies with "sed" command.
 # If you need to change any of the below lines, make sure to reflect the changes in whichever script is supposed to modify them.
 # Search for "Check Pallet-Manta-Pay" in Manta-Network repositories to find the relevant scripts.
-manta-asset = { branch = "manta", git = "https://github.com/Manta-Network/manta-types", default-features = false }
-manta-crypto = { branch = "manta", git = "https://github.com/Manta-Network/manta-crypto", default-features = false }
-manta-data = { branch = "manta", git = "https://github.com/Manta-Network/manta-types", default-features = false }
-manta-error = { branch = "manta", git = "https://github.com/Manta-Network/manta-error", default-features = false }
-manta-ledger = { branch = "manta", git = "https://github.com/Manta-Network/manta-types", default-features = false }
-manta-api = { branch = "manta", git = "https://github.com/Manta-Network/manta-api", default-features = false, features = [ "std" ] }
+manta-asset = { path = "../manta-types/manta-asset", default-features = false }
+manta-crypto = { path = "../manta-crypto", default-features = false }
+manta-data = { path = "../manta-types/manta-data", default-features = false }
+manta-error = { path = "../manta-error", default-features = false }
+manta-ledger = { path = "../manta-types/manta-ledger", default-features = false }
+manta-api = { path = "../manta-api", default-features = false, features = [ "std" ] }
 
 [dev-dependencies]
 # benchmarking 
