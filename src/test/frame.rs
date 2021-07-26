@@ -913,9 +913,12 @@ fn mint_tokens_helper(size: usize) -> Vec<MantaAsset> {
 		let payload = generate_mint_struct(&asset);
 
 		//output precomputed coin
-		//println!("mint coin number: {:?}", i);
-		//println!("coin value: {:?}", token_value);
-		//println!("mint payload: {:?}", payload);
+		// println!("mint coin number: {:?}", i);
+		// println!("coin value: {:?}", token_value);
+		// let mut mint_bytes: Vec<u8> = Vec::new();
+		// payload.serialize(&mut mint_bytes).unwrap();
+		// println!("mint payload size: {:?}", mint_bytes.len());
+		// println!("mint payload: {:?}", mint_bytes);
 
 		// mint a sender token
 		assert_ok!(Assets::mint_private_asset(Origin::signed(1), payload));
@@ -968,7 +971,10 @@ fn transfer_test_helper(iter: usize) {
 			i * 2 + 1,
 		);
 
-		//println!("transfer payload {:?}: {:?} ", i, payload);
+		// let mut transfer_bytes: Vec<u8> = Vec::new();
+		// payload.serialize(&mut transfer_bytes).unwrap();
+		// println!("transfer payload size: {:?}", transfer_bytes.len());
+		// println!("transfer payload {:?}: {:?} ", i, transfer_bytes);
 
 		// invoke the transfer event
 		assert_ok!(Assets::private_transfer(Origin::signed(1), payload));
@@ -1041,8 +1047,11 @@ fn reclaim_test_helper(iter: usize) {
 			i * 2 + 1,
 		);
 
-		//println!("reclaim value: {:?}", reclaim_value);
-		//println!("recalim payload: {:?}", payload);
+		// let mut reclaim_bytes: Vec<u8> = Vec::new();
+		// payload.serialize(&mut reclaim_bytes).unwrap();
+		// println!("reclaim value: {:?}", reclaim_value);
+		// println!("reclaim payload size: {:?}", reclaim_bytes.len());
+		// println!("recalim payload: {:?}", reclaim_bytes);
 
 		// invoke the reclaim event
 		assert_ok!(Assets::reclaim(Origin::signed(1), payload));
