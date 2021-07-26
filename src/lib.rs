@@ -295,13 +295,21 @@ pub mod pallet {
 
 	/// The number of units of assets held by any given account.
 	#[pallet::storage]
-	pub type Balances<T: Config> =
-		StorageDoubleMap<_, Blake2_128Concat, T::AccountId, Blake2_128Concat, u64, u64, ValueQuery>;
+	pub type Balances<T: Config> = StorageDoubleMap<
+		_,
+		Blake2_128Concat,
+		T::AccountId,
+		Blake2_128Concat,
+		AssetId,
+		AssetBalance,
+		ValueQuery,
+	>;
 
 	/// The total unit supply of the asset.
 	/// If 0, then this asset is not initialized.
 	#[pallet::storage]
-	pub type TotalSupply<T: Config> = StorageMap<_, Blake2_128Concat, u64, u64, ValueQuery>;
+	pub type TotalSupply<T: Config> =
+		StorageMap<_, Blake2_128Concat, AssetId, AssetBalance, ValueQuery>;
 
 	/// List of _void number_s.
 	/// A void number is also known as a `serial number` or `nullifier` in other protocols.
@@ -326,7 +334,8 @@ pub mod pallet {
 
 	/// The balance of all minted coins for this asset_id.
 	#[pallet::storage]
-	pub type PoolBalance<T: Config> = StorageMap<_, Blake2_128Concat, u64, u64, ValueQuery>;
+	pub type PoolBalance<T: Config> =
+		StorageMap<_, Blake2_128Concat, AssetId, AssetBalance, ValueQuery>;
 
 	/// The checksum of hash parameter.
 	#[pallet::storage]

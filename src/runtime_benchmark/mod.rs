@@ -42,8 +42,8 @@ benchmarks! {
 		let total = 1000u128;
 	}: init_asset (RawOrigin::Signed(caller.clone()), TEST_ASSET, total)
 	verify {
-		assert_last_event::<T>(RawEvent::Issued(TEST_ASSET, caller.clone(), total).into());
-		assert_eq!(<TotalSupply>::get(TEST_ASSET), total);
+		assert_last_event::<T>(Event::Issued(TEST_ASSET, caller.clone(), total).into());
+		assert_eq!(<TotalSupply<T>>::get(TEST_ASSET), total);
 	}
 
 	transfer_asset {
@@ -61,7 +61,7 @@ benchmarks! {
 		transfer_amount)
 	verify {
 		assert_last_event::<T>(
-			RawEvent::Transferred(TEST_ASSET, caller.clone(), recipient.clone(), transfer_amount).into()
+			Event::Transferred(TEST_ASSET, caller.clone(), recipient.clone(), transfer_amount).into()
 		);
 		assert_eq!(Balances::<T>::get(&recipient, TEST_ASSET), transfer_amount);
 	}
@@ -76,8 +76,8 @@ benchmarks! {
 		RawOrigin::Signed(caller),
 		precomputed_coins::TEST_MINT_10_PAYLOAD)
 	verify {
-		assert_eq!(TotalSupply::get(TEST_ASSET), 1000);
-		assert_eq!(PoolBalance::get(TEST_ASSET), 10);
+		assert_eq!(<TotalSupply<T>>::get(TEST_ASSET), 1000);
+		assert_eq!(<PoolBalance<T>>::get(TEST_ASSET), 10);
 	}
 
 
@@ -93,9 +93,9 @@ benchmarks! {
 		RawOrigin::Signed(caller.clone()),
 		precomputed_coins::TEST_TRANSFER_PAYLOAD)
 	verify {
-		assert_last_event::<T>(RawEvent::PrivateTransferred(caller.clone()).into());
-		assert_eq!(TotalSupply::get(TEST_ASSET), 1000);
-		assert_eq!(PoolBalance::get(TEST_ASSET), 21);
+		assert_last_event::<T>(Event::PrivateTransferred(caller.clone()).into());
+		assert_eq!(<TotalSupply<T>>::get(TEST_ASSET), 1000);
+		assert_eq!(<PoolBalance<T>>::get(TEST_ASSET), 21);
 	}
 
 	reclaim {
@@ -115,10 +115,10 @@ benchmarks! {
 		precomputed_coins::TEST_RECLAIM_PAYLOAD)
 	verify {
 		assert_last_event::<T>(
-			RawEvent::PrivateReclaimed(TEST_ASSET, caller.clone(), reclaim_value).into()
+			Event::PrivateReclaimed(TEST_ASSET, caller.clone(), reclaim_value).into()
 		);
-		assert_eq!(TotalSupply::get(TEST_ASSET), 1000);
-		assert_eq!(PoolBalance::get(TEST_ASSET), 10);
+		assert_eq!(<TotalSupply<T>>::get(TEST_ASSET), 1000);
+		assert_eq!(<PoolBalance<T>>::get(TEST_ASSET), 10);
 	}
 }
 
