@@ -133,20 +133,37 @@ use sp_std::prelude::*;
 /// An abstract struct for manta-pay.
 pub struct MantaPay;
 
-/// The module configuration trait.
-pub trait Config: frame_system::Config {
-	/// The overarching event type.
-	type Event: From<Event<Self>> + Into<<Self as frame_system::Config>::Event>;
+pub use pallet::*;
 
-	/// Weight information for extrinsics in this pallet.
-	type WeightInfo: WeightInfo;
-}
+#[frame_support::pallet]
+pub mod pallet {
+	use super::*;
+	use frame_support::pallet_prelude::*;
+	use frame_system::pallet_prelude::*;
 
-decl_module! {
-	pub struct Module<T: Config> for enum Call where origin: T::Origin {
-		type Error = Error<T>;
+	#[pallet::pallet]
+	#[pallet::generate_store(pub(super) trait Store)]
+	// NOTE: if the visibility of trait store is private but you want to make it available
+	// in super, then use `pub(super)` or `pub(crate)` to make it available in crate.
+	pub struct Pallet<T>(_);
+	// pub struct Pallet<T, I = ()>(PhantomData<T>); // for instantiable pallet
 
-		fn deposit_event() = default;
+	/// The module configuration trait.
+	#[pallet::config]
+	pub trait Config: frame_system::Config {
+		/// The overarching event type.
+		type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
+
+		/// Weight information for extrinsics in this pallet.
+		type WeightInfo: WeightInfo;
+	}
+
+	// BlockNumberFor imported from frame_system::pallet_prelude::*
+	#[pallet::hooks]
+	impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {}
+
+	#[pallet::call]
+	impl<T: Config> Pallet<T> {
 		/// Issue a new class of fungible assets. There are, and will only ever be, `total`
 		/// such assets and they'll all belong to the `origin` initially. It will have an
 		/// identifier `AssetId` instance: this will be specified in the `Issued` event.
@@ -156,94 +173,13 @@ decl_module! {
 		/// - 2 storage writes (codec `O(1)`).
 		/// - 1 event.
 		/// # </weight>
-		#[weight = T::WeightInfo::init_asset()]
-		fn init_asset(origin,
+		#[pallet::weight(T::WeightInfo::init_asset())]
+		pub(super) fn init_asset(
+			origin: OriginFor<T>,
 			asset_id: AssetId,
-			total: AssetBalance
-		) {
-
-			// if the asset_id has a total suply != 0, then this asset is initialized
-			ensure!(
-				!TotalSupply::contains_key(&asset_id),
-				<Error<T>>::AlreadyInitialized
-			);
-
-			let origin = ensure_signed(origin)?;
-
-			// for now we hard code the parameters generated from the following seed:
-			//  * hash parameter seed: [1u8; 32]
-			//  * commitment parameter seed: [2u8; 32]
-			// We may want to pass those two in for `init`
-			let hash_param = HashParam::deserialize(HASH_PARAM.data)
-				.map_err::<DispatchError, _>(|e| {
-					log::error!(target: "manta-pay", "failed to init the asset with error: {:?}", e);
-					<Error<T>>::ParamFail.into()
-				})?;
-
-			let commit_param = CommitmentParam::deserialize(COMMIT_PARAM.data)
-				.map_err::<DispatchError, _>(|e| {
-					log::error!(target: "manta-pay", "failed to init the asset with error: {:?}", e);
-					<Error<T>>::ParamFail.into()
-				})?;
-
-			let hash_param_checksum = hash_param.get_checksum()
-				.map_err::<DispatchError, _>(|e| {
-					log::error!(target: "manta-pay", "failed to init the asset with error: {:?}", e);
-					<Error<T>>::ParamFail.into()
-				})?;
-
-			let commit_param_checksum = commit_param.get_checksum()
-				.map_err::<DispatchError, _>(|e| {
-					log::error!(target: "manta-pay", "failed to init the asset with error: {:?}", e);
-					<Error<T>>::ParamFail.into()
-				})?;
-
-			HashParamChecksum::put(hash_param_checksum);
-			CommitParamChecksum::put(commit_param_checksum);
-
-			// push the checksums for ZKP verification keys to the ledger storage
-			//
-			// NOTE:
-			//    this is is generated via
-			//      let zkp_key = zkp::keys::manta_XXX_zkp_key_gen(&hash_param_seed, &commit_param_seed);
-			//
-			// for prototype, we use this function to generate the ZKP verification key
-			// for product we should use a MPC protocol to build the ZKP verification key
-			// and then deploy that vk
-			//
-			let transfer_key_digest = TRANSFER_PK.get_checksum()
-				.map_err::<DispatchError, _>(|e| {
-					log::error!(target: "manta-pay", "failed to init the asset with error: {:?}", e);
-					<Error<T>>::ParamFail.into()
-				})?;
-
-			TransferZkpKeyChecksum::put(transfer_key_digest);
-
-			let reclaim_key_digest = RECLAIM_PK.get_checksum()
-				.map_err::<DispatchError, _>(|e| {
-					log::error!(target: "manta-pay", "failed to init the asset with error: {:?}", e);
-					<Error<T>>::ParamFail.into()
-				})?;
-
-			ReclaimZkpKeyChecksum::put(reclaim_key_digest);
-
-			// deposit the event then update the storage
-			Self::deposit_event(RawEvent::Issued(asset_id, origin.clone(), total));
-
-			// coin_shards are 256 lists of commitments
-			let coin_shards = MantaPrivateAssetLedger::default();
-			CoinShards::put(coin_shards);
-
-			// initialize the asset with `total` number of supplies
-			// the total number of private asset (pool balance) remain 0
-			// the assets is credit to the sender's account
-			PoolBalance::insert(asset_id, 0);
-			TotalSupply::insert(asset_id, total);
-			<Balances<T>>::insert(&origin, asset_id, total);
-
-			VNList::put(Vec::<[u8; 32]>::new());
-			EncValueList::put(Vec::<MantaEciesCiphertext>::new());
-
+			total: AssetBalance,
+		) -> DispatchResultWithPostInfo {
+			Ok(().into())
 		}
 
 		/// Move some assets from one holder to another.
@@ -254,267 +190,35 @@ decl_module! {
 		/// - 2 storage mutations (codec `O(1)`).
 		/// - 1 event.
 		/// # </weight>
-		#[weight = T::WeightInfo::transfer_asset()]
-		fn transfer_asset(origin,
+		#[pallet::weight(T::WeightInfo::transfer_asset())]
+		pub(super) fn transfer_asset(
+			origin: OriginFor<T>,
 			target: <T::Lookup as StaticLookup>::Source,
 			asset_id: AssetId,
-			amount: AssetBalance
-		) {
-
-			// if the asset_id has a total suply == 0, then this asset is initialized
-			ensure!(
-				TotalSupply::contains_key(&asset_id),
-				<Error<T>>::BasecoinNotInit
-			);
-			let origin = ensure_signed(origin)?;
-
-			let origin_account = origin.clone();
-			let origin_balance = <Balances<T>>::get(&origin_account, asset_id);
-			let target = T::Lookup::lookup(target)?;
-			ensure!(!amount.is_zero(), Error::<T>::AmountZero);
-			ensure!(origin_balance >= amount, Error::<T>::BalanceLow);
-			Self::deposit_event(
-				RawEvent::Transferred(asset_id, origin, target.clone(), amount)
-			);
-
-			// todo: figure out the different between insert and mutate.
-			<Balances<T>>::insert(origin_account, asset_id, origin_balance - amount);
-			<Balances<T>>::mutate(target, asset_id, |balance| *balance += amount);
+			amount: AssetBalance,
+		) -> DispatchResultWithPostInfo {
+			Ok(().into())
 		}
 
 		/// Given an amount, and relevant data, mint the token to the ledger
-		#[weight = T::WeightInfo::mint_private_asset()]
-		fn mint_private_asset(origin,
-			payload: MintPayload
-		) {
-			// todo: Implement the fix denomination method
-
-			// parse the input_data into input
-			let input =  MintData::deserialize(payload.as_ref())
-				.map_err::<DispatchError, _>(|e| {
-					log::error!(target: "manta-pay", "failed to mint the asset with error: {:?}", e);
-					<Error<T>>::PayloadDesFail.into()
-				})?;
-
-			// if the asset_id has a total supply > 0, then this asset is initialized
-			ensure!(
-				TotalSupply::contains_key(&input.asset_id),
-				<Error<T>>::BasecoinNotInit
-			);
-
-			// get the original balance
-			let origin = ensure_signed(origin)?;
-			let origin_account = origin.clone();
-			let origin_balance = <Balances<T>>::get(&origin_account, input.asset_id);
-			ensure!(origin_balance >= input.amount, Error::<T>::BalanceLow);
-
-			// get the parameter checksum from the ledger
-			// and make sure the parameters match
-			let hash_param_checksum_local = HASH_PARAM.get_checksum()
-				.map_err::<DispatchError, _>(|e| {
-					log::error!(target: "manta-pay", "failed to mint the asset with error: {:?}", e);
-					<Error<T>>::ParamFail.into()
-				})?;
-
-			let commit_param_checksum_local = COMMIT_PARAM.get_checksum()
-				.map_err::<DispatchError, _>(|e| {
-					log::error!(target: "manta-pay", "failed to mint the asset with error: {:?}", e);
-					<Error<T>>::ParamFail.into()
-				})?;
-
-			let hash_param_checksum = HashParamChecksum::get();
-			let commit_param_checksum = CommitParamChecksum::get();
-			ensure!(
-				hash_param_checksum_local == hash_param_checksum,
-				<Error<T>>::ParamFail
-			);
-			ensure!(
-				commit_param_checksum_local == commit_param_checksum,
-				<Error<T>>::ParamFail
-			);
-
-			let hash_param = HashParam::deserialize(HASH_PARAM.data)
-				.map_err::<DispatchError, _>(|e| {
-					log::error!(target: "manta-pay", "failed to mint the asset with error: {:?}", e);
-					<Error<T>>::ParamFail.into()
-				})?;
-
-			let commit_param = CommitmentParam::deserialize(COMMIT_PARAM.data)
-				.map_err::<DispatchError, _>(|e| {
-					log::error!(target: "manta-pay", "failed to mint the asset with error: {:?}", e);
-					<Error<T>>::ParamFail.into()
-				})?;
-
-			// check the validity of the commitment
-			let res = input.sanity(&commit_param)
-				.map_err::<DispatchError, _>(|e| {
-					log::error!(target: "manta-pay", "failed to mint the asset with error: {:?}", e);
-					<Error<T>>::MintFail.into()
-				})?;
-
-			ensure!(
-				res,
-				<Error<T>>::MintFail
-			);
-
-			// check cm is not in the ledger
-			let mut coin_shards = CoinShards::get();
-			ensure!(
-				!coin_shards.exist(&input.cm),
-				Error::<T>::MantaCoinExist
-			);
-
-			// update the shards
-			coin_shards.update(&input.cm, hash_param)
-				.map_err::<DispatchError, _>(|e| {
-					log::error!(target: "manta-pay", "failed to mint the asset with error: {:?}", e);
-					<Error<T>>::LedgerUpdateFail.into()
-				})?;
-
-			// update enc_value_list
-			let mut enc_value_list = EncValueList::get();
-			enc_value_list.push(input.encrypted_note);
-			let old_pool_balance = PoolBalance::get(input.asset_id);
-
-			// write back to ledger storage
-			Self::deposit_event(
-				RawEvent::Minted(input.asset_id, origin, input.amount)
-			);
-
-			CoinShards::put(coin_shards);
-			EncValueList::put(enc_value_list);
-			PoolBalance::mutate(
-				input.asset_id,
-				|balance| *balance = old_pool_balance + input.amount
-			);
-			<Balances<T>>::mutate(
-				origin_account,
-				input.asset_id,
-				|balance| *balance =  origin_balance - input.amount
-			);
+		#[pallet::weight(T::WeightInfo::mint_private_asset())]
+		pub(super) fn mint_private_asset(
+			origin: OriginFor<T>,
+			payload: MintPayload,
+		) -> DispatchResultWithPostInfo {
+			Ok(().into())
 		}
-
 
 		/// Manta's private transfer function that moves values from two
 		/// sender's private tokens into two receiver tokens. A proof is required to
 		/// make sure that this transaction is valid.
 		/// Neither the values nor the identities is leaked during this process.
-		#[weight = T::WeightInfo::private_transfer()]
-		fn private_transfer(origin,
+		#[pallet::weight(T::WeightInfo::private_transfer())]
+		pub(super) fn private_transfer(
+			origin: OriginFor<T>,
 			payload: PrivateTransferPayload,
-		) {
-			// this function does not know which asset_id is been transferred.
-			// so there will not be an initialization check
-
-			let data = PrivateTransferData::deserialize(payload.as_ref())
-				.map_err::<DispatchError, _>(|e| {
-					log::error!(target: "manta-pay", "failed to transfer the private asset with error: {:?}", e);
-					<Error<T>>::PayloadDesFail.into()
-				})?;
-
-			let origin = ensure_signed(origin)?;
-
-			// get the parameter checksum from the ledger
-			// and make sure the parameters match
-			let hash_param_checksum_local = HASH_PARAM.get_checksum()
-				.map_err::<DispatchError, _>(|e| {
-					log::error!(target: "manta-pay", "failed to transfer the private asset with error: {:?}", e);
-					<Error<T>>::ParamFail.into()
-				})?;
-
-			let hash_param_checksum = HashParamChecksum::get();
-			ensure!(
-				hash_param_checksum_local == hash_param_checksum,
-				<Error<T>>::ParamFail
-			);
-			let hash_param = HashParam::deserialize(HASH_PARAM.data)
-				.map_err::<DispatchError, _>(|e| {
-					log::error!(target: "manta-pay", "failed to transfer the private asset with error: {:?}", e);
-					<Error<T>>::ParamFail.into()
-				})?;
-
-			// check if vn_old already spent
-			let mut vn_list = VNList::get();
-			ensure!(
-				!vn_list.contains(&data.sender_1.void_number),
-				<Error<T>>::MantaCoinSpent
-			);
-			vn_list.push(data.sender_1.void_number);
-			ensure!(
-				!vn_list.contains(&data.sender_2.void_number),
-				<Error<T>>::MantaCoinSpent
-			);
-			vn_list.push(data.sender_2.void_number);
-
-			// get the ledger state from the ledger
-			// and check the validity of the state
-			let mut coin_shards = CoinShards::get();
-			ensure!(
-				coin_shards.check_root(&data.sender_1.root),
-				<Error<T>>::InvalidLedgerState
-			);
-			ensure!(
-				coin_shards.check_root(&data.sender_2.root),
-				<Error<T>>::InvalidLedgerState
-			);
-
-			// check the commitment are not in the list already
-			// and update coin list
-			// with sharding, there is no point to batch update
-			// since the commitments are likely to go to different shards
-			ensure!(
-				!coin_shards.exist(&data.receiver_1.cm),
-				<Error<T>>::MantaCoinExist
-			);
-			coin_shards
-				.update(&data.receiver_1.cm, hash_param.clone())
-				.map_err::<DispatchError, _>(|e| {
-					log::error!(target: "manta-pay", "failed to transfer the private asset with error: {:?}", e);
-					<Error<T>>::LedgerUpdateFail.into()
-				})?;
-
-			ensure!(
-				!coin_shards.exist(&data.receiver_2.cm),
-				<Error<T>>::MantaCoinExist
-			);
-			coin_shards
-				.update(&data.receiver_2.cm, hash_param)
-				.map_err::<DispatchError, _>(|e| {
-					log::error!(target: "manta-pay", "failed to transfer the private asset with error: {:?}", e);
-					<Error<T>>::LedgerUpdateFail.into()
-				})?;
-
-			// get the verification key from the ledger
-			let transfer_vk_checksum = TransferZkpKeyChecksum::get();
-			let transfer_vk = TRANSFER_PK;
-			let transfer_vk_checksum_local = transfer_vk.get_checksum()
-				.map_err::<DispatchError, _>(|e| {
-					log::error!(target: "manta-pay", "failed to transfer the private asset with error: {:?}", e);
-					<Error<T>>::ZkpParamFail.into()
-				})?;
-
-			ensure!(
-				transfer_vk_checksum_local == transfer_vk_checksum,
-				<Error<T>>::ZkpParamFail,
-			);
-
-			// check validity of zkp
-			ensure!(
-				data.verify(&transfer_vk),
-				<Error<T>>::ZkpVerificationFail,
-			);
-
-			// TODO: revisit replay attack here
-
-			// update ledger storage
-			let mut enc_value_list = EncValueList::get();
-			enc_value_list.push(data.receiver_1.encrypted_note);
-			enc_value_list.push(data.receiver_2.encrypted_note);
-
-			Self::deposit_event(RawEvent::PrivateTransferred(origin));
-			CoinShards::put(coin_shards);
-			VNList::put(vn_list);
-			EncValueList::put(enc_value_list);
+		) -> DispatchResultWithPostInfo {
+			Ok(().into())
 		}
 
 		/// Manta's reclaim function that moves values from two
@@ -525,153 +229,36 @@ decl_module! {
 		/// except for the reclaimed amount.
 		/// At the moment, the reclaimed amount goes directly to `origin` account.
 		/// __TODO__: shall we use a different receiver rather than `origin`?
-		#[weight = T::WeightInfo::reclaim()]
-		fn reclaim(origin,
+		#[pallet::weight(T::WeightInfo::reclaim())]
+		pub(super) fn reclaim(
+			origin: OriginFor<T>,
 			payload: ReclaimPayload,
-		) {
-
-			let data = ReclaimData::deserialize(payload.as_ref())
-				.map_err::<DispatchError, _>(|e| {
-					log::error!(target: "manta-pay", "failed to reclaim the private asset with error: {:?}", e);
-					<Error<T>>::PayloadDesFail.into()
-				})?;
-
-			// if the asset_id has a total suply == 0, then this asset is initialized
-			ensure!(
-				TotalSupply::contains_key(&data.asset_id),
-				<Error<T>>::BasecoinNotInit
-			);
-
-			let origin = ensure_signed(origin)?;
-			let origin_account = origin.clone();
-			let origin_balance = <Balances<T>>::get(&origin, data.asset_id);
-
-			// get the parameter checksum from the ledger
-			// and make sure the parameters match
-			let hash_param_checksum_local = HASH_PARAM.get_checksum()
-				.map_err::<DispatchError, _>(|e| {
-					log::error!(target: "manta-pay", "failed to reclaim the private asset with error: {:?}", e);
-					<Error<T>>::ParamFail.into()
-				})?;
-
-			let hash_param_checksum = HashParamChecksum::get();
-			ensure!(
-				hash_param_checksum_local == hash_param_checksum,
-				<Error<T>>::ParamFail
-			);
-			let hash_param = HashParam::deserialize(HASH_PARAM.data)
-				.map_err::<DispatchError, _>(|e| {
-					log::error!(target: "manta-pay", "failed to reclaim the private asset with error: {:?}", e);
-					<Error<T>>::ParamFail.into()
-				})?;
-
-			// check the balance is greater than amount
-			let mut pool = PoolBalance::get(data.asset_id);
-			ensure!(pool>=data.reclaim_amount, <Error<T>>::PoolOverdrawn);
-			pool -= data.reclaim_amount;
-
-			// check if sn_old already spent
-			let mut vn_list = VNList::get();
-			ensure!(
-				!vn_list.contains(&data.sender_1.void_number),
-				<Error<T>>::MantaCoinSpent
-			);
-			vn_list.push(data.sender_1.void_number);
-			ensure!(
-				!vn_list.contains(&data.sender_2.void_number),
-				<Error<T>>::MantaCoinSpent
-			);
-			vn_list.push(data.sender_2.void_number);
-
-			// get the coin list
-			let mut coin_shards = CoinShards::get();
-
-			// get the verification key from the ledger
-			let reclaim_vk_checksum = ReclaimZkpKeyChecksum::get();
-			let reclaim_vk = RECLAIM_PK;
-			let reclaim_vk_checksum_local = reclaim_vk.get_checksum()
-				.map_err::<DispatchError, _>(|e| {
-					log::error!(target: "manta-pay", "failed to reclaim the private asset with error: {:?}", e);
-					<Error<T>>::ZkpParamFail.into()
-				})?;
-
-			ensure!(
-				reclaim_vk_checksum_local == reclaim_vk_checksum,
-				<Error<T>>::ZkpParamFail
-			);
-			// get the ledger state from the ledger
-			// and check the validity of the state
-			ensure!(
-				coin_shards.check_root(&data.sender_1.root),
-				<Error<T>>::InvalidLedgerState
-			);
-			ensure!(
-				coin_shards.check_root(&data.sender_2.root),
-				<Error<T>>::InvalidLedgerState
-			);
-			// check the commitment are not in the list already
-			ensure!(
-				!coin_shards.exist(&data.receiver.cm),
-				<Error<T>>::MantaCoinSpent
-			);
-
-
-			// check validity of zkp
-			ensure!(
-				data.verify(&reclaim_vk),
-				<Error<T>>::ZkpVerificationFail,
-			);
-
-			// TODO: revisit replay attack here
-
-			// update ledger storage
-			let mut enc_value_list = EncValueList::get();
-			enc_value_list.push(data.receiver.encrypted_note);
-
-			coin_shards
-				.update(&data.receiver.cm, hash_param)
-				.map_err::<DispatchError, _>(|e| {
-					log::error!(target: "manta-pay", "failed to reclaim the private asset with error: {:?}", e);
-					<Error<T>>::LedgerUpdateFail.into()
-				})?;
-
-			CoinShards::put(coin_shards);
-
-			Self::deposit_event(
-				RawEvent::PrivateReclaimed(data.asset_id, origin, data.reclaim_amount)
-			);
-			VNList::put(vn_list);
-			PoolBalance::mutate(data.asset_id, |balance| *balance = pool);
-			EncValueList::put(enc_value_list);
-			<Balances<T>>::mutate(
-				origin_account,
-				data.asset_id,
-				|balance| *balance = origin_balance + data.reclaim_amount
-			);
+		) -> DispatchResultWithPostInfo {
+			Ok(().into())
 		}
 	}
-}
 
-decl_event! {
-	pub enum Event<T> where
-		<T as frame_system::Config>::AccountId,
-	{
+	#[pallet::event]
+	#[pallet::generate_deposit(fn deposit_event)]
+	#[pallet::metadata(T::AccountId = "AccountId")] // This is how you overwrite metadata of fields. This string value is the metadata you want to have.
+	pub enum Event<T: Config> {
 		/// The asset was issued. \[asset_id, owner, total_supply\]
-		Issued(AssetId, AccountId, AssetBalance),
+		Issued(AssetId, T::AccountId, AssetBalance),
 		/// The asset was transferred. \[from, to, amount\]
-		Transferred(AssetId, AccountId, AccountId, AssetBalance),
+		Transferred(AssetId, T::AccountId, T::AccountId, AssetBalance),
 		/// The asset was minted to private
-		Minted(AssetId, AccountId, AssetBalance),
+		Minted(AssetId, T::AccountId, AssetBalance),
 		/// Private transfer
-		PrivateTransferred(AccountId),
+		PrivateTransferred(T::AccountId),
 		/// The assets was reclaimed
-		PrivateReclaimed(AssetId, AccountId, AssetBalance),
+		PrivateReclaimed(AssetId, T::AccountId, AssetBalance),
 	}
-}
 
-decl_error! {
+	type RawEvent<T> = Event<T>;
+
 	/// Error messages.
-	pub enum Error for Module<T: Config> {
+	#[pallet::error]
+	pub enum Error<T> {
 		/// This token has already been initiated
 		AlreadyInitialized,
 		/// Transfer when not initialized
@@ -705,67 +292,63 @@ decl_error! {
 		/// Payload deserialization fail
 		PayloadDesFail,
 	}
-}
 
-decl_storage! {
-	trait Store for Module<T: Config> as Assets {
-		/// The number of units of assets held by any given account.
-		pub Balances: double_map
-			hasher(blake2_128_concat) T::AccountId,
-			hasher(blake2_128_concat) AssetId
-			=> AssetBalance;
+	/// The number of units of assets held by any given account.
+	#[pallet::storage]
+	pub type Balances<T: Config> =
+		StorageDoubleMap<_, Blake2_128Concat, T::AccountId, Blake2_128Concat, u64, u64, ValueQuery>;
 
-		/// The total unit supply of the asset.
-		/// If 0, then this asset is not initialized.
-		pub TotalSupply: map hasher(blake2_128_concat) AssetId => AssetBalance;
+	/// The total unit supply of the asset.
+	/// If 0, then this asset is not initialized.
+	#[pallet::storage]
+	pub type TotalSupply<T: Config> = StorageMap<_, Blake2_128Concat, u64, u64, ValueQuery>;
 
-		/// List of _void number_s.
-		/// A void number is also known as a `serial number` or `nullifier` in other protocols.
-		/// Each coin has a unique void number, and if this number is revealed,
-		/// the coin is voided.
-		/// The ledger maintains a list of all void numbers.
-		pub VNList get(fn vn_list): Vec<MantaRandomValue>;
+	/// List of _void number_s.
+	/// A void number is also known as a `serial number` or `nullifier` in other protocols.
+	/// Each coin has a unique void number, and if this number is revealed,
+	/// the coin is voided.
+	/// The ledger maintains a list of all void numbers.
+	#[pallet::storage]
+	#[pallet::getter(fn vn_list)]
+	pub type VNList<T: Config> = StorageValue<_, Vec<[u8; 32]>, ValueQuery>;
 
-		/// List of Coins that has ever been created.
-		/// We employ a sharding system to host all the coins
-		/// for better concurrency.
-		pub CoinShards get(fn coin_shards): MantaPrivateAssetLedger;
+	/// List of Coins that has ever been created.
+	/// We employ a sharding system to host all the coins
+	/// for better concurrency.
+	#[pallet::storage]
+	#[pallet::getter(fn coin_shards)]
+	pub type CoinShards<T: Config> = StorageValue<_, MantaPrivateAssetLedger, ValueQuery>;
 
-		/// List of encrypted values.
-		pub EncValueList get(fn enc_value_list): Vec<MantaEciesCiphertext>;
+	/// List of encrypted values.
+	#[pallet::storage]
+	#[pallet::getter(fn enc_value_list)]
+	pub type EncValueList<T: Config> = StorageValue<_, Vec<[u8; 16]>, ValueQuery>;
 
-		/// The balance of all minted coins for this asset_id.
-		pub PoolBalance: map hasher(blake2_128_concat) AssetId => AssetBalance;
+	/// The balance of all minted coins for this asset_id.
+	#[pallet::storage]
+	pub type PoolBalance<T: Config> = StorageMap<_, Blake2_128Concat, u64, u64, ValueQuery>;
 
-		/// The checksum of hash parameter.
-		pub HashParamChecksum get(fn hash_param_checksum): [u8; 32];
+	/// The checksum of hash parameter.
+	#[pallet::storage]
+	#[pallet::getter(fn hash_param_checksum)]
+	pub type HashParamChecksum<T: Config> = StorageValue<_, [u8; 32], ValueQuery>;
 
-		/// The checksum of commitment parameter.
-		pub CommitParamChecksum get(fn commit_param_checksum): [u8; 32];
+	/// The checksum of commitment parameter.
+	#[pallet::storage]
+	#[pallet::getter(fn commit_param_checksum)]
+	pub type CommitParamChecksum<T: Config> = StorageValue<_, [u8; 32], ValueQuery>;
 
-		/// The verification key for zero-knowledge proof for transfer protocol.
-		/// At the moment we are storing the whole serialized key
-		/// in the blockchain storage.
-		pub TransferZkpKeyChecksum get(fn transfer_zkp_key_checksum): [u8; 32];
+	/// The verification key for zero-knowledge proof for transfer protocol.
+	/// At the moment we are storing the whole serialized key
+	/// in the blockchain storage.
+	#[pallet::storage]
+	#[pallet::getter(fn transfer_zkp_key_checksum)]
+	pub type TransferZKPKeyChecksum<T: Config> = StorageValue<_, [u8; 32], ValueQuery>;
 
-		/// The verification key for zero-knowledge proof for reclaim protocol.
-		/// At the moment we are storing the whole serialized key
-		/// in the blockchain storage.
-		pub ReclaimZkpKeyChecksum get(fn reclaim_zkp_key_checksum): [u8; 32];
-	}
-}
-
-// The main implementation block for the module.
-impl<T: Config> Module<T> {
-	// Public immutables
-
-	/// Get the asset `id` balance of `who`.
-	pub fn balance(who: T::AccountId, what: AssetId) -> AssetBalance {
-		<Balances<T>>::get(who, what)
-	}
-
-	/// Get the asset `id` total supply.
-	pub fn total_supply(what: AssetId) -> AssetBalance {
-		TotalSupply::get(what)
-	}
+	/// The verification key for zero-knowledge proof for reclaim protocol.
+	/// At the moment we are storing the whole serialized key
+	/// in the blockchain storage.
+	#[pallet::storage]
+	#[pallet::getter(fn reclaim_zkp_key_checksum)]
+	pub type ReclaimZKPKeyChecksum<T: Config> = StorageValue<_, [u8; 32], ValueQuery>;
 }
