@@ -217,7 +217,7 @@ decl_module! {
 					<Error<T>>::ParamFail.into()
 				})?;
 
-			TransferZKPKeyChecksum::put(transfer_key_digest);
+			TransferZkpKeyChecksum::put(transfer_key_digest);
 
 			let reclaim_key_digest = RECLAIM_PK.get_checksum()
 				.map_err::<DispatchError, _>(|e| {
@@ -225,7 +225,7 @@ decl_module! {
 					<Error<T>>::ParamFail.into()
 				})?;
 
-			ReclaimZKPKeyChecksum::put(reclaim_key_digest);
+			ReclaimZkpKeyChecksum::put(reclaim_key_digest);
 
 			// deposit the event then update the storage
 			Self::deposit_event(RawEvent::Issued(asset_id, origin.clone(), total));
@@ -485,7 +485,7 @@ decl_module! {
 				})?;
 
 			// get the verification key from the ledger
-			let transfer_vk_checksum = TransferZKPKeyChecksum::get();
+			let transfer_vk_checksum = TransferZkpKeyChecksum::get();
 			let transfer_vk = TRANSFER_PK;
 			let transfer_vk_checksum_local = transfer_vk.get_checksum()
 				.map_err::<DispatchError, _>(|e| {
@@ -587,7 +587,7 @@ decl_module! {
 			let mut coin_shards = CoinShards::get();
 
 			// get the verification key from the ledger
-			let reclaim_vk_checksum = ReclaimZKPKeyChecksum::get();
+			let reclaim_vk_checksum = ReclaimZkpKeyChecksum::get();
 			let reclaim_vk = RECLAIM_PK;
 			let reclaim_vk_checksum_local = reclaim_vk.get_checksum()
 				.map_err::<DispatchError, _>(|e| {
@@ -746,12 +746,12 @@ decl_storage! {
 		/// The verification key for zero-knowledge proof for transfer protocol.
 		/// At the moment we are storing the whole serialized key
 		/// in the blockchain storage.
-		pub TransferZKPKeyChecksum get(fn transfer_zkp_vk_checksum): [u8; 32];
+		pub TransferZkpKeyChecksum get(fn transfer_zkp_key_checksum): [u8; 32];
 
 		/// The verification key for zero-knowledge proof for reclaim protocol.
 		/// At the moment we are storing the whole serialized key
 		/// in the blockchain storage.
-		pub ReclaimZKPKeyChecksum get(fn reclaim_zkp_vk_checksum): [u8; 32];
+		pub ReclaimZkpKeyChecksum get(fn reclaim_zkp_key_checksum): [u8; 32];
 	}
 }
 

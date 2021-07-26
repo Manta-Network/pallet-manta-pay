@@ -41,6 +41,10 @@ jobs:
           source ~/.cargo/env
           rustup update nightly
           rustup target add wasm32-unknown-unknown --toolchain nightly
-      - name: Check Manta Runtime
-        run: bash ./scripts/check_manta_runtime.sh
-        shell: bash
+
+      - name: Check For Integrations Failure
+        run: /bin/bash -e ./scripts/check_integrations_failure.sh {0}
+
+      - name: Check For Integrations Success
+        if: failure()
+        run: /bin/bash -e ./scripts/check_integrations_success.sh {0}
