@@ -30,8 +30,10 @@ use rand_chacha::ChaCha20Rng;
 /// this is a local test on zero knowledge proof generation and verifications
 #[test]
 fn test_transfer_zkp_local() {
-	let hash_param = HashParam::deserialize(HASH_PARAM.data).unwrap();
-	let commit_param = CommitmentParam::deserialize(COMMIT_PARAM.data).unwrap();
+	let mut hash_param_bytes = HASH_PARAM.data;
+	let mut commit_param_bytes = COMMIT_PARAM.data;
+	let hash_param = HashParam::deserialize(&mut hash_param_bytes).unwrap();
+	let commit_param = CommitmentParam::deserialize(&mut commit_param_bytes).unwrap();
 
 	let mut rng = ChaCha20Rng::from_seed([3u8; 32]);
 
@@ -322,8 +324,10 @@ fn test_transfer_helper(
 /// this is a local test on zero knowledge proof generation and verifications
 #[test]
 fn test_reclaim_zkp_local() {
-	let hash_param = HashParam::deserialize(HASH_PARAM.data).unwrap();
-	let commit_param = CommitmentParam::deserialize(COMMIT_PARAM.data).unwrap();
+	let mut hash_param_bytes = HASH_PARAM.data;
+	let mut commit_param_bytes = COMMIT_PARAM.data;
+	let hash_param = HashParam::deserialize(&mut hash_param_bytes).unwrap();
+	let commit_param = CommitmentParam::deserialize(&mut commit_param_bytes).unwrap();
 
 	let mut rng = ChaCha20Rng::from_seed([3u8; 32]);
 
