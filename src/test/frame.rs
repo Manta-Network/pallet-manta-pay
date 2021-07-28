@@ -20,8 +20,7 @@ use ark_serialize::CanonicalDeserialize;
 use ark_std::rand::{RngCore, SeedableRng};
 use frame_support::{assert_noop, assert_ok, parameter_types};
 use manta_api::{
-	generate_mint_payload, generate_private_transfer_payload, generate_reclaim_payload,
-	write_zkp_keys,
+	generate_mint_struct, generate_private_transfer_struct, generate_reclaim_struct, write_zkp_keys,
 };
 use manta_asset::*;
 use manta_crypto::*;
@@ -99,8 +98,10 @@ fn new_test_ext() -> sp_io::TestExternalities {
 fn test_constants_should_work() {
 	new_test_ext().execute_with(|| {
 		initialize_test(100);
-		let hash_param = HashParam::deserialize(HASH_PARAM.data).unwrap();
-		let commit_param = CommitmentParam::deserialize(COMMIT_PARAM.data).unwrap();
+		let mut hash_param_bytes = HASH_PARAM.data;
+		let mut commit_param_bytes = COMMIT_PARAM.data;
+		let hash_param = HashParam::deserialize(&mut hash_param_bytes).unwrap();
+		let commit_param = CommitmentParam::deserialize(&mut commit_param_bytes).unwrap();
 		let hash_param_checksum_local = hash_param.get_checksum().unwrap();
 		let commit_param_checksum_local = commit_param.get_checksum().unwrap();
 		let hash_param_checksum = HashParamChecksum::get();
@@ -157,17 +158,15 @@ fn test_mint_should_work() {
 	new_test_ext().execute_with(|| {
 		initialize_test(1000);
 
-		let commit_param = CommitmentParam::deserialize(COMMIT_PARAM.data).unwrap();
+		let mut commit_param_bytes = COMMIT_PARAM.data;
+		let commit_param = CommitmentParam::deserialize(&mut commit_param_bytes).unwrap();
 		let mut rng = ChaCha20Rng::from_seed([3u8; 32]);
 		let mut sk = [0u8; 32];
 		rng.fill_bytes(&mut sk);
 		let asset = MantaAsset::sample(&commit_param, &sk, &TEST_ASSET, &10).unwrap();
 
-		let payload = generate_mint_payload(&asset);
-		assert_ok!(Assets::mint_private_asset(
-			Origin::signed(1),
-			payload.unwrap()
-		));
+		let payload = generate_mint_struct(&asset);
+		assert_ok!(Assets::mint_private_asset(Origin::signed(1), payload));
 
 		assert_eq!(TotalSupply::get(TEST_ASSET), 1000);
 		assert_eq!(PoolBalance::get(TEST_ASSET), 10);
@@ -239,18 +238,14 @@ fn mint_with_invalid_commitment_should_not_work() {
 	new_test_ext().execute_with(|| {
 		initialize_test(100);
 
-		let commit_param = CommitmentParam::deserialize(
-			Parameter {
-				data: &[0u8; 81664],
-			}
-			.data,
-		)
-		.unwrap();
+		let data: &[u8; 81664] = &[5u8; 81664];
+		let mut raw_param = Parameter { data };
+		let commit_param = CommitmentParam::deserialize(&mut raw_param.data).unwrap();
 		let mut rng = ChaCha20Rng::from_seed([3u8; 32]);
 		let mut sk = [0u8; 32];
 		rng.fill_bytes(&mut sk);
 		let asset = MantaAsset::sample(&commit_param, &sk, &TEST_ASSET, &50).unwrap();
-		let payload = generate_mint_payload(&asset).unwrap();
+		let payload = generate_mint_struct(&asset);
 
 		assert_noop!(
 			Assets::mint_private_asset(Origin::signed(1), payload),
@@ -357,12 +352,12 @@ fn transferring_with_hash_param_mismatch_should_not_work() {
 	new_test_ext().execute_with(|| {
 		initialize_test(10_000_000);
 
-		let payload = [0u8; PRIVATE_TRANSFER_PAYLOAD_SIZE];
+		let priv_trans_data = PrivateTransferData::default();
 		HashParamChecksum::put([3u8; 32]);
 
 		// invoke the transfer event
 		assert_noop!(
-			Assets::private_transfer(Origin::signed(1), payload),
+			Assets::private_transfer(Origin::signed(1), priv_trans_data),
 			Error::<Test>::ParamFail
 		);
 	});
@@ -402,7 +397,7 @@ fn transferring_spent_coin_should_not_work_sender_1() {
 				i * 2 + 1,
 			);
 
-			assert_ok!(Assets::private_transfer(Origin::signed(1), payload));
+			assert_ok!(Assets::private_transfer(Origin::signed(1), payload.clone()));
 
 			assert_noop!(
 				Assets::private_transfer(Origin::signed(1), payload),
@@ -523,7 +518,7 @@ fn transferring_with_invalid_ledger_state_should_not_work() {
 
 		let (_, receivers_processed) = build_receivers(&commit_param, &mut sk, &mut rng, size);
 
-		let payload = prepare_private_transfer_payload(
+		let mut data = prepare_private_transfer_payload(
 			&senders,
 			&commit_param,
 			&hash_param,
@@ -534,17 +529,14 @@ fn transferring_with_invalid_ledger_state_should_not_work() {
 			1,
 		);
 
-		let mut data = PrivateTransferData::deserialize(payload.as_ref()).unwrap();
 		data.sender_1.root = [5u8; 32];
-		let mut payload_with_bad_root = [0u8; PRIVATE_TRANSFER_PAYLOAD_SIZE];
-		data.serialize(payload_with_bad_root.as_mut()).unwrap();
 
 		assert_noop!(
-			Assets::private_transfer(Origin::signed(1), payload_with_bad_root),
+			Assets::private_transfer(Origin::signed(1), data),
 			Error::<Test>::InvalidLedgerState
 		);
 
-		let payload = prepare_private_transfer_payload(
+		data = prepare_private_transfer_payload(
 			&senders,
 			&commit_param,
 			&hash_param,
@@ -555,13 +547,10 @@ fn transferring_with_invalid_ledger_state_should_not_work() {
 			3,
 		);
 
-		let mut data = PrivateTransferData::deserialize(payload.as_ref()).unwrap();
 		data.sender_2.root = [5u8; 32];
-		let mut payload_with_bad_root = [0u8; PRIVATE_TRANSFER_PAYLOAD_SIZE];
-		data.serialize(payload_with_bad_root.as_mut()).unwrap();
 
 		assert_noop!(
-			Assets::private_transfer(Origin::signed(1), payload_with_bad_root),
+			Assets::private_transfer(Origin::signed(1), data),
 			Error::<Test>::InvalidLedgerState
 		);
 	});
@@ -612,7 +601,7 @@ fn transferring_with_zkp_verification_fail_should_not_work() {
 
 		let (_, receivers_processed) = build_receivers(&commit_param, &mut sk, &mut rng, size);
 
-		let payload = prepare_private_transfer_payload(
+		let mut data = prepare_private_transfer_payload(
 			&senders,
 			&commit_param,
 			&hash_param,
@@ -623,13 +612,10 @@ fn transferring_with_zkp_verification_fail_should_not_work() {
 			1,
 		);
 
-		let mut data = PrivateTransferData::deserialize(payload.as_ref()).unwrap();
 		data.proof = [0u8; 192];
-		let mut payload_with_bad_proof = [0u8; PRIVATE_TRANSFER_PAYLOAD_SIZE];
-		data.serialize(payload_with_bad_proof.as_mut()).unwrap();
 
 		assert_noop!(
-			Assets::private_transfer(Origin::signed(1), payload_with_bad_proof),
+			Assets::private_transfer(Origin::signed(1), data),
 			Error::<Test>::ZkpVerificationFail
 		);
 	});
@@ -651,10 +637,10 @@ fn test_reclaim_should_work_super_long() {
 #[test]
 fn reclaim_without_init_should_not_work() {
 	new_test_ext().execute_with(|| {
-		let payload = [0u8; RECLAIM_PAYLOAD_SIZE];
+		let data = ReclaimData::default();
 
 		assert_noop!(
-			Assets::reclaim(Origin::signed(1), payload),
+			Assets::reclaim(Origin::signed(1), data),
 			Error::<Test>::BasecoinNotInit
 		);
 	});
@@ -665,12 +651,12 @@ fn reclaim_with_hash_param_mismatch_should_not_work() {
 	new_test_ext().execute_with(|| {
 		initialize_test(10_000_000);
 
-		let payload = [0u8; RECLAIM_PAYLOAD_SIZE];
+		let data = ReclaimData::default();
 		HashParamChecksum::put([3u8; 32]);
 
 		// invoke the transfer event
 		assert_noop!(
-			Assets::reclaim(Origin::signed(1), payload),
+			Assets::reclaim(Origin::signed(1), data),
 			Error::<Test>::ParamFail
 		);
 	});
@@ -697,7 +683,7 @@ fn reclaim_with_overdrawn_pool_should_not_work() {
 			1,
 		);
 
-		assert_ok!(Assets::reclaim(Origin::signed(1), payload));
+		assert_ok!(Assets::reclaim(Origin::signed(1), payload.clone()));
 
 		assert_noop!(
 			Assets::reclaim(Origin::signed(1), payload),
@@ -839,7 +825,7 @@ fn reclaim_with_invalid_ledger_state_should_not_work() {
 		let size = 4;
 		let senders = mint_tokens_helper(size);
 
-		let (payload, _, _, _, _) = prepare_reclaim_payload(
+		let (mut data, _, _, _, _) = prepare_reclaim_payload(
 			&senders,
 			&commit_param,
 			&hash_param,
@@ -850,17 +836,14 @@ fn reclaim_with_invalid_ledger_state_should_not_work() {
 			1,
 		);
 
-		let mut data = ReclaimData::deserialize(payload.as_ref()).unwrap();
 		data.sender_1.root = [5u8; 32];
-		let mut payload_with_bad_root = [0u8; RECLAIM_PAYLOAD_SIZE];
-		data.serialize(payload_with_bad_root.as_mut()).unwrap();
 
 		assert_noop!(
-			Assets::reclaim(Origin::signed(1), payload_with_bad_root),
+			Assets::reclaim(Origin::signed(1), data),
 			Error::<Test>::InvalidLedgerState
 		);
 
-		let (payload, _, _, _, _) = prepare_reclaim_payload(
+		let (mut data, _, _, _, _) = prepare_reclaim_payload(
 			&senders,
 			&commit_param,
 			&hash_param,
@@ -871,13 +854,10 @@ fn reclaim_with_invalid_ledger_state_should_not_work() {
 			3,
 		);
 
-		let mut data = ReclaimData::deserialize(payload.as_ref()).unwrap();
 		data.sender_2.root = [5u8; 32];
-		let mut payload_with_bad_root = [0u8; RECLAIM_PAYLOAD_SIZE];
-		data.serialize(payload_with_bad_root.as_mut()).unwrap();
 
 		assert_noop!(
-			Assets::reclaim(Origin::signed(1), payload_with_bad_root),
+			Assets::reclaim(Origin::signed(1), data),
 			Error::<Test>::InvalidLedgerState
 		);
 	});
@@ -893,7 +873,7 @@ fn reclaim_with_zkp_verification_fail_should_not_work() {
 		let size = 2;
 		let senders = mint_tokens_helper(size);
 
-		let (payload, _, _, _, _) = prepare_reclaim_payload(
+		let (mut data, _, _, _, _) = prepare_reclaim_payload(
 			&senders,
 			&commit_param,
 			&hash_param,
@@ -904,13 +884,10 @@ fn reclaim_with_zkp_verification_fail_should_not_work() {
 			1,
 		);
 
-		let mut data = ReclaimData::deserialize(payload.as_ref()).unwrap();
 		data.proof = [6u8; 192];
-		let mut payload_with_bad_proof = [0u8; RECLAIM_PAYLOAD_SIZE];
-		data.serialize(payload_with_bad_proof.as_mut()).unwrap();
 
 		assert_noop!(
-			Assets::reclaim(Origin::signed(1), payload_with_bad_proof),
+			Assets::reclaim(Origin::signed(1), data),
 			Error::<Test>::ZkpVerificationFail
 		);
 	});
@@ -919,7 +896,8 @@ fn reclaim_with_zkp_verification_fail_should_not_work() {
 // Helper functions:
 
 fn mint_tokens_helper(size: usize) -> Vec<MantaAsset> {
-	let commit_param = CommitmentParam::deserialize(COMMIT_PARAM.data).unwrap();
+	let mut commit_param_bytes = COMMIT_PARAM.data;
+	let commit_param = CommitmentParam::deserialize(&mut commit_param_bytes).unwrap();
 
 	let mut rng = ChaCha20Rng::from_seed([3u8; 32]);
 	let mut pool = 0;
@@ -932,12 +910,15 @@ fn mint_tokens_helper(size: usize) -> Vec<MantaAsset> {
 		let token_value = 10 + i as AssetBalance;
 		rng.fill_bytes(&mut sk);
 		let asset = MantaAsset::sample(&commit_param, &sk, &TEST_ASSET, &token_value).unwrap();
-		let payload = generate_mint_payload(&asset).unwrap();
+		let payload = generate_mint_struct(&asset);
 
 		//output precomputed coin
-		//println!("mint coin number: {:?}", i);
-		//println!("coin value: {:?}", token_value);
-		//println!("mint payload: {:?}", payload);
+		// println!("mint coin number: {:?}", i);
+		// println!("coin value: {:?}", token_value);
+		// let mut mint_bytes: Vec<u8> = Vec::new();
+		// payload.serialize(&mut mint_bytes).unwrap();
+		// println!("mint payload size: {:?}", mint_bytes.len());
+		// println!("mint payload: {:?}", mint_bytes);
 
 		// mint a sender token
 		assert_ok!(Assets::mint_private_asset(Origin::signed(1), payload));
@@ -953,13 +934,14 @@ fn mint_tokens_helper(size: usize) -> Vec<MantaAsset> {
 	senders
 }
 
-fn generate_mint_payload_helper(value: AssetBalance) -> [u8; MINT_PAYLOAD_SIZE] {
-	let commit_param = CommitmentParam::deserialize(COMMIT_PARAM.data).unwrap();
+fn generate_mint_payload_helper(value: AssetBalance) -> MintData {
+	let mut commit_param_bytes = COMMIT_PARAM.data;
+	let commit_param = CommitmentParam::deserialize(&mut commit_param_bytes).unwrap();
 	let mut rng = ChaCha20Rng::from_seed([3u8; 32]);
 	let mut sk = [0u8; 32];
 	rng.fill_bytes(&mut sk);
 	let asset = MantaAsset::sample(&commit_param, &sk, &TEST_ASSET, &value).unwrap();
-	generate_mint_payload(&asset).unwrap()
+	generate_mint_struct(&asset)
 }
 
 fn transfer_test_helper(iter: usize) {
@@ -989,7 +971,10 @@ fn transfer_test_helper(iter: usize) {
 			i * 2 + 1,
 		);
 
-		//println!("transfer payload {:?}: {:?} ", i, payload);
+		// let mut transfer_bytes: Vec<u8> = Vec::new();
+		// payload.serialize(&mut transfer_bytes).unwrap();
+		// println!("transfer payload size: {:?}", transfer_bytes.len());
+		// println!("transfer payload {:?}: {:?} ", i, transfer_bytes);
 
 		// invoke the transfer event
 		assert_ok!(Assets::private_transfer(Origin::signed(1), payload));
@@ -1062,8 +1047,11 @@ fn reclaim_test_helper(iter: usize) {
 			i * 2 + 1,
 		);
 
-		//println!("reclaim value: {:?}", reclaim_value);
-		//println!("recalim payload: {:?}", payload);
+		// let mut reclaim_bytes: Vec<u8> = Vec::new();
+		// payload.serialize(&mut reclaim_bytes).unwrap();
+		// println!("reclaim value: {:?}", reclaim_value);
+		// println!("reclaim payload size: {:?}", reclaim_bytes.len());
+		// println!("recalim payload: {:?}", reclaim_bytes);
 
 		// invoke the reclaim event
 		assert_ok!(Assets::reclaim(Origin::signed(1), payload));
@@ -1091,7 +1079,7 @@ fn prepare_private_transfer_payload(
 	rng: &mut ChaCha20Rng,
 	sender_1_idx: usize,
 	sender_2_idx: usize,
-) -> [u8; PRIVATE_TRANSFER_PAYLOAD_SIZE] {
+) -> PrivateTransferData {
 	// build sender mata data
 	let (sender_1, sender_2) =
 		build_sender_meta_data(&senders, &hash_param, sender_1_idx, sender_2_idx);
@@ -1101,7 +1089,7 @@ fn prepare_private_transfer_payload(
 	let receiver_2 = receivers_processed[sender_1_idx].clone();
 
 	// form the transaction payload
-	generate_private_transfer_payload(
+	generate_private_transfer_struct(
 		commit_param.clone(),
 		hash_param.clone(),
 		&pk,
@@ -1124,7 +1112,7 @@ fn prepare_reclaim_payload(
 	sender_1_idx: usize,
 	sender_2_idx: usize,
 ) -> (
-	[u8; RECLAIM_PAYLOAD_SIZE],
+	ReclaimData,
 	SenderMetaData,
 	SenderMetaData,
 	AssetBalance,
@@ -1142,7 +1130,7 @@ fn prepare_reclaim_payload(
 		sender_1.asset.priv_info.value + sender_2.asset.priv_info.value - receiver.value;
 
 	// form the transaction payload
-	let payload = generate_reclaim_payload(
+	let payload = generate_reclaim_struct(
 		commit_param.clone(),
 		hash_param.clone(),
 		&pk,
@@ -1227,8 +1215,10 @@ fn build_receivers(
 }
 
 fn setup_params(file_name: &str) -> (CommitmentParam, HashParam, Groth16Pk, [u8; 32], ChaCha20Rng) {
-	let hash_param = HashParam::deserialize(HASH_PARAM.data).unwrap();
-	let commit_param = CommitmentParam::deserialize(COMMIT_PARAM.data).unwrap();
+	let mut hash_param_bytes = HASH_PARAM.data;
+	let mut commit_param_bytes = COMMIT_PARAM.data;
+	let hash_param = HashParam::deserialize(&mut hash_param_bytes).unwrap();
+	let commit_param = CommitmentParam::deserialize(&mut commit_param_bytes).unwrap();
 
 	let pk = load_zkp_keys(file_name);
 	let vk_checksum = TransferZkpKeyChecksum::get();
