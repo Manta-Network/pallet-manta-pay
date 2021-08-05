@@ -22,9 +22,11 @@ mod bench_composite;
 
 use super::*;
 use ark_std::{boxed::Box, primitive::str, vec, vec::Vec};
+use codec::Decode;
 use frame_benchmarking::{account, benchmarks, whitelisted_caller};
 use frame_system::{EventRecord, RawOrigin};
 use manta_asset::TEST_ASSET;
+use manta_data::{MintData, PrivateTransferData, ReclaimData};
 
 const SEED: u32 = 0;
 
@@ -72,9 +74,12 @@ benchmarks! {
 		let origin: T::Origin = T::Origin::from(RawOrigin::Signed(caller.clone()));
 		<Balances<T>>::insert(&caller, TEST_ASSET, 1000);
 		assert!(Module::<T>::init_asset(origin, TEST_ASSET, 1000).is_ok());
+		let mut test_mint_10_bytes: Vec<u8> = Vec::new();
+		test_mint_10_bytes.extend_from_slice(&precomputed_coins::TEST_MINT_10_PAYLOAD);
+		let mint_data = MintData::decode(&mut test_mint_10_bytes.as_ref()).unwrap();
 	}: mint_private_asset (
 		RawOrigin::Signed(caller),
-		precomputed_coins::TEST_MINT_10_PAYLOAD)
+		mint_data)
 	verify {
 		assert_eq!(TotalSupply::get(TEST_ASSET), 1000);
 		assert_eq!(PoolBalance::get(TEST_ASSET), 10);
@@ -87,11 +92,23 @@ benchmarks! {
 		<Balances<T>>::insert(&caller, TEST_ASSET, 1000);
 		assert!(Module::<T>::init_asset(origin.clone(), TEST_ASSET, 1000).is_ok());
 
-		Module::<T>::mint_private_asset(origin.clone(), precomputed_coins::TEST_MINT_10_PAYLOAD).unwrap();
-		Module::<T>::mint_private_asset(origin, precomputed_coins::TEST_MINT_11_PAYLOAD).unwrap();
+		let mut test_mint_10_bytes: Vec<u8> = Vec::new();
+		test_mint_10_bytes.extend_from_slice(&precomputed_coins::TEST_MINT_10_PAYLOAD);
+		let mut test_mint_11_bytes: Vec<u8> = Vec::new();
+		test_mint_11_bytes.extend_from_slice(&precomputed_coins::TEST_MINT_11_PAYLOAD);
+
+		let mint_data_1 = MintData::decode(&mut test_mint_10_bytes.as_ref()).unwrap();
+		let mint_data_2 = MintData::decode(&mut test_mint_11_bytes.as_ref()).unwrap();
+		Module::<T>::mint_private_asset(origin.clone(), mint_data_1).unwrap();
+		Module::<T>::mint_private_asset(origin, mint_data_2).unwrap();
+
+		let mut test_transfer_bytes: Vec<u8> = Vec::new();
+		test_transfer_bytes.extend_from_slice(&precomputed_coins::TEST_TRANSFER_PAYLOAD);
+		let transfer_data = PrivateTransferData::decode(&mut test_transfer_bytes.as_ref()).unwrap();
+
 	}: private_transfer (
 		RawOrigin::Signed(caller.clone()),
-		precomputed_coins::TEST_TRANSFER_PAYLOAD)
+		transfer_data)
 	verify {
 		assert_last_event::<T>(RawEvent::PrivateTransferred(caller.clone()).into());
 		assert_eq!(TotalSupply::get(TEST_ASSET), 1000);
@@ -104,15 +121,24 @@ benchmarks! {
 		<Balances<T>>::insert(&caller, TEST_ASSET, 1000);
 		assert!(Module::<T>::init_asset(origin.clone(), TEST_ASSET, 1000).is_ok());
 
-		Module::<T>::mint_private_asset(origin.clone(), precomputed_coins::TEST_MINT_10_PAYLOAD).unwrap();
-		Module::<T>::mint_private_asset(origin, precomputed_coins::TEST_MINT_11_PAYLOAD).unwrap();
+		let mut test_mint_10_bytes: Vec<u8> = Vec::new();
+		test_mint_10_bytes.extend_from_slice(&precomputed_coins::TEST_MINT_10_PAYLOAD);
+		let mut test_mint_11_bytes: Vec<u8> = Vec::new();
+		test_mint_11_bytes.extend_from_slice(&precomputed_coins::TEST_MINT_11_PAYLOAD);
+
+		let mint_data_1 = MintData::decode(&mut test_mint_10_bytes.as_ref()).unwrap();
+		let mint_data_2 = MintData::decode(&mut test_mint_11_bytes.as_ref()).unwrap();
+		Module::<T>::mint_private_asset(origin.clone(), mint_data_1).unwrap();
+		Module::<T>::mint_private_asset(origin, mint_data_2).unwrap();
 
 		// pre-computed reclaimed circuit for a receiver of 10 assets
 		let reclaim_value = 11;
-
+		let mut reclaim_bytes: Vec<u8> = Vec::new();
+		reclaim_bytes.extend_from_slice(&precomputed_coins::TEST_RECLAIM_PAYLOAD);
+		let reclaim_data = ReclaimData::decode(&mut reclaim_bytes.as_ref()).unwrap();
 	}: reclaim (
 		RawOrigin::Signed(caller.clone()),
-		precomputed_coins::TEST_RECLAIM_PAYLOAD)
+		reclaim_data)
 	verify {
 		assert_last_event::<T>(
 			RawEvent::PrivateReclaimed(TEST_ASSET, caller.clone(), reclaim_value).into()
