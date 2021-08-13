@@ -263,13 +263,13 @@ decl_module! {
 			amount: AssetBalance
 		) {
 
+			let origin = ensure_signed(origin)?;
 			// if the asset_id has a total suply == 0, then this asset is initialized
 			ensure!(
 				TotalSupply::contains_key(&asset_id),
 				<Error<T>>::BasecoinNotInit
 			);
-			let origin = ensure_signed(origin)?;
-
+	
 			let origin_account = origin.clone();
 			let origin_balance = <Balances<T>>::get(&origin_account, asset_id);
 			let target = T::Lookup::lookup(target)?;
@@ -289,6 +289,8 @@ decl_module! {
 		fn mint_private_asset(origin,
 			mint_data: MintData
 		) {
+			let origin = ensure_signed(origin)?;
+
 			// if the asset_id has a total supply > 0, then this asset is initialized
 			ensure!(
 				TotalSupply::contains_key(&mint_data.asset_id),
@@ -296,13 +298,13 @@ decl_module! {
 			);
 
 			// get the original balance
-			let origin = ensure_signed(origin)?;
 			let origin_account = origin.clone();
 			let origin_balance = <Balances<T>>::get(&origin_account, mint_data.asset_id);
 			ensure!(origin_balance >= mint_data.amount, Error::<T>::BalanceLow);
 
 			// get the parameter checksum from the ledger
 			// and make sure the parameters match
+			// TODO: move HASH_PARAM to chain spec
 			let hash_param_checksum_local = HASH_PARAM.get_checksum()
 				.map_err::<DispatchError, _>(|e| {
 					log::error!(target: "manta-pay", "failed to mint the asset with error: {:?}", e);
@@ -455,13 +457,15 @@ decl_module! {
 				!coin_shards.exist(&priv_trans_data.receiver_1.cm),
 				<Error<T>>::MantaCoinExist
 			);
+			// TODO: replace this with an O(1) operation
 			coin_shards
 				.update(&priv_trans_data.receiver_1.cm, hash_param.clone())
 				.map_err::<DispatchError, _>(|e| {
 					log::error!(target: "manta-pay", "failed to transfer the private asset with error: {:?}", e);
 					<Error<T>>::LedgerUpdateFail.into()
 				})?;
-
+			
+			// TODO: replace this with O(1) operation
 			ensure!(
 				!coin_shards.exist(&priv_trans_data.receiver_2.cm),
 				<Error<T>>::MantaCoinExist
@@ -496,6 +500,7 @@ decl_module! {
 			// TODO: revisit replay attack here
 
 			// update ledger storage
+			// TODO: update this with O(1) (or at least O(log N)) operation
 			let mut enc_value_list = EncValueList::get();
 			enc_value_list.push(priv_trans_data.receiver_1.encrypted_note);
 			enc_value_list.push(priv_trans_data.receiver_2.encrypted_note);
@@ -513,7 +518,6 @@ decl_module! {
 		/// Neither the values nor the identities is leaked during this process;
 		/// except for the reclaimed amount.
 		/// At the moment, the reclaimed amount goes directly to `origin` account.
-		/// __TODO__: shall we use a different receiver rather than `origin`?
 		#[weight = T::WeightInfo::reclaim()]
 		fn reclaim(origin,
 			reclaim_data: ReclaimData,
