@@ -25,6 +25,7 @@ use ark_std::rand::{RngCore, SeedableRng};
 use manta_api::{ReclaimCircuit, TransferCircuit};
 use manta_asset::*;
 use manta_crypto::*;
+use manta_data::BuildMetadata;
 use rand_chacha::ChaCha20Rng;
 
 /// this is a local test on zero knowledge proof generation and verifications

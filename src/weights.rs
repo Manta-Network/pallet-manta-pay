@@ -46,10 +46,8 @@ use sp_std::marker::PhantomData;
 /// Weight functions needed for pallet_manta_pay.
 pub trait WeightInfo {
 	fn init_asset() -> Weight;
-	fn transfer_asset() -> Weight;
-	fn mint_private_asset() -> Weight;
-	fn private_transfer() -> Weight;
-	fn reclaim() -> Weight;
+	fn add_coin_in_map() -> Weight;
+	fn add_coin_in_vec() -> Weight;
 }
 
 /// Weights for pallet_manta_pay using the Substrate node and recommended hardware.
@@ -60,23 +58,13 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 			.saturating_add(T::DbWeight::get().reads(1 as Weight))
 			.saturating_add(T::DbWeight::get().writes(11 as Weight))
 	}
-	fn transfer_asset() -> Weight {
+	fn add_coin_in_map() -> Weight {
 		(51_229_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(3 as Weight))
 			.saturating_add(T::DbWeight::get().writes(2 as Weight))
 	}
-	fn mint_private_asset() -> Weight {
-		(42_731_469_000 as Weight)
-			.saturating_add(T::DbWeight::get().reads(6 as Weight))
-			.saturating_add(T::DbWeight::get().writes(3 as Weight))
-	}
-	fn private_transfer() -> Weight {
-		(165_009_033_000 as Weight)
-			.saturating_add(T::DbWeight::get().reads(6 as Weight))
-			.saturating_add(T::DbWeight::get().writes(3 as Weight))
-	}
-	fn reclaim() -> Weight {
-		(123_932_053_000 as Weight)
+	fn add_coin_in_vec() -> Weight {
+		(51_053_000 as Weight)
 			.saturating_add(T::DbWeight::get().reads(8 as Weight))
 			.saturating_add(T::DbWeight::get().writes(5 as Weight))
 	}
@@ -89,24 +77,14 @@ impl WeightInfo for () {
 			.saturating_add(RocksDbWeight::get().reads(1 as Weight))
 			.saturating_add(RocksDbWeight::get().writes(11 as Weight))
 	}
-	fn transfer_asset() -> Weight {
-		(51_229_000 as Weight)
-			.saturating_add(RocksDbWeight::get().reads(3 as Weight))
-			.saturating_add(RocksDbWeight::get().writes(2 as Weight))
+	fn add_coin_in_map() -> Weight {
+		(5_309_751_000 as Weight)
+			.saturating_add(RocksDbWeight::get().reads(1 as Weight))
+			.saturating_add(RocksDbWeight::get().writes(11 as Weight))
 	}
-	fn mint_private_asset() -> Weight {
-		(42_731_469_000 as Weight)
-			.saturating_add(RocksDbWeight::get().reads(6 as Weight))
-			.saturating_add(RocksDbWeight::get().writes(3 as Weight))
-	}
-	fn private_transfer() -> Weight {
-		(165_009_033_000 as Weight)
-			.saturating_add(RocksDbWeight::get().reads(6 as Weight))
-			.saturating_add(RocksDbWeight::get().writes(3 as Weight))
-	}
-	fn reclaim() -> Weight {
-		(123_932_053_000 as Weight)
-			.saturating_add(RocksDbWeight::get().reads(8 as Weight))
-			.saturating_add(RocksDbWeight::get().writes(5 as Weight))
+	fn add_coin_in_vec() -> Weight {
+		(5_309_751_000 as Weight)
+			.saturating_add(RocksDbWeight::get().reads(1 as Weight))
+			.saturating_add(RocksDbWeight::get().writes(11 as Weight))
 	}
 }
