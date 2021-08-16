@@ -15,8 +15,8 @@ cargo update -p manta-ledger
 cargo update -p manta-api
 
 # When integrating a change in pallet-manta-pay only, using the local code will be enough for the check.
-sed -i "s@pallet-manta-pay = { git='https://github.com/Manta-Network/pallet-manta-pay', branch='calamari', default-features = false }@pallet-manta-pay = {path= '../../../../', default-features = false }@g" ./runtimes/manta/runtime/Cargo.toml
-         
+sed -i "/pallet-manta-pay =/c\pallet-manta-pay = { path= '../../../../', default-features = false }" ./runtimes/manta/runtime/Cargo.toml
+
 cargo build
 cargo build --all-features
 
