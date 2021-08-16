@@ -44,21 +44,30 @@ benchmarks! {
 
 	add_coin_in_map {
 		let caller: T::AccountId = whitelisted_caller();
-		let origin: T::Origin = T::Origin::from(RawOrigin::Signed(caller.clone()));
-	}: (0u128...10_000u128).map(|x| add_coin_in_map(origin, x))
+		for x in 0u128..100_000u128 {
+			let origin: T::Origin = T::Origin::from(RawOrigin::Signed(caller.clone())); 
+			assert!(Pallet::<T>::add_coin_in_map(origin, x).is_ok());
+		}
+	}: add_coin_in_map(RawOrigin::Signed(caller.clone()), 100_000u128)
 	verify {
 		assert_last_event::<T>(
-			Event::PrivateTransferred(caller.clone())
+			Event::PrivateTransferred(caller.clone()).into()
 		);
 	}
 
-	add_coin_in_map {
+	add_coin_in_vec {
 		let caller: T::AccountId = whitelisted_caller();
-		let origin: T::Origin = T::Origin::from(RawOrigin::Signed(caller.clone()));
-	}: (0u128...10_000u128).map(|x| add_coin_in_vec(origin, x))
+		// we directly create the ledger state since it is too expensive to add one by one
+		let mut coin_vec: Vec<u128> = Vec::with_capacity(100_000);
+		for x in 0u128..100_000u128 {
+			coin_vec.push(x);
+		}
+		CoinVec::<T>::put(coin_vec);
+		CoinIndex::<T>::put(10_000u32);
+	}: add_coin_in_vec(RawOrigin::Signed(caller.clone()), 100_000u128)
 	verify {
 		assert_last_event::<T>(
-			Event::PrivateTransferred(caller.clone())
+			Event::PrivateTransferred(caller.clone()).into()
 		);
 	}
 }
