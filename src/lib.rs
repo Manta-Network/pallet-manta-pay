@@ -117,10 +117,12 @@ pub use weights::WeightInfo;
 pub mod precomputed_coins;
 
 use manta_asset::{AssetBalance, AssetId, MantaPublicKey, SanityCheck};
-use manta_crypto::{MantaEciesCiphertext, MantaZKPVerifier, HASH_PARAM, COMMIT_PARAM, 
-	HashParam, CommitmentParam, Checksum, MantaSerDes, TRANSFER_PK, RECLAIM_PK};
-use manta_data::{MintData, ReclaimData, PrivateTransferData};
-use manta_ledger::{MantaPrivateAssetLedger, LedgerSharding};
+use manta_crypto::{
+	Checksum, CommitmentParam, HashParam, MantaEciesCiphertext, MantaSerDes, MantaZKPVerifier,
+	COMMIT_PARAM, HASH_PARAM, RECLAIM_PK, TRANSFER_PK,
+};
+use manta_data::{MintData, PrivateTransferData, ReclaimData};
+use manta_ledger::{LedgerSharding, MantaPrivateAssetLedger};
 
 use sp_runtime::traits::{StaticLookup, Zero};
 use sp_std::prelude::*;
@@ -133,7 +135,7 @@ pub mod pallet {
 	use super::*;
 	use frame_support::pallet_prelude::*;
 	use frame_system::pallet_prelude::*;
-use manta_asset::MantaRandomValue;
+	use manta_asset::{MantaRandomValue, UTXO};
 
 	#[pallet::pallet]
 	#[pallet::generate_store(pub(super) trait Store)]
@@ -172,29 +174,32 @@ use manta_asset::MantaRandomValue;
 	#[pallet::storage]
 	pub(super) type TotalSupply<T: Config> =
 		StorageMap<_, Blake2_128Concat, AssetId, AssetBalance, ValueQuery>;
+
+	/// (shard_index, index_within_shard) -> payload
+	#[pallet::storage]
+	pub(super) type LedgerShards<T: Config> = 
+		StorageDoubleMap<_, Identity, u8, Identity, u128, (UTXO, MantaEciesCiphertext), ValueQuery>;
 	
-	/// The total unit supply of the asset.
-	/// If 0, then this asset is not initialized.
+    /// Current index of each shard 
 	#[pallet::storage]
-	pub(super) type CoinMap<T: Config> =
-		StorageMap<_, Identity, u32, u128, ValueQuery>;
+	pub(super) type LedgerShardIndices<T: Config> = 
+		StorageMap<_, Identity, u8, u128, ValueQuery>;
 
+	// the set of void numbers (similar to the nullifiers in ZCash)
 	#[pallet::storage]
-	pub(super) type CoinIndex<T: Config> = StorageValue<_, u32, ValueQuery>;
-
-	#[pallet::storage]
-	pub(super) type CoinVec<T: Config> = StorageValue<_, Vec<u128>, ValueQuery>;
+	pub(super) type VoidNumbers<T: Config> = 
+		StorageMap<_, Twox64Concat, MantaRandomValue, bool, ValueQuery>;
 
 	/// The balance of all minted private coins for this asset_id.
 	#[pallet::storage]
 	pub(super) type PoolBalance<T: Config> =
-		StorageMap<_, Blake2_128Concat, AssetId, AssetBalance, ValueQuery>;
+		StorageMap<_, Twox64Concat, AssetId, AssetBalance, ValueQuery>;
 
 	#[pallet::genesis_config]
 	pub struct GenesisConfig<T: Config> {
 		_phantom: sp_std::marker::PhantomData<T>,
 	}
-	
+
 	#[cfg(feature = "std")]
 	impl<T: Config> Default for GenesisConfig<T> {
 		fn default() -> Self {
@@ -203,11 +208,14 @@ use manta_asset::MantaRandomValue;
 			}
 		}
 	}
-	
+
 	#[pallet::genesis_build]
 	impl<T: Config> GenesisBuild<T> for GenesisConfig<T> {
 		fn build(&self) {
-			CoinIndex::<T>::put(0 as u32);
+			// Initialize indices
+			for i in 0..256 {
+				LedgerShardIndices::<T>::insert(i as u8, 0);
+			}
 		}
 	}
 
@@ -216,6 +224,7 @@ use manta_asset::MantaRandomValue;
 		/// Issue a new class of fungible assets. There are, and will only ever be, `total`
 		/// such assets and they'll all belong to the `origin` initially. It will have an
 		/// identifier `AssetId` instance: this will be specified in the `Issued` event.
+		/// FIXME: consider init a fix amount of tokens in when configuring genesis
 		/// # <weight>
 		/// - `O(1)`
 		/// - 1 storage mutation (codec `O(1)`).
@@ -232,7 +241,7 @@ use manta_asset::MantaRandomValue;
 
 			// if the asset_id has a total suply != 0, then this asset is initialized
 			ensure!(
-				!<TotalSupply<T>>::contains_key(&asset_id),
+				!TotalSupply::<T>::contains_key(&asset_id),
 				<Error<T>>::AlreadyInitialized
 			);
 
@@ -245,38 +254,27 @@ use manta_asset::MantaRandomValue;
 			PoolBalance::<T>::insert(asset_id, 0);
 			TotalSupply::<T>::insert(asset_id, total);
 			Balances::<T>::insert(&origin, asset_id, total);
-
 			Ok(().into())
 		}
 
-		/// Given an amount, and relevant data, mint the token to the ledger
-		#[pallet::weight(T::WeightInfo::add_coin_in_map())]
-		pub fn add_coin_in_map(
-			origin: OriginFor<T>,
-			utxo: u128,
-		) -> DispatchResultWithPostInfo {
+		/// Mint private asset
+		#[pallet::weigth(1000)]
+		pub fn mint_private_asset(origin: OriginFor<T>, mint_data: MintData) -> DispatchResultWithPostInfo {
 			let origin = ensure_signed(origin)?;
-			// The following operations should be O(1)
-			let index = CoinIndex::<T>::get();
-			let new_index = index + 1;
-			CoinMap::<T>::insert(new_index, utxo);
-			CoinIndex::<T>::put(new_index);
-			Self::deposit_event(Event::PrivateTransferred(origin));
-			Ok(().into())
-		}
 
+		}
+		 
 		/// Given an amount, and relevant data, mint the token to the ledger
-		#[pallet::weight(T::WeightInfo::add_coin_in_vec())]
-		pub fn add_coin_in_vec(
-			origin: OriginFor<T>,
-			utxo: u128,
-		) -> DispatchResultWithPostInfo {
-			// The following operations should be O(N)
+		#[pallet::weight(1000)]
+		pub fn private_transfer(origin: OriginFor<T>, private_transfer_data: PrivateTransferData) -> DispatchResultWithPostInfo {
 			let origin = ensure_signed(origin)?;
-			let mut coin_vec = CoinVec::<T>::get();
-			coin_vec.push(utxo);
-			CoinVec::<T>::put(coin_vec);
-			Self::deposit_event(Event::PrivateTransferred(origin));
+
+			// asset id must exist
+			ensure!(
+				TotalSupply::contains_key(&mint_data.asset_id),
+				<Error<T>>::BasecoinNotInit
+			);
+
 			Ok(().into())
 		}
 
@@ -343,10 +341,6 @@ impl<T: Config> Pallet<T> {
 	/// Get the asset `id` balance of `who`.
 	pub fn balance(who: T::AccountId, what: AssetId) -> AssetBalance {
 		<Balances<T>>::get(who, what)
-	}
-
-	pub fn index() -> u32 {
-		<CoinIndex<T>>::get()
 	}
 
 	/// Get the asset `id` total supply.

@@ -14,9 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with pallet-manta-pay.  If not, see <http://www.gnu.org/licenses/>.
 
-use crate::{
-	mock::*,  Error, PoolBalance,
-};
+use crate::{mock::*, Error, PoolBalance};
 use frame_support::{assert_noop, assert_ok};
 use manta_asset::*;
 
@@ -47,7 +45,11 @@ fn destroying_asset_balance_with_positive_balance_should_work() {
 #[test]
 fn cannot_init_twice() {
 	new_test_ext().execute_with(|| {
-		assert_ok!(MantaPayPallet::init_asset(Origin::signed(1), TEST_ASSET, 100));
+		assert_ok!(MantaPayPallet::init_asset(
+			Origin::signed(1),
+			TEST_ASSET,
+			100
+		));
 		assert_noop!(
 			MantaPayPallet::init_asset(Origin::signed(1), TEST_ASSET, 100),
 			Error::<Test>::AlreadyInitialized

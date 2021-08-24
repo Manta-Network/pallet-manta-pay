@@ -45,7 +45,7 @@ benchmarks! {
 	add_coin_in_map {
 		let caller: T::AccountId = whitelisted_caller();
 		for x in 0u128..100_000u128 {
-			let origin: T::Origin = T::Origin::from(RawOrigin::Signed(caller.clone())); 
+			let origin: T::Origin = T::Origin::from(RawOrigin::Signed(caller.clone()));
 			assert!(Pallet::<T>::add_coin_in_map(origin, x).is_ok());
 		}
 	}: add_coin_in_map(RawOrigin::Signed(caller.clone()), 100_000u128)

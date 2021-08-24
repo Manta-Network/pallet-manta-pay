@@ -14,21 +14,25 @@
 // You should have received a copy of the GNU General Public License
 // along with pallet-manta-pay.  If not, see <http://www.gnu.org/licenses/>.
 
-use frame_support::pallet_prelude::{StorageDoubleMap, ValueQuery};
-use frame_support::traits::StorageInstance;
-use frame_support::Identity;
+use frame_support::{
+	pallet_prelude::{StorageDoubleMap, ValueQuery},
+	traits::StorageInstance,
+	Identity,
+};
 use sp_io::TestExternalities;
 
 struct Prefix;
 impl StorageInstance for Prefix {
-	fn pallet_prefix() -> &'static str { "test" }
+	fn pallet_prefix() -> &'static str {
+		"test"
+	}
 	const STORAGE_PREFIX: &'static str = "foo";
 }
 
 #[test]
 fn double_map_iterator_test() {
-    type DoubleMap = StorageDoubleMap<Prefix, Identity, u16, Identity, u32, u64, ValueQuery>;
-	TestExternalities::default().execute_with(|| {	
+	type DoubleMap = StorageDoubleMap<Prefix, Identity, u16, Identity, u32, u64, ValueQuery>;
+	TestExternalities::default().execute_with(|| {
 		// shard 0
 		for i in 0..4 {
 			DoubleMap::insert(0 as u16, i as u32, i as u64);
@@ -38,14 +42,29 @@ fn double_map_iterator_test() {
 			DoubleMap::insert(1 as u16, i as u32, i as u64)
 		}
 
-		assert_eq!(DoubleMap::iter().collect::<Vec<_>>(),
-            vec![(0, 0, 0), (0, 1, 1), (0, 2, 2), (0, 3, 3), (1, 0, 0), (1, 1, 1), (1, 2, 2), (1, 3, 3), (1, 4, 4)]);
+		assert_eq!(
+			DoubleMap::iter().collect::<Vec<_>>(),
+			vec![
+				(0, 0, 0),
+				(0, 1, 1),
+				(0, 2, 2),
+				(0, 3, 3),
+				(1, 0, 0),
+				(1, 1, 1),
+				(1, 2, 2),
+				(1, 3, 3),
+				(1, 4, 4)
+			]
+		);
 
-		assert_eq!(DoubleMap::iter_prefix(0 as u16).collect::<Vec<_>>(),
-            vec![(0, 0), (1, 1), (2, 2), (3, 3)]);
+		assert_eq!(
+			DoubleMap::iter_prefix(0 as u16).collect::<Vec<_>>(),
+			vec![(0, 0), (1, 1), (2, 2), (3, 3)]
+		);
 
-        assert_eq!(DoubleMap::iter_prefix_values(1 as u16).collect::<Vec<_>>(),
-            vec![0, 1, 2, 3, 4]);
-
+		assert_eq!(
+			DoubleMap::iter_prefix_values(1 as u16).collect::<Vec<_>>(),
+			vec![0, 1, 2, 3, 4]
+		);
 	})
 }
