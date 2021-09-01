@@ -14,14 +14,15 @@
 // You should have received a copy of the GNU General Public License
 // along with pallet-manta-pay.  If not, see <http://www.gnu.org/licenses/>.
 
-//! manta-pay pallet benchmarking.
+//! Manta-Pay Pallet Benchmarking
+
 #![cfg(feature = "runtime-benchmarks")]
 
 #[cfg(test)]
 mod bench_composite;
 
 use super::*;
-use ark_std::{boxed::Box, primitive::str, vec, vec::Vec};
+use ark_std::{primitive::str, vec, vec::Vec};
 use codec::Decode;
 use frame_benchmarking::{account, benchmarks, whitelisted_caller};
 use frame_system::{EventRecord, RawOrigin};
@@ -42,10 +43,13 @@ benchmarks! {
 	init_asset {
 		let caller: T::AccountId = whitelisted_caller();
 		let total = 1000u128;
-	}: init_asset (RawOrigin::Signed(caller.clone()), TEST_ASSET, total)
-	verify {
-		assert_last_event::<T>(RawEvent::Issued(TEST_ASSET, caller.clone(), total).into());
+	}: init_asset (
+		RawOrigin::Signed(caller.clone()),
+		TEST_ASSET,
+		total
+	) verify {
 		assert_eq!(<TotalSupply>::get(TEST_ASSET), total);
+		assert_last_event::<T>(RawEvent::Issued(caller, TEST_ASSET, total).into());
 	}
 
 	transfer_asset {
@@ -60,14 +64,13 @@ benchmarks! {
 		RawOrigin::Signed(caller.clone()),
 		recipient_lookup,
 		TEST_ASSET,
-		transfer_amount)
-	verify {
-		assert_last_event::<T>(
-			RawEvent::Transferred(TEST_ASSET, caller.clone(), recipient.clone(), transfer_amount).into()
-		);
+		transfer_amount
+	) verify {
 		assert_eq!(Balances::<T>::get(&recipient, TEST_ASSET), transfer_amount);
+		assert_last_event::<T>(
+			RawEvent::Transferred(caller, recipient, TEST_ASSET, transfer_amount).into()
+		);
 	}
-
 
 	mint_private_asset {
 		let caller: T::AccountId = whitelisted_caller();
@@ -77,14 +80,18 @@ benchmarks! {
 		let mut test_mint_10_bytes: Vec<u8> = Vec::new();
 		test_mint_10_bytes.extend_from_slice(&precomputed_coins::TEST_MINT_10_PAYLOAD);
 		let mint_data = MintData::decode(&mut test_mint_10_bytes.as_ref()).unwrap();
+		let mint_amount = 10;
 	}: mint_private_asset (
-		RawOrigin::Signed(caller),
-		mint_data)
+		RawOrigin::Signed(caller.clone()),
+		mint_data
+	)
 	verify {
 		assert_eq!(TotalSupply::get(TEST_ASSET), 1000);
 		assert_eq!(PoolBalance::get(TEST_ASSET), 10);
+		assert_last_event::<T>(
+			RawEvent::Minted(caller, TEST_ASSET, mint_amount).into()
+		);
 	}
-
 
 	private_transfer {
 		let caller: T::AccountId = whitelisted_caller();
@@ -108,11 +115,11 @@ benchmarks! {
 
 	}: private_transfer (
 		RawOrigin::Signed(caller.clone()),
-		transfer_data)
-	verify {
-		assert_last_event::<T>(RawEvent::PrivateTransferred(caller.clone()).into());
+		transfer_data
+	) verify {
 		assert_eq!(TotalSupply::get(TEST_ASSET), 1000);
 		assert_eq!(PoolBalance::get(TEST_ASSET), 21);
+		assert_last_event::<T>(RawEvent::PrivateTransferred(caller).into());
 	}
 
 	reclaim {
@@ -138,13 +145,13 @@ benchmarks! {
 		let reclaim_data = ReclaimData::decode(&mut reclaim_bytes.as_ref()).unwrap();
 	}: reclaim (
 		RawOrigin::Signed(caller.clone()),
-		reclaim_data)
-	verify {
-		assert_last_event::<T>(
-			RawEvent::PrivateReclaimed(TEST_ASSET, caller.clone(), reclaim_value).into()
-		);
+		reclaim_data
+	) verify {
 		assert_eq!(TotalSupply::get(TEST_ASSET), 1000);
 		assert_eq!(PoolBalance::get(TEST_ASSET), 10);
+		assert_last_event::<T>(
+			RawEvent::Reclaimed(caller, TEST_ASSET, reclaim_value).into()
+		);
 	}
 }
 
