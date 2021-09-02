@@ -15,7 +15,8 @@
 // along with pallet-manta-pay.  If not, see <http://www.gnu.org/licenses/>.
 
 use frame_support::{
-	pallet_prelude::{StorageDoubleMap, ValueQuery},
+	pallet_prelude::{ValueQuery},
+	storage::{types::StorageDoubleMap},
 	traits::StorageInstance,
 	Identity,
 };
@@ -65,6 +66,11 @@ fn double_map_iterator_test() {
 		assert_eq!(
 			DoubleMap::iter_prefix_values(1 as u16).collect::<Vec<_>>(),
 			vec![0, 1, 2, 3, 4]
+		);
+		let starting_raw_key = DoubleMap::hashed_key_for(1, 2);
+		assert_eq!(
+			DoubleMap::iter_prefix_from(1, starting_raw_key).collect::<Vec<_>>(),
+			vec![(3, 3), (4, 4)]
 		);
 	})
 }

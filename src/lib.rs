@@ -258,9 +258,14 @@ pub mod pallet {
 		}
 
 		/// Mint private asset
-		#[pallet::weigth(1000)]
+		#[pallet::weight(1000)]
 		pub fn mint_private_asset(origin: OriginFor<T>, mint_data: MintData) -> DispatchResultWithPostInfo {
 			let origin = ensure_signed(origin)?;
+
+			// asset id must exist
+			ensure!(TotalSupply::<T>::contains_key(&mint_data.asset_id), <Error<T>>::BasecoinNotInit);
+
+			Ok(().into())
 
 		}
 		 
@@ -270,10 +275,9 @@ pub mod pallet {
 			let origin = ensure_signed(origin)?;
 
 			// asset id must exist
-			ensure!(
-				TotalSupply::contains_key(&mint_data.asset_id),
-				<Error<T>>::BasecoinNotInit
-			);
+			
+
+
 
 			Ok(().into())
 		}
