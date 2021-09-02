@@ -53,7 +53,7 @@ fn test_transfer_zkp_local() {
 
 	// list of commitment
 	let mut list = vec![sender_0.utxo, sender_1.utxo];
-	for _ in 2..24 {
+	for _ in 2..32 {
 		let mut cm_rand = [0u8; 32];
 		rng.fill_bytes(&mut cm_rand);
 		list.push(cm_rand);
@@ -113,6 +113,10 @@ fn test_transfer_zkp_local() {
 	// =============================
 	// a normal test
 	// =============================
+
+	list.pop().unwrap();
+	list.pop().unwrap();
+
 	rng.fill_bytes(&mut sk);
 	let sender_0 = MantaAsset::sample(&commit_params, &sk, &TEST_ASSET, &100).unwrap();
 	rng.fill_bytes(&mut sk);
@@ -151,6 +155,10 @@ fn test_transfer_zkp_local() {
 	// =============================
 	// test with a 0 sender token
 	// =============================
+
+	list.pop().unwrap();
+	list.pop().unwrap();
+
 	rng.fill_bytes(&mut sk);
 	let sender_0 = MantaAsset::sample(&commit_params, &sk, &TEST_ASSET, &0).unwrap();
 	rng.fill_bytes(&mut sk);
@@ -189,6 +197,10 @@ fn test_transfer_zkp_local() {
 	// =============================
 	// test with a 0 receiver token
 	// =============================
+
+	list.pop().unwrap();
+	list.pop().unwrap();
+
 	rng.fill_bytes(&mut sk);
 	let sender_0 = MantaAsset::sample(&commit_params, &sk, &TEST_ASSET, &111).unwrap();
 	rng.fill_bytes(&mut sk);
@@ -227,6 +239,10 @@ fn test_transfer_zkp_local() {
 	// =============================
 	// test with all 0 tokens
 	// =============================
+
+	list.pop().unwrap();
+	list.pop().unwrap();
+
 	rng.fill_bytes(&mut sk);
 	let sender_0 = MantaAsset::sample(&commit_params, &sk, &TEST_ASSET, &0).unwrap();
 	rng.fill_bytes(&mut sk);
@@ -356,7 +372,7 @@ fn test_reclaim_zkp_local() {
 
 	// list of commitment
 	let mut list = vec![sender_0.utxo.clone(), sender_1.utxo.clone()];
-	for _ in 1..24 {
+	for _ in 2..32 {
 		let mut cm_rand = [0u8; 32];
 		rng.fill_bytes(&mut cm_rand);
 		list.push(cm_rand);
@@ -393,6 +409,9 @@ fn test_reclaim_zkp_local() {
 	// a normal test
 	// =============================
 
+	list.pop().unwrap();
+	list.pop().unwrap();
+
 	rng.fill_bytes(&mut sk);
 	let sender_0 = MantaAsset::sample(&commit_params, &sk, &TEST_ASSET, &100).unwrap();
 	rng.fill_bytes(&mut sk);
@@ -423,6 +442,9 @@ fn test_reclaim_zkp_local() {
 	// =============================
 	// test with a 0 sender token
 	// =============================
+
+	list.pop().unwrap();
+	list.pop().unwrap();
 
 	rng.fill_bytes(&mut sk);
 	let sender_0 = MantaAsset::sample(&commit_params, &sk, &TEST_ASSET, &0).unwrap();
@@ -455,6 +477,9 @@ fn test_reclaim_zkp_local() {
 	// test with a 0 receiver token
 	// =============================
 
+	list.pop().unwrap();
+	list.pop().unwrap();
+
 	rng.fill_bytes(&mut sk);
 	let sender_0 = MantaAsset::sample(&commit_params, &sk, &TEST_ASSET, &77).unwrap();
 	rng.fill_bytes(&mut sk);
@@ -484,6 +509,9 @@ fn test_reclaim_zkp_local() {
 	// =============================
 	// test with a 0 forfeit amount
 	// =============================
+
+	list.pop().unwrap();
+	list.pop().unwrap();
 
 	rng.fill_bytes(&mut sk);
 	let sender_0 = MantaAsset::sample(&commit_params, &sk, &TEST_ASSET, &42).unwrap();
