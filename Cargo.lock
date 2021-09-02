@@ -1450,7 +1450,7 @@ dependencies = [
 [[package]]
 name = "manta-api"
 version = "0.2.0"
-source = "git+https://github.com/Manta-Network/manta-api?branch=update-arkworks-0.3.x#ea1531286af7dbb9d737a25a6ec37b3e9bb16578"
+source = "git+https://github.com/Manta-Network/manta-api?branch=update-arkworks-0.3.x#2e68dd3146f718114547c2eead74faf846e26df9"
 dependencies = [
  "ark-bls12-381",
  "ark-crypto-primitives",
@@ -1480,7 +1480,7 @@ dependencies = [
 [[package]]
 name = "manta-asset"
 version = "0.2.0"
-source = "git+https://github.com/Manta-Network/manta-types?branch=update-arkworks-0.3.x#ac4831290d495e09f3b656bf4c76259b211779a8"
+source = "git+https://github.com/Manta-Network/manta-types?branch=update-arkworks-0.3.x#0cd44dfb40e66ccbd2b7ff49de50ee8c60b2e812"
 dependencies = [
  "ark-crypto-primitives",
  "ark-ed-on-bls12-381",
@@ -1496,7 +1496,7 @@ dependencies = [
 [[package]]
 name = "manta-crypto"
 version = "0.2.0"
-source = "git+https://github.com/Manta-Network/manta-crypto?branch=update-arkworks-0.3.x#b0a43b180cbde04df2566c77d501e727b64c09d9"
+source = "git+https://github.com/Manta-Network/manta-crypto?branch=update-arkworks-0.3.x#b21f77d7b53973dcf33551eeaaf77c7fb19e0d37"
 dependencies = [
  "aes-gcm",
  "ark-bls12-381",
@@ -1518,7 +1518,7 @@ dependencies = [
 [[package]]
 name = "manta-data"
 version = "0.2.0"
-source = "git+https://github.com/Manta-Network/manta-types?branch=update-arkworks-0.3.x#ac4831290d495e09f3b656bf4c76259b211779a8"
+source = "git+https://github.com/Manta-Network/manta-types?branch=update-arkworks-0.3.x#0cd44dfb40e66ccbd2b7ff49de50ee8c60b2e812"
 dependencies = [
  "ark-ed-on-bls12-381",
  "ark-groth16",
@@ -1534,7 +1534,7 @@ dependencies = [
 [[package]]
 name = "manta-error"
 version = "0.2.0"
-source = "git+https://github.com/Manta-Network/manta-error?branch=update-arkworks-0.3.x#de7520dd00c4a4420bf8c319649aa647b46ae7c5"
+source = "git+https://github.com/Manta-Network/manta-error?branch=update-arkworks-0.3.x#2994770e536a05a5587de7136c56554f64e32098"
 dependencies = [
  "ark-crypto-primitives",
  "ark-relations",
@@ -1547,7 +1547,7 @@ dependencies = [
 [[package]]
 name = "manta-ledger"
 version = "0.2.0"
-source = "git+https://github.com/Manta-Network/manta-types?branch=update-arkworks-0.3.x#ac4831290d495e09f3b656bf4c76259b211779a8"
+source = "git+https://github.com/Manta-Network/manta-types?branch=update-arkworks-0.3.x#0cd44dfb40e66ccbd2b7ff49de50ee8c60b2e812"
 dependencies = [
  "manta-crypto",
  "manta-error",
@@ -3096,9 +3096,9 @@ dependencies = [
 
 [[package]]
 name = "typenum"
-version = "1.13.0"
+version = "1.14.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "879f6906492a7cd215bfa4cf595b600146ccfac0c79bcbd1f3000162af5e8b06"
+checksum = "b63708a265f51345575b27fe43f9500ad611579e764c79edbc2037b1121959ec"
 
 [[package]]
 name = "ucd-trie"

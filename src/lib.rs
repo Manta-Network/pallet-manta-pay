@@ -170,45 +170,42 @@ decl_module! {
 			let origin = ensure_signed(origin)?;
 
 			// NOTE: For now we hard code the parameters generated from the following seeds:
-			//  * leaf hash parameter seed: [1u8; 32]
+			//  * leaf hash parameter seed: ???
 			//  * two-to-one hash parameter seed: ???
 			//  * commitment parameter seed: [2u8; 32]
 			// In the future, we may want to pass them in to `init_asst` or generate them here.
 
-			// Loads leaf hash parameters and computes checksum.
-			let mut leaf_hash_param_bytes = HASH_PARAM.data;
-			let leaf_hash_param = LeafHashParam::deserialize(&mut leaf_hash_param_bytes)
+			// Loads leaf parameters and computes checksum.
+			let leaf_params = try_leaf_parameters()
 				.map_err::<DispatchError, _>(|e| {
 					log::error!(target: "manta-pay", "failed to init the asset with error: {:?}", e);
 					Error::<T>::ParamFail.into()
 				})?;
-			let leaf_hash_param_checksum = leaf_hash_param.get_checksum()
+			let leaf_param_checksum = leaf_params.get_checksum()
 				.map_err::<DispatchError, _>(|e| {
 					log::error!(target: "manta-pay", "failed to init the asset with error: {:?}", e);
 					Error::<T>::ParamFail.into()
 				})?;
 
-			// Loads two-to-one hash parameters and computes checksum.
-			let mut two_to_one_hash_param_bytes = HASH_PARAM.data;
-			let two_to_one_hash_param = TwoToOneHashParam::deserialize(&mut two_to_one_hash_param_bytes)
+			// Loads two-to-one parameters and computes checksum.
+			let two_to_one_params = try_two_to_one_parameters()
 				.map_err::<DispatchError, _>(|e| {
 					log::error!(target: "manta-pay", "failed to init the asset with error: {:?}", e);
 					Error::<T>::ParamFail.into()
 				})?;
-			let two_to_one_hash_param_checksum = two_to_one_hash_param.get_checksum()
+			let two_to_one_param_checksum = two_to_one_params.get_checksum()
 				.map_err::<DispatchError, _>(|e| {
 					log::error!(target: "manta-pay", "failed to init the asset with error: {:?}", e);
 					Error::<T>::ParamFail.into()
 				})?;
 
 			// Loads commitment parameters and computes checksum.
-			let mut commit_param_bytes = COMMIT_PARAM.data;
-			let commit_param = CommitmentParam::deserialize(&mut commit_param_bytes)
+			let commit_params = try_commitment_parameters()
 				.map_err::<DispatchError, _>(|e| {
 					log::error!(target: "manta-pay", "failed to init the asset with error: {:?}", e);
 					Error::<T>::ParamFail.into()
 				})?;
-			let commit_param_checksum = commit_param.get_checksum()
+			let commit_param_checksum = commit_params.get_checksum()
 				.map_err::<DispatchError, _>(|e| {
 					log::error!(target: "manta-pay", "failed to init the asset with error: {:?}", e);
 					Error::<T>::ParamFail.into()
@@ -219,20 +216,20 @@ decl_module! {
 			// to generate these keys. See the ZKP source for more details.
 
 			// Loads ZKP proving/verifying keys and computes checksum.
-			let transfer_key_digest = TRANSFER_PK.get_checksum()
+			let transfer_key_digest = TRANSFER_VK.get_checksum()
 				.map_err::<DispatchError, _>(|e| {
 					log::error!(target: "manta-pay", "failed to init the asset with error: {:?}", e);
 					Error::<T>::ParamFail.into()
 				})?;
-			let reclaim_key_digest = RECLAIM_PK.get_checksum()
+			let reclaim_key_digest = RECLAIM_VK.get_checksum()
 				.map_err::<DispatchError, _>(|e| {
 					log::error!(target: "manta-pay", "failed to init the asset with error: {:?}", e);
 					Error::<T>::ParamFail.into()
 				})?;
 
 			// Saves checksums to storage.
-			LeafHashParamChecksum::put(leaf_hash_param_checksum);
-			TwoToOneHashParamChecksum::put(two_to_one_hash_param_checksum);
+			LeafHashParamChecksum::put(leaf_param_checksum);
+			TwoToOneHashParamChecksum::put(two_to_one_param_checksum);
 			CommitParamChecksum::put(commit_param_checksum);
 			PrivateTransferKeyChecksum::put(transfer_key_digest);
 			ReclaimKeyChecksum::put(reclaim_key_digest);
@@ -304,59 +301,56 @@ decl_module! {
 				Error::<T>::BalanceLow
 			);
 
-			// Computes the local checksums.
-			let leaf_hash_param_checksum_local = HASH_PARAM.get_checksum()
+			// Ensures the local leaf parameters have the matching checksum.
+			let leaf_param_checksum_local = HASH_PARAM.get_checksum()
 				.map_err::<DispatchError, _>(|e| {
 					log::error!(target: "manta-pay", "failed to mint the asset with error: {:?}", e);
 					Error::<T>::ParamFail.into()
 				})?;
-			let two_to_one_hash_param_checksum_local = HASH_PARAM.get_checksum()
+			ensure!(
+				leaf_param_checksum_local == LeafHashParamChecksum::get(),
+				Error::<T>::ParamFail
+			);
+			let leaf_params = try_leaf_parameters()
 				.map_err::<DispatchError, _>(|e| {
 					log::error!(target: "manta-pay", "failed to mint the asset with error: {:?}", e);
 					Error::<T>::ParamFail.into()
 				})?;
+
+			// Ensures the local two-to-one parameters have the matching checksum.
+			let two_to_one_param_checksum_local = HASH_PARAM.get_checksum()
+				.map_err::<DispatchError, _>(|e| {
+					log::error!(target: "manta-pay", "failed to mint the asset with error: {:?}", e);
+					Error::<T>::ParamFail.into()
+				})?;
+			ensure!(
+				two_to_one_param_checksum_local == TwoToOneHashParamChecksum::get(),
+				Error::<T>::ParamFail
+			);
+			let two_to_one_params = try_two_to_one_parameters()
+				.map_err::<DispatchError, _>(|e| {
+					log::error!(target: "manta-pay", "failed to mint the asset with error: {:?}", e);
+					Error::<T>::ParamFail.into()
+				})?;
+
+			// Ensures the local commitment parameters have the matching checksum.
 			let commit_param_checksum_local = COMMIT_PARAM.get_checksum()
 				.map_err::<DispatchError, _>(|e| {
 					log::error!(target: "manta-pay", "failed to mint the asset with error: {:?}", e);
 					Error::<T>::ParamFail.into()
 				})?;
-
-			// Checks that the local checksums are the same as those on-chain.
-			ensure!(
-				leaf_hash_param_checksum_local == LeafHashParamChecksum::get(),
-				Error::<T>::ParamFail
-			);
-			ensure!(
-				two_to_one_hash_param_checksum_local == TwoToOneHashParamChecksum::get(),
-				Error::<T>::ParamFail
-			);
 			ensure!(
 				commit_param_checksum_local == CommitParamChecksum::get(),
 				Error::<T>::ParamFail
 			);
-
-			// Computes the parameters.
-			let mut leaf_hash_param_bytes = HASH_PARAM.data;
-			let leaf_hash_param = LeafHashParam::deserialize(&mut leaf_hash_param_bytes)
-				.map_err::<DispatchError, _>(|e| {
-					log::error!(target: "manta-pay", "failed to mint the asset with error: {:?}", e);
-					Error::<T>::ParamFail.into()
-				})?;
-			let mut two_to_one_hash_param_bytes = HASH_PARAM.data;
-			let two_to_one_hash_param = TwoToOneHashParam::deserialize(&mut two_to_one_hash_param_bytes)
-				.map_err::<DispatchError, _>(|e| {
-					log::error!(target: "manta-pay", "failed to mint the asset with error: {:?}", e);
-					Error::<T>::ParamFail.into()
-				})?;
-			let mut commit_param_bytes = COMMIT_PARAM.data;
-			let commit_param = CommitmentParam::deserialize(&mut commit_param_bytes)
+			let commit_params = try_commitment_parameters()
 				.map_err::<DispatchError, _>(|e| {
 					log::error!(target: "manta-pay", "failed to mint the asset with error: {:?}", e);
 					Error::<T>::ParamFail.into()
 				})?;
 
 			// Checks the validity of the mint data structure.
-			let mint_sanity_check = data.sanity(&commit_param)
+			let mint_sanity_check = data.sanity(&commit_params)
 				.map_err::<DispatchError, _>(|e| {
 					log::error!(target: "manta-pay", "failed to mint the asset with error: {:?}", e);
 					Error::<T>::MintFail.into()
@@ -367,7 +361,7 @@ decl_module! {
 			// already stored, then we throw an error.
 			let mut coin_shards = CoinShards::get();
 			ensure!(!coin_shards.exist(&data.cm), Error::<T>::MantaCoinExist);
-			coin_shards.update(&data.cm, &leaf_hash_param, &two_to_one_hash_param)
+			coin_shards.update(&data.cm, &leaf_params, &two_to_one_params)
 				.map_err::<DispatchError, _>(|e| {
 					log::error!(target: "manta-pay", "failed to mint the asset with error: {:?}", e);
 					Error::<T>::LedgerUpdateFail.into()
@@ -403,34 +397,33 @@ decl_module! {
 			// Checks that the origin is valid.
 			let origin = ensure_signed(origin)?;
 
-			// Gets the parameter checksums from the ledger and ensures that they match.
-			let leaf_hash_param_checksum_local = HASH_PARAM.get_checksum()
+			// Ensures the local leaf parameters have the matching checksum.
+			let leaf_param_checksum_local = HASH_PARAM.get_checksum()
 				.map_err::<DispatchError, _>(|e| {
 					log::error!(target: "manta-pay", "failed to transfer the private asset with error: {:?}", e);
 					Error::<T>::ParamFail.into()
 				})?;
-			let mut leaf_hash_param_bytes = HASH_PARAM.data;
 			ensure!(
-				leaf_hash_param_checksum_local == LeafHashParamChecksum::get(),
+				leaf_param_checksum_local == LeafHashParamChecksum::get(),
 				Error::<T>::ParamFail
 			);
-			let leaf_hash_param = LeafHashParam::deserialize(&mut leaf_hash_param_bytes)
+			let leaf_params = try_leaf_parameters()
 				.map_err::<DispatchError, _>(|e| {
 					log::error!(target: "manta-pay", "failed to transfer the private asset with error: {:?}", e);
 					Error::<T>::ParamFail.into()
 				})?;
 
-			let two_to_one_hash_param_checksum_local = HASH_PARAM.get_checksum()
+			// Ensures the local two-to-one parameters have the matching checksum.
+			let two_to_one_param_checksum_local = HASH_PARAM.get_checksum()
 				.map_err::<DispatchError, _>(|e| {
 					log::error!(target: "manta-pay", "failed to transfer the private asset with error: {:?}", e);
 					Error::<T>::ParamFail.into()
 				})?;
 			ensure!(
-				two_to_one_hash_param_checksum_local == TwoToOneHashParamChecksum::get(),
+				two_to_one_param_checksum_local == TwoToOneHashParamChecksum::get(),
 				Error::<T>::ParamFail
 			);
-			let mut two_to_one_hash_param_bytes = HASH_PARAM.data;
-			let two_to_one_hash_param = TwoToOneHashParam::deserialize(&mut two_to_one_hash_param_bytes)
+			let two_to_one_params = try_two_to_one_parameters()
 				.map_err::<DispatchError, _>(|e| {
 					log::error!(target: "manta-pay", "failed to transfer the private asset with error: {:?}", e);
 					Error::<T>::ParamFail.into()
@@ -455,21 +448,21 @@ decl_module! {
 			// accordingly.
 			ensure!(!coin_shards.exist(&data.receiver_0.cm), Error::<T>::MantaCoinExist);
 			coin_shards
-				.update(&data.receiver_0.cm, &leaf_hash_param, &two_to_one_hash_param)
+				.update(&data.receiver_0.cm, &leaf_params, &two_to_one_params)
 				.map_err::<DispatchError, _>(|e| {
 					log::error!(target: "manta-pay", "failed to transfer the private asset with error: {:?}", e);
 					Error::<T>::LedgerUpdateFail.into()
 				})?;
 			ensure!(!coin_shards.exist(&data.receiver_1.cm), Error::<T>::MantaCoinExist);
 			coin_shards
-				.update(&data.receiver_1.cm, &leaf_hash_param, &two_to_one_hash_param)
+				.update(&data.receiver_1.cm, &leaf_params, &two_to_one_params)
 				.map_err::<DispatchError, _>(|e| {
 					log::error!(target: "manta-pay", "failed to transfer the private asset with error: {:?}", e);
 					Error::<T>::LedgerUpdateFail.into()
 				})?;
 
 			// Compares the checksum of the local verification key to the one stored in the ledger.
-			let vk_checksum_local = TRANSFER_PK.get_checksum()
+			let vk_checksum_local = TRANSFER_VK.get_checksum()
 				.map_err::<DispatchError, _>(|e| {
 					log::error!(target: "manta-pay", "failed to transfer the private asset with error: {:?}", e);
 					Error::<T>::ZkpParamFail.into()
@@ -477,7 +470,7 @@ decl_module! {
 			ensure!(vk_checksum_local == PrivateTransferKeyChecksum::get(), Error::<T>::ZkpParamFail);
 
 			// Checks the validity of transfer ZKP.
-			ensure!(data.verify(&TRANSFER_PK), Error::<T>::ZkpVerificationFail);
+			ensure!(data.verify(&TRANSFER_VK), Error::<T>::ZkpVerificationFail);
 
 			// FIXME: Revisit replay attack here.
 
@@ -517,34 +510,33 @@ decl_module! {
 			// Checks that origin account is valid.
 			let origin = ensure_signed(origin)?;
 
-			// Gets the parameter checksums from the ledger and ensures that they match.
-			let leaf_hash_param_checksum_local = HASH_PARAM.get_checksum()
+			// Ensures the local leaf parameters have the matching checksum.
+			let leaf_param_checksum_local = HASH_PARAM.get_checksum()
 				.map_err::<DispatchError, _>(|e| {
 					log::error!(target: "manta-pay", "failed to reclaim the private asset with error: {:?}", e);
 					Error::<T>::ParamFail.into()
 				})?;
 			ensure!(
-				leaf_hash_param_checksum_local == LeafHashParamChecksum::get(),
+				leaf_param_checksum_local == LeafHashParamChecksum::get(),
 				Error::<T>::ParamFail
 			);
-			let mut leaf_hash_param_bytes = HASH_PARAM.data;
-			let leaf_hash_param = LeafHashParam::deserialize(&mut leaf_hash_param_bytes)
+			let leaf_params = try_leaf_parameters()
 				.map_err::<DispatchError, _>(|e| {
 					log::error!(target: "manta-pay", "failed to reclaim the private asset with error: {:?}", e);
 					Error::<T>::ParamFail.into()
 				})?;
 
-			let two_to_one_hash_param_checksum_local = HASH_PARAM.get_checksum()
+			// Ensures the local two-to-one parameters have the matching checksum.
+			let two_to_one_param_checksum_local = HASH_PARAM.get_checksum()
 				.map_err::<DispatchError, _>(|e| {
 					log::error!(target: "manta-pay", "failed to reclaim the private asset with error: {:?}", e);
 					Error::<T>::ParamFail.into()
 				})?;
 			ensure!(
-				two_to_one_hash_param_checksum_local == TwoToOneHashParamChecksum::get(),
+				two_to_one_param_checksum_local == TwoToOneHashParamChecksum::get(),
 				Error::<T>::ParamFail
 			);
-			let mut two_to_one_hash_param_bytes = HASH_PARAM.data;
-			let two_to_one_hash_param = TwoToOneHashParam::deserialize(&mut two_to_one_hash_param_bytes)
+			let two_to_one_params = try_two_to_one_parameters()
 				.map_err::<DispatchError, _>(|e| {
 					log::error!(target: "manta-pay", "failed to reclaim the private asset with error: {:?}", e);
 					Error::<T>::ParamFail.into()
@@ -572,7 +564,7 @@ decl_module! {
 			ensure!(!coin_shards.exist(&data.receiver.cm), Error::<T>::MantaCoinSpent);
 
 			// Checks that the checksum of the verifying key is the same as the one stored on-chain.
-			let vk_checksum_local = RECLAIM_PK.get_checksum()
+			let vk_checksum_local = RECLAIM_VK.get_checksum()
 				.map_err::<DispatchError, _>(|e| {
 					log::error!(target: "manta-pay", "failed to reclaim the private asset with error: {:?}", e);
 					Error::<T>::ZkpParamFail.into()
@@ -580,13 +572,13 @@ decl_module! {
 			ensure!(vk_checksum_local == ReclaimKeyChecksum::get(), Error::<T>::ZkpParamFail);
 
 			// Checks the validity of reclaim proof.
-			ensure!(data.verify(&RECLAIM_PK), Error::<T>::ZkpVerificationFail);
+			ensure!(data.verify(&RECLAIM_VK), Error::<T>::ZkpVerificationFail);
 
 			// FIXME: Revisit replay attack here.
 
 			// Updates shards.
 			coin_shards
-				.update(&data.receiver.cm, &leaf_hash_param, &two_to_one_hash_param)
+				.update(&data.receiver.cm, &leaf_params, &two_to_one_params)
 				.map_err::<DispatchError, _>(|e| {
 					log::error!(target: "manta-pay", "failed to reclaim the private asset with error: {:?}", e);
 					Error::<T>::LedgerUpdateFail.into()

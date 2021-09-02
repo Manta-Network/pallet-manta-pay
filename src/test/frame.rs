@@ -20,8 +20,7 @@ use ark_serialize::CanonicalDeserialize;
 use ark_std::rand::{RngCore, SeedableRng};
 use frame_support::{assert_noop, assert_ok, parameter_types};
 use manta_api::{
-	generate_mint_struct, generate_private_transfer_struct, generate_reclaim_struct, util::*,
-	write_zkp_keys,
+	generate_mint_struct, generate_private_transfer_struct, generate_reclaim_struct, write_zkp_keys,
 };
 use manta_asset::*;
 use manta_crypto::*;
@@ -1288,7 +1287,7 @@ fn setup_params(
 
 	let pk = load_zkp_keys(file_name);
 	let vk_checksum = PrivateTransferKeyChecksum::get();
-	assert_eq!(TRANSFER_PK.get_checksum().unwrap(), vk_checksum);
+	assert_eq!(TRANSFER_VK.get_checksum().unwrap(), vk_checksum);
 
 	// need to use a different seed than the mint_tokens_helper
 	let rng = ChaCha20Rng::from_seed([5u8; 32]);
@@ -1309,7 +1308,7 @@ fn setup_params_for_transferring() -> (
 	ChaCha20Rng,
 ) {
 	let vk_checksum = PrivateTransferKeyChecksum::get();
-	assert_eq!(TRANSFER_PK.get_checksum().unwrap(), vk_checksum);
+	assert_eq!(TRANSFER_VK.get_checksum().unwrap(), vk_checksum);
 	setup_params("transfer_pk.bin")
 }
 
@@ -1322,6 +1321,6 @@ fn setup_params_for_reclaim() -> (
 	ChaCha20Rng,
 ) {
 	let vk_checksum = ReclaimKeyChecksum::get();
-	assert_eq!(RECLAIM_PK.get_checksum().unwrap(), vk_checksum);
+	assert_eq!(RECLAIM_VK.get_checksum().unwrap(), vk_checksum);
 	setup_params("reclaim_pk.bin")
 }
