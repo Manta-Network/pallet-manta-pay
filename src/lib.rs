@@ -101,6 +101,9 @@
 // Ensure we're `no_std` when compiling for Wasm.
 #![cfg_attr(not(feature = "std"), no_std)]
 
+use std::string;
+
+use frame_system::Error;
 pub use pallet::*;
 
 #[cfg(test)]
@@ -116,7 +119,7 @@ pub mod weights;
 pub use weights::WeightInfo;
 pub mod precomputed_coins;
 
-use manta_asset::{AssetBalance, AssetId, MantaPublicKey, SanityCheck};
+use manta_asset::{AssetBalance, AssetId, MantaPublicKey, MantaRandomValue, SanityCheck};
 use manta_crypto::{
 	Checksum, CommitmentParam, HashParam, MantaEciesCiphertext, MantaSerDes, MantaZKPVerifier,
 	COMMIT_PARAM, HASH_PARAM, RECLAIM_PK, TRANSFER_PK,
@@ -185,6 +188,11 @@ pub mod pallet {
 	pub(super) type LedgerShardIndices<T: Config> = 
 		StorageMap<_, Identity, u8, u128, ValueQuery>;
 
+	/// Merkle root of each shard
+	#[pallet::storage]
+	pub(super) type LedgerRoots<T:Config> = 
+		StorageDoubleMap<_, Twox64Concat, u8, Twox64Concat, u8, MantaRandomValue>;
+
 	// the set of void numbers (similar to the nullifiers in ZCash)
 	#[pallet::storage]
 	pub(super) type VoidNumbers<T: Config> = 
@@ -225,6 +233,7 @@ pub mod pallet {
 		/// such assets and they'll all belong to the `origin` initially. It will have an
 		/// identifier `AssetId` instance: this will be specified in the `Issued` event.
 		/// FIXME: consider init a fix amount of tokens in when configuring genesis
+		/// FIXME: this part need to move out of pallet-manta-pay
 		/// # <weight>
 		/// - `O(1)`
 		/// - 1 storage mutation (codec `O(1)`).
@@ -258,14 +267,61 @@ pub mod pallet {
 		}
 
 		/// Mint private asset
+		/// FIXME: this part need to be moved out of pallet-manta-pay
 		#[pallet::weight(1000)]
 		pub fn mint_private_asset(origin: OriginFor<T>, mint_data: MintData) -> DispatchResultWithPostInfo {
 			let origin = ensure_signed(origin)?;
 
 			// asset id must exist
+			let asset_id = mint_data.asset_id;
 			ensure!(TotalSupply::<T>::contains_key(&mint_data.asset_id), <Error<T>>::BasecoinNotInit);
 
+			// get the original balance
+			let origin_account = origin.clone();
+			let origin_balance = Balances<T>::get(&origin_account, asset_id);
+			ensure!(origin_balance >= mint_data.amount, Error<T>::BalanceLow);
+			
+			// TODO: here need to be revisited, but I don't think we need to checksum the commit 
+			// parameters, since they should be part of the runtime code 
+			let mut hash_param_bytes = HASH_PARAM.data;
+			let hash_param = HashParam::deserialize(&mut hash_param_bytes)
+				.map_err::<DispatchError, _>(|e| {
+					log::error!(target: "manta-pay", "failed to mint the asset with error: {:?}", e);
+					Error<T>::ParamFail.into()
+				})?;
+
+			let mut commit_param_bytes = COMMIT_PARAM.data;
+			let commit_param = CommitmentParam::deserialize(&mut commit_param_bytes)
+				.map_err::<DispatchError, _>(|e| {
+					log::error!(target: "manta-pay", "failed to mint the asset with error: {:?}", e);
+					Error<T>::ParamFail.into()
+				})?;
+			
+			// check the validity of the commitment	
+			let res = mint_data.sanity(&commit_param)
+				.map_err::<DispatchError, _>(|e| {
+					log::error!(target: "manta-pay", "failed to mint the asset with error: {:?}", e);
+					<Error<T>>::MintFail.into()
+				})?;
+
+			ensure!(
+				res,
+				<Error<T>>::MintFail
+			);
 			Ok(().into())
+
+			// TODO: to be revisit, currently check cm is not in the ledger takes O(N)
+			// let mut coin_shards = CoinShards::get();
+			// ensure!(
+			//	!coin_shards.exist(&mint_data.cm),
+			//	Error::<T>::MantaCoinExist
+			// );  
+			// Idea 1: the user provide an merkle tree proof
+			// Idea 2: use a cryptographic accumulator
+			// Idea 3: store the a map of commitment 
+			
+			// add commitment, 
+
 
 		}
 		 
@@ -274,8 +330,6 @@ pub mod pallet {
 		pub fn private_transfer(origin: OriginFor<T>, private_transfer_data: PrivateTransferData) -> DispatchResultWithPostInfo {
 			let origin = ensure_signed(origin)?;
 
-			// asset id must exist
-			
 
 
 
@@ -340,7 +394,6 @@ pub mod pallet {
 
 // The main implementation block for the module.
 impl<T: Config> Pallet<T> {
-	// Public immutables
 
 	/// Get the asset `id` balance of `who`.
 	pub fn balance(who: T::AccountId, what: AssetId) -> AssetBalance {
@@ -351,4 +404,10 @@ impl<T: Config> Pallet<T> {
 	pub fn total_supply(what: AssetId) -> AssetBalance {
 		<TotalSupply<T>>::get(what)
 	}
+
+	/// insert commitment and ciphertext into the map, 
+	/// update the merkle root and related proofs 
+	fn add_commitments(commitments: Vec<(UTXO, MantaEciesCiphertext)>) -> Result<(), Error<T>>{
+
+	} 
 }
