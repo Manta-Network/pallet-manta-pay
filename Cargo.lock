@@ -112,9 +112,20 @@ version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "70e1c2ad76c4f725520440b981df3ce2d635f2baa1122750c757c0cf0f3d4b74"
 dependencies = [
- "ark-ec",
- "ark-ff",
- "ark-std",
+ "ark-ec 0.2.0",
+ "ark-ff 0.2.0",
+ "ark-std 0.2.0",
+]
+
+[[package]]
+name = "ark-bls12-381"
+version = "0.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "65be532f9dd1e98ad0150b037276cde464c6f371059e6dd02c0222395761f6aa"
+dependencies = [
+ "ark-ec 0.3.0",
+ "ark-ff 0.3.0",
+ "ark-std 0.3.0",
 ]
 
 [[package]]
@@ -123,13 +134,53 @@ version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "74b83a7e125e5c611e4a997123effb2f02e3fbc66531dd77751d3016ee920741"
 dependencies = [
- "ark-ec",
- "ark-ff",
- "ark-nonnative-field",
- "ark-r1cs-std",
- "ark-relations",
- "ark-snark",
- "ark-std",
+ "ark-ec 0.2.0",
+ "ark-ff 0.2.0",
+ "ark-nonnative-field 0.2.0",
+ "ark-r1cs-std 0.2.0",
+ "ark-relations 0.2.0",
+ "ark-snark 0.2.0",
+ "ark-std 0.2.0",
+ "blake2",
+ "derivative",
+ "digest 0.9.0",
+ "tracing",
+]
+
+[[package]]
+name = "ark-crypto-primitives"
+version = "0.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ff773c0ef8c655c98071d3026a63950798a66b2f45baef22d8334c1756f1bd18"
+dependencies = [
+ "ark-ec 0.3.0",
+ "ark-ff 0.3.0",
+ "ark-nonnative-field 0.3.0",
+ "ark-r1cs-std 0.3.1",
+ "ark-relations 0.3.0",
+ "ark-serialize 0.3.0",
+ "ark-snark 0.3.0",
+ "ark-std 0.3.0",
+ "blake2",
+ "derivative",
+ "digest 0.9.0",
+ "tracing",
+]
+
+[[package]]
+name = "ark-crypto-primitives"
+version = "0.3.0"
+source = "git+https://github.com/arkworks-rs/crypto-primitives?branch=main#55a414721c25f18a883d162442298d81201192aa"
+dependencies = [
+ "ark-ec 0.3.0",
+ "ark-ff 0.3.0",
+ "ark-nonnative-field 0.3.0",
+ "ark-r1cs-std 0.3.1",
+ "ark-relations 0.3.0",
+ "ark-serialize 0.3.0",
+ "ark-snark 0.3.0",
+ "ark-sponge",
+ "ark-std 0.3.0",
  "blake2",
  "derivative",
  "digest 0.9.0",
@@ -142,9 +193,23 @@ version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c56006994f509d76fbce6f6ffe3108f7191b4f3754ecd00bbae7cac20ec05020"
 dependencies = [
- "ark-ff",
- "ark-serialize",
- "ark-std",
+ "ark-ff 0.2.0",
+ "ark-serialize 0.2.0",
+ "ark-std 0.2.0",
+ "derivative",
+ "num-traits",
+ "zeroize",
+]
+
+[[package]]
+name = "ark-ec"
+version = "0.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "dea978406c4b1ca13c2db2373b05cc55429c3575b8b21f1b9ee859aa5b03dd42"
+dependencies = [
+ "ark-ff 0.3.0",
+ "ark-serialize 0.3.0",
+ "ark-std 0.3.0",
  "derivative",
  "num-traits",
  "zeroize",
@@ -156,11 +221,24 @@ version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e08d948a004fc5d81d3b5cf2ac5e5a7ca106255ff222faec16e34d291fd79d86"
 dependencies = [
- "ark-bls12-381",
- "ark-ec",
- "ark-ff",
- "ark-r1cs-std",
- "ark-std",
+ "ark-bls12-381 0.2.0",
+ "ark-ec 0.2.0",
+ "ark-ff 0.2.0",
+ "ark-r1cs-std 0.2.0",
+ "ark-std 0.2.0",
+]
+
+[[package]]
+name = "ark-ed-on-bls12-381"
+version = "0.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "43b7ada17db3854f5994e74e60b18e10e818594935ee7e1d329800c117b32970"
+dependencies = [
+ "ark-bls12-381 0.3.0",
+ "ark-ec 0.3.0",
+ "ark-ff 0.3.0",
+ "ark-r1cs-std 0.3.1",
+ "ark-std 0.3.0",
 ]
 
 [[package]]
@@ -169,12 +247,30 @@ version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a4d8802d40fce9212c5c09be08f75c4b3becc0c488e87f60fff787b01250ce33"
 dependencies = [
- "ark-ff-asm",
- "ark-ff-macros",
- "ark-serialize",
- "ark-std",
+ "ark-ff-asm 0.2.0",
+ "ark-ff-macros 0.2.0",
+ "ark-serialize 0.2.0",
+ "ark-std 0.2.0",
  "derivative",
  "num-traits",
+ "rustc_version 0.3.3",
+ "zeroize",
+]
+
+[[package]]
+name = "ark-ff"
+version = "0.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6b3235cc41ee7a12aaaf2c575a2ad7b46713a8a50bda2fc3b003a04845c05dd6"
+dependencies = [
+ "ark-ff-asm 0.3.0",
+ "ark-ff-macros 0.3.0",
+ "ark-serialize 0.3.0",
+ "ark-std 0.3.0",
+ "derivative",
+ "num-bigint 0.4.1",
+ "num-traits",
+ "paste",
  "rustc_version 0.3.3",
  "zeroize",
 ]
@@ -184,6 +280,16 @@ name = "ark-ff-asm"
 version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3e8cb28c2137af1ef058aa59616db3f7df67dbb70bf2be4ee6920008cc30d98c"
+dependencies = [
+ "quote",
+ "syn",
+]
+
+[[package]]
+name = "ark-ff-asm"
+version = "0.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "db02d390bf6643fb404d3d22d31aee1c4bc4459600aef9113833d17e786c6e44"
 dependencies = [
  "quote",
  "syn",
@@ -202,19 +308,49 @@ dependencies = [
 ]
 
 [[package]]
+name = "ark-ff-macros"
+version = "0.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "db2fd794a08ccb318058009eefdf15bcaaaaf6f8161eb3345f907222bac38b20"
+dependencies = [
+ "num-bigint 0.4.1",
+ "num-traits",
+ "quote",
+ "syn",
+]
+
+[[package]]
 name = "ark-groth16"
 version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6ba848e856c96bc15eb3f68359cd8ea92747eb2be35a177a25e780d307069f38"
 dependencies = [
- "ark-crypto-primitives",
- "ark-ec",
- "ark-ff",
- "ark-poly",
- "ark-r1cs-std",
- "ark-relations",
- "ark-serialize",
- "ark-std",
+ "ark-crypto-primitives 0.2.0",
+ "ark-ec 0.2.0",
+ "ark-ff 0.2.0",
+ "ark-poly 0.2.0",
+ "ark-r1cs-std 0.2.0",
+ "ark-relations 0.2.0",
+ "ark-serialize 0.2.0",
+ "ark-std 0.2.0",
+ "derivative",
+ "tracing",
+]
+
+[[package]]
+name = "ark-groth16"
+version = "0.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "38f8fff7468e947130b5caf9bdd27de8b913cf30e15104b4f0cd301726b3d897"
+dependencies = [
+ "ark-crypto-primitives 0.3.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "ark-ec 0.3.0",
+ "ark-ff 0.3.0",
+ "ark-poly 0.3.0",
+ "ark-r1cs-std 0.3.1",
+ "ark-relations 0.3.0",
+ "ark-serialize 0.3.0",
+ "ark-std 0.3.0",
  "derivative",
  "tracing",
 ]
@@ -225,11 +361,29 @@ version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "17887af156e9911d1dba5b30d49256d508f82f6a4f765a6fad8b5c637b700353"
 dependencies = [
- "ark-ec",
- "ark-ff",
- "ark-r1cs-std",
- "ark-relations",
- "ark-std",
+ "ark-ec 0.2.0",
+ "ark-ff 0.2.0",
+ "ark-r1cs-std 0.2.0",
+ "ark-relations 0.2.0",
+ "ark-std 0.2.0",
+ "derivative",
+ "num-bigint 0.4.1",
+ "num-integer",
+ "num-traits",
+ "tracing",
+]
+
+[[package]]
+name = "ark-nonnative-field"
+version = "0.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "440ad4569974910adbeb84422b7e622b79e08d27142afd113785b7fcfb446186"
+dependencies = [
+ "ark-ec 0.3.0",
+ "ark-ff 0.3.0",
+ "ark-r1cs-std 0.3.1",
+ "ark-relations 0.3.0",
+ "ark-std 0.3.0",
  "derivative",
  "num-bigint 0.4.1",
  "num-integer",
@@ -243,9 +397,22 @@ version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "72d6683d21645a2abb94034f6a14e708405e55d9597687952d54b2269922857a"
 dependencies = [
- "ark-ff",
- "ark-serialize",
- "ark-std",
+ "ark-ff 0.2.0",
+ "ark-serialize 0.2.0",
+ "ark-std 0.2.0",
+ "derivative",
+ "hashbrown",
+]
+
+[[package]]
+name = "ark-poly"
+version = "0.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7b0f78f47537c2f15706db7e98fe64cc1711dbf9def81218194e17239e53e5aa"
+dependencies = [
+ "ark-ff 0.3.0",
+ "ark-serialize 0.3.0",
+ "ark-std 0.3.0",
  "derivative",
  "hashbrown",
 ]
@@ -256,10 +423,26 @@ version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9a90fea2b84ae4443983d56540360ea004cab952292b7a6535798b6b9dcb7f41"
 dependencies = [
- "ark-ec",
- "ark-ff",
- "ark-relations",
- "ark-std",
+ "ark-ec 0.2.0",
+ "ark-ff 0.2.0",
+ "ark-relations 0.2.0",
+ "ark-std 0.2.0",
+ "derivative",
+ "num-bigint 0.4.1",
+ "num-traits",
+ "tracing",
+]
+
+[[package]]
+name = "ark-r1cs-std"
+version = "0.3.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "22e8fdacb1931f238a0d866ced1e916a49d36de832fd8b83dc916b718ae72893"
+dependencies = [
+ "ark-ec 0.3.0",
+ "ark-ff 0.3.0",
+ "ark-relations 0.3.0",
+ "ark-std 0.3.0",
  "derivative",
  "num-bigint 0.4.1",
  "num-traits",
@@ -272,8 +455,19 @@ version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a42f124f8dfff2b0561143c0c7ea48d7f7dc8d2c4c1e87eca14a27430c653c0b"
 dependencies = [
- "ark-ff",
- "ark-std",
+ "ark-ff 0.2.0",
+ "ark-std 0.2.0",
+ "tracing",
+]
+
+[[package]]
+name = "ark-relations"
+version = "0.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4cba4c1c99792a6834bd97f7fd76578ec2cd58d2afc5139a17e1d1bec65b38f6"
+dependencies = [
+ "ark-ff 0.3.0",
+ "ark-std 0.3.0",
  "tracing",
 ]
 
@@ -283,8 +477,19 @@ version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c3e9b59329dc9b92086b3dc619f31cef4a0c802f10829b575a3666d48a48387d"
 dependencies = [
- "ark-serialize-derive",
- "ark-std",
+ "ark-serialize-derive 0.2.0",
+ "ark-std 0.2.0",
+]
+
+[[package]]
+name = "ark-serialize"
+version = "0.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1d6c2b318ee6e10f8c2853e73a83adc0ccb88995aa978d8a3408d492ab2ee671"
+dependencies = [
+ "ark-serialize-derive 0.3.0",
+ "ark-std 0.3.0",
+ "digest 0.9.0",
 ]
 
 [[package]]
@@ -299,14 +504,55 @@ dependencies = [
 ]
 
 [[package]]
+name = "ark-serialize-derive"
+version = "0.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8dd4e5f0bf8285d5ed538d27fab7411f3e297908fd93c62195de8bee3f199e82"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn",
+]
+
+[[package]]
 name = "ark-snark"
 version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "39da26432fe584b0010741299820145ec69180fe9ea18ddf96946932763624a1"
 dependencies = [
- "ark-ff",
- "ark-relations",
- "ark-std",
+ "ark-ff 0.2.0",
+ "ark-relations 0.2.0",
+ "ark-std 0.2.0",
+]
+
+[[package]]
+name = "ark-snark"
+version = "0.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0dc3dff1a5f67a9c0b34df32b079752d8dd17f1e9d06253da0453db6c1b7cc8a"
+dependencies = [
+ "ark-ff 0.3.0",
+ "ark-relations 0.3.0",
+ "ark-std 0.3.0",
+]
+
+[[package]]
+name = "ark-sponge"
+version = "0.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d0c7a8ce8c0b0dad619872efd707395884fc05f46e9b0e7ac3903b51fa0e59ac"
+dependencies = [
+ "ark-ec 0.3.0",
+ "ark-ff 0.3.0",
+ "ark-nonnative-field 0.3.0",
+ "ark-r1cs-std 0.3.1",
+ "ark-relations 0.3.0",
+ "ark-serialize 0.3.0",
+ "ark-std 0.3.0",
+ "derivative",
+ "digest 0.9.0",
+ "rand_chacha 0.3.1",
+ "tracing",
 ]
 
 [[package]]
@@ -317,6 +563,16 @@ checksum = "fb5b856a29bea7b810858116a596beee3d20fc4c5aeb240e8e5a8bca4845a470"
 dependencies = [
  "rand 0.7.3",
  "rand_xorshift",
+]
+
+[[package]]
+name = "ark-std"
+version = "0.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1df2c09229cbc5a028b1d70e00fdb2acee28b1055dfb5ca73eea49c5a25c4e7c"
+dependencies = [
+ "num-traits",
+ "rand 0.8.4",
 ]
 
 [[package]]
@@ -778,6 +1034,19 @@ dependencies = [
  "digest 0.9.0",
  "rand_core 0.5.1",
  "subtle 2.4.1",
+ "zeroize",
+]
+
+[[package]]
+name = "curve25519-dalek-ng"
+version = "4.0.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "574d8b2cd0bae5434fd50d53280f8299d95557a978686555880aaf5b8f4f81e9"
+dependencies = [
+ "byteorder",
+ "digest 0.9.0",
+ "rand_core 0.6.3",
+ "subtle-ng",
  "zeroize",
 ]
 
@@ -1462,22 +1731,22 @@ name = "manta-api"
 version = "0.1.1"
 source = "git+https://github.com/Manta-Network/manta-api?branch=manta#6bb78f88f9783ab1474ba033020ada0433799759"
 dependencies = [
- "ark-bls12-381",
- "ark-crypto-primitives",
- "ark-ed-on-bls12-381",
- "ark-ff",
- "ark-groth16",
- "ark-r1cs-std",
- "ark-relations",
- "ark-serialize",
- "ark-std",
+ "ark-bls12-381 0.2.0",
+ "ark-crypto-primitives 0.2.0",
+ "ark-ed-on-bls12-381 0.2.0",
+ "ark-ff 0.2.0",
+ "ark-groth16 0.2.0",
+ "ark-r1cs-std 0.2.0",
+ "ark-relations 0.2.0",
+ "ark-serialize 0.2.0",
+ "ark-std 0.2.0",
  "blake2",
  "console_error_panic_hook",
  "getrandom 0.2.3",
  "hkdf",
- "manta-asset",
- "manta-crypto",
- "manta-data",
+ "manta-asset 0.1.1",
+ "manta-crypto 0.1.1",
+ "manta-data 0.1.1",
  "manta-error",
  "rand 0.7.3",
  "rand_chacha 0.2.2",
@@ -1492,15 +1761,30 @@ name = "manta-asset"
 version = "0.1.1"
 source = "git+https://github.com/Manta-Network/manta-types?branch=manta#89d54c9335e881012e7f982e3be520f85a140b5b"
 dependencies = [
- "ark-crypto-primitives",
- "ark-ed-on-bls12-381",
- "ark-ff",
- "ark-serialize",
- "ark-std",
- "manta-crypto",
+ "ark-crypto-primitives 0.2.0",
+ "ark-ed-on-bls12-381 0.2.0",
+ "ark-ff 0.2.0",
+ "ark-serialize 0.2.0",
+ "ark-std 0.2.0",
+ "manta-crypto 0.1.1",
  "manta-error",
  "parity-scale-codec",
  "rand_chacha 0.2.2",
+]
+
+[[package]]
+name = "manta-asset"
+version = "0.2.0"
+dependencies = [
+ "ark-crypto-primitives 0.3.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "ark-ed-on-bls12-381 0.3.0",
+ "ark-ff 0.3.0",
+ "ark-serialize 0.3.0",
+ "ark-std 0.3.0",
+ "manta-crypto 0.1.1",
+ "manta-error",
+ "parity-scale-codec",
+ "rand_chacha 0.3.1",
 ]
 
 [[package]]
@@ -1509,19 +1793,43 @@ version = "0.1.1"
 source = "git+https://github.com/Manta-Network/manta-crypto?branch=manta#aa3a6bde4785eddbcdbf615b4b8e13c78d5b5ba6"
 dependencies = [
  "aes-gcm",
- "ark-bls12-381",
- "ark-crypto-primitives",
- "ark-ed-on-bls12-381",
- "ark-groth16",
- "ark-r1cs-std",
- "ark-relations",
- "ark-serialize",
- "ark-std",
+ "ark-bls12-381 0.2.0",
+ "ark-crypto-primitives 0.2.0",
+ "ark-ed-on-bls12-381 0.2.0",
+ "ark-groth16 0.2.0",
+ "ark-r1cs-std 0.2.0",
+ "ark-relations 0.2.0",
+ "ark-serialize 0.2.0",
+ "ark-std 0.2.0",
  "blake2",
  "generic-array 0.14.4",
  "manta-error",
  "parity-scale-codec",
- "x25519-dalek",
+ "x25519-dalek 1.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
+]
+
+[[package]]
+name = "manta-crypto"
+version = "0.3.0"
+dependencies = [
+ "aes-gcm",
+ "ark-bls12-381 0.3.0",
+ "ark-crypto-primitives 0.3.0 (git+https://github.com/arkworks-rs/crypto-primitives?branch=main)",
+ "ark-ed-on-bls12-381 0.3.0",
+ "ark-ff 0.3.0",
+ "ark-groth16 0.3.0",
+ "ark-r1cs-std 0.3.1",
+ "ark-relations 0.3.0",
+ "ark-serialize 0.3.0",
+ "ark-sponge",
+ "ark-std 0.3.0",
+ "blake2",
+ "derivative",
+ "generic-array 0.14.4",
+ "manta-error",
+ "parity-scale-codec",
+ "rand_core 0.6.3",
+ "x25519-dalek 1.1.1 (git+https://github.com/Manta-Network/x25519-dalek)",
 ]
 
 [[package]]
@@ -1529,13 +1837,28 @@ name = "manta-data"
 version = "0.1.1"
 source = "git+https://github.com/Manta-Network/manta-types?branch=manta#89d54c9335e881012e7f982e3be520f85a140b5b"
 dependencies = [
- "ark-ed-on-bls12-381",
- "ark-groth16",
- "ark-relations",
- "ark-serialize",
- "ark-std",
- "manta-asset",
- "manta-crypto",
+ "ark-ed-on-bls12-381 0.2.0",
+ "ark-groth16 0.2.0",
+ "ark-relations 0.2.0",
+ "ark-serialize 0.2.0",
+ "ark-std 0.2.0",
+ "manta-asset 0.1.1",
+ "manta-crypto 0.1.1",
+ "manta-error",
+ "parity-scale-codec",
+]
+
+[[package]]
+name = "manta-data"
+version = "0.2.0"
+dependencies = [
+ "ark-ed-on-bls12-381 0.3.0",
+ "ark-groth16 0.3.0",
+ "ark-relations 0.3.0",
+ "ark-serialize 0.3.0",
+ "ark-std 0.3.0",
+ "manta-asset 0.2.0",
+ "manta-crypto 0.1.1",
  "manta-error",
  "parity-scale-codec",
 ]
@@ -1545,20 +1868,19 @@ name = "manta-error"
 version = "0.1.1"
 source = "git+https://github.com/Manta-Network/manta-error?branch=manta#08430014ec1ae7d6bacf3b36094480191fb031de"
 dependencies = [
- "ark-crypto-primitives",
- "ark-relations",
- "ark-serialize",
- "ark-std",
+ "ark-crypto-primitives 0.2.0",
+ "ark-relations 0.2.0",
+ "ark-serialize 0.2.0",
+ "ark-std 0.2.0",
  "displaydoc",
  "parity-scale-codec",
 ]
 
 [[package]]
 name = "manta-ledger"
-version = "0.1.1"
-source = "git+https://github.com/Manta-Network/manta-types?branch=manta#89d54c9335e881012e7f982e3be520f85a140b5b"
+version = "0.2.0"
 dependencies = [
- "manta-crypto",
+ "manta-crypto 0.1.1",
  "manta-error",
  "parity-scale-codec",
  "sp-std 3.0.0",
@@ -1795,14 +2117,14 @@ checksum = "624a8340c38c1b80fd549087862da4ba43e08858af025b236e509b6649fc13d5"
 name = "pallet-manta-pay"
 version = "3.1.0"
 dependencies = [
- "ark-bls12-381",
- "ark-crypto-primitives",
- "ark-ed-on-bls12-381",
- "ark-ff",
- "ark-groth16",
- "ark-relations",
- "ark-serialize",
- "ark-std",
+ "ark-bls12-381 0.2.0",
+ "ark-crypto-primitives 0.2.0",
+ "ark-ed-on-bls12-381 0.2.0",
+ "ark-ff 0.2.0",
+ "ark-groth16 0.2.0",
+ "ark-relations 0.2.0",
+ "ark-serialize 0.2.0",
+ "ark-std 0.3.0",
  "bencher",
  "criterion",
  "data-encoding",
@@ -1811,9 +2133,9 @@ dependencies = [
  "frame-system",
  "log",
  "manta-api",
- "manta-asset",
- "manta-crypto",
- "manta-data",
+ "manta-asset 0.2.0",
+ "manta-crypto 0.3.0",
+ "manta-data 0.2.0",
  "manta-error",
  "manta-ledger",
  "parity-scale-codec",
@@ -2929,6 +3251,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6bdef32e8150c2a081110b42772ffe7d7c9032b606bc226c8260fd97e0976601"
 
 [[package]]
+name = "subtle-ng"
+version = "2.4.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8049cf85f0e715d6af38dde439cb0ccb91f67fb9f5f63c80f8b43e48356e1a3f"
+
+[[package]]
 name = "syn"
 version = "1.0.75"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3381,6 +3709,16 @@ checksum = "5a0c105152107e3b96f6a00a65e86ce82d9b125230e1c4302940eca58ff71f4f"
 dependencies = [
  "curve25519-dalek 3.2.0",
  "rand_core 0.5.1",
+ "zeroize",
+]
+
+[[package]]
+name = "x25519-dalek"
+version = "1.1.1"
+source = "git+https://github.com/Manta-Network/x25519-dalek#186bff53c475e09a1c44f30dfef1dd3fd2120a2b"
+dependencies = [
+ "curve25519-dalek-ng",
+ "rand_core 0.6.3",
  "zeroize",
 ]
 

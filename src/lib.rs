@@ -101,8 +101,6 @@
 // Ensure we're `no_std` when compiling for Wasm.
 #![cfg_attr(not(feature = "std"), no_std)]
 
-use std::string;
-
 use frame_system::Error;
 pub use pallet::*;
 
@@ -119,7 +117,7 @@ pub mod weights;
 pub use weights::WeightInfo;
 pub mod precomputed_coins;
 
-use manta_asset::{AssetBalance, AssetId, MantaPublicKey, MantaRandomValue, SanityCheck};
+use manta_asset::{AssetBalance, AssetId, UTXO, MantaPublicKey, MantaRandomValue, SanityCheck};
 use manta_crypto::{
 	Checksum, CommitmentParam, HashParam, MantaEciesCiphertext, MantaSerDes, MantaZKPVerifier,
 	COMMIT_PARAM, HASH_PARAM, RECLAIM_PK, TRANSFER_PK,
@@ -138,7 +136,6 @@ pub mod pallet {
 	use super::*;
 	use frame_support::pallet_prelude::*;
 	use frame_system::pallet_prelude::*;
-	use manta_asset::{MantaRandomValue, UTXO};
 
 	#[pallet::pallet]
 	#[pallet::generate_store(pub(super) trait Store)]
@@ -183,17 +180,24 @@ pub mod pallet {
 	pub(super) type LedgerShards<T: Config> = 
 		StorageDoubleMap<_, Identity, u8, Identity, u128, (UTXO, MantaEciesCiphertext), ValueQuery>;
 	
-    /// Current index of each shard 
+    /// Next avaible index of each shard 
+	/// i.e. LedgerShardIndecis.get(0) is the 1st shard's next available index
 	#[pallet::storage]
 	pub(super) type LedgerShardIndices<T: Config> = 
 		StorageMap<_, Identity, u8, u128, ValueQuery>;
 
-	/// Merkle root of each shard
+	/// Merkle tree path of each shard's newest UTXO
+	/// for example, to extract 
 	#[pallet::storage]
-	pub(super) type LedgerRoots<T:Config> = 
-		StorageDoubleMap<_, Twox64Concat, u8, Twox64Concat, u8, MantaRandomValue>;
+	pub(super) type CurrentPaths<T:Config> = 
+		StorageDoubleMap<_, Twox64Concat, u8, Twox64Concat, u8, MantaRandomValue>; 
+	
+	/// The set of UTXOs 
+	#[pallet::storage]
+	pub(super) type UTXOSet<T: Config> = 
+		StorageMap<_, Twox64Concat, UTXO, bool, ValueQuery>;
 
-	// the set of void numbers (similar to the nullifiers in ZCash)
+	/// The set of void numbers (similar to the nullifiers in ZCash)
 	#[pallet::storage]
 	pub(super) type VoidNumbers<T: Config> = 
 		StorageMap<_, Twox64Concat, MantaRandomValue, bool, ValueQuery>;
@@ -287,42 +291,41 @@ pub mod pallet {
 			let hash_param = HashParam::deserialize(&mut hash_param_bytes)
 				.map_err::<DispatchError, _>(|e| {
 					log::error!(target: "manta-pay", "failed to mint the asset with error: {:?}", e);
-					Error<T>::ParamFail.into()
+					Error::<T>::ParamFail.into()
 				})?;
 
 			let mut commit_param_bytes = COMMIT_PARAM.data;
 			let commit_param = CommitmentParam::deserialize(&mut commit_param_bytes)
 				.map_err::<DispatchError, _>(|e| {
 					log::error!(target: "manta-pay", "failed to mint the asset with error: {:?}", e);
-					Error<T>::ParamFail.into()
+					Error::<T>::ParamFail.into()
 				})?;
 			
 			// check the validity of the commitment	
+			// i.e. check that `cm = COMM(asset_id || v || k, s)`.
 			let res = mint_data.sanity(&commit_param)
 				.map_err::<DispatchError, _>(|e| {
 					log::error!(target: "manta-pay", "failed to mint the asset with error: {:?}", e);
-					<Error<T>>::MintFail.into()
+					Error::<T>::MintFail.into()
 				})?;
 
 			ensure!(
 				res,
-				<Error<T>>::MintFail
+				Error::<T>::MintFail
 			);
-			Ok(().into())
 
-			// TODO: to be revisit, currently check cm is not in the ledger takes O(N)
-			// let mut coin_shards = CoinShards::get();
-			// ensure!(
-			//	!coin_shards.exist(&mint_data.cm),
-			//	Error::<T>::MantaCoinExist
-			// );  
-			// Idea 1: the user provide an merkle tree proof
-			// Idea 2: use a cryptographic accumulator
-			// Idea 3: store the a map of commitment 
+			// check if this utxo already exists, if so, minting fails.
+			let utxo = mint_data.cm;
+			ensure!(
+				Pallet::<T>::utxo_exists(utxo),
+				Error::<T>::MintFail 
+			);
 			
-			// add commitment, 
+			// add commitment and encrypted note
+			// update merkle root
+			
 
-
+			Ok(().into())
 		}
 		 
 		/// Given an amount, and relevant data, mint the token to the ledger
@@ -397,17 +400,29 @@ impl<T: Config> Pallet<T> {
 
 	/// Get the asset `id` balance of `who`.
 	pub fn balance(who: T::AccountId, what: AssetId) -> AssetBalance {
-		<Balances<T>>::get(who, what)
+		Balances::<T>::get(who, what)
 	}
 
 	/// Get the asset `id` total supply.
 	pub fn total_supply(what: AssetId) -> AssetBalance {
-		<TotalSupply<T>>::get(what)
+		TotalSupply::<T>::get(what)
 	}
 
 	/// insert commitment and ciphertext into the map, 
 	/// update the merkle root and related proofs 
+	/// It caches the intermediate merkle tree proof and only add it in the end
 	fn add_commitments(commitments: Vec<(UTXO, MantaEciesCiphertext)>) -> Result<(), Error<T>>{
-
+		for cm in commitments {
+			UTXOSet::<T>::insert(key, val);
+		}
+		Ok(())
 	} 
+
+	/// Check if a UTXO exists in the ledger
+	fn utxo_exists(utxo: UTXO) -> bool {
+		match UTXOSet::<T>::try_get(utxo) {
+			Ok(_) => true,
+			_ => false
+		}
+	}
 }
