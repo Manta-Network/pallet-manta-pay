@@ -102,6 +102,7 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
 use frame_system::Error;
+use manta_error::MantaError;
 pub use pallet::*;
 
 #[cfg(test)]
@@ -117,13 +118,17 @@ pub mod weights;
 pub use weights::WeightInfo;
 pub mod precomputed_coins;
 
-use manta_asset::{AssetBalance, AssetId, UTXO, MantaPublicKey, MantaRandomValue, SanityCheck};
+use manta_asset::{
+	shard_index, AssetBalance, AssetId, MantaPublicKey, MantaRandomValue, SanityCheck, UTXO,
+};
 use manta_crypto::{
-	Checksum, CommitmentParam, HashParam, MantaEciesCiphertext, MantaSerDes, MantaZKPVerifier,
-	COMMIT_PARAM, HASH_PARAM, RECLAIM_PK, TRANSFER_PK,
+	try_commitment_parameters, try_default_leaf_hash, try_leaf_parameters,
+	try_two_to_one_parameters, Checksum, CommitmentParam, LeafHashParam,
+	LightIncrementalMerkleTree, MantaCrypto, MantaEciesCiphertext, MantaSerDes, MantaZKPVerifier,
+	TwoToOneHashParam, COMMIT_PARAM, ON_CHAIN_PATH_SIZE,
 };
 use manta_data::{MintData, PrivateTransferData, ReclaimData};
-use manta_ledger::{LedgerSharding, MantaPrivateAssetLedger};
+use manta_ledger::SerializedPath;
 
 use sp_runtime::traits::{StaticLookup, Zero};
 use sp_std::prelude::*;
@@ -177,29 +182,32 @@ pub mod pallet {
 
 	/// (shard_index, index_within_shard) -> payload
 	#[pallet::storage]
-	pub(super) type LedgerShards<T: Config> = 
+	pub(super) type LedgerShards<T: Config> =
 		StorageDoubleMap<_, Identity, u8, Identity, u128, (UTXO, MantaEciesCiphertext), ValueQuery>;
-	
-    /// Next avaible index of each shard 
+
+	/// Next avaible index of each shard
 	/// i.e. LedgerShardIndecis.get(0) is the 1st shard's next available index
 	#[pallet::storage]
-	pub(super) type LedgerShardIndices<T: Config> = 
-		StorageMap<_, Identity, u8, u128, ValueQuery>;
+	pub(super) type LedgerShardIndices<T: Config> = StorageMap<_, Identity, u8, u128, ValueQuery>;
 
 	/// Merkle tree path of each shard's newest UTXO
-	/// for example, to extract 
+	/// note: this merkle path is the auth-path, i.e. without leaf digest and root
 	#[pallet::storage]
-	pub(super) type CurrentPaths<T:Config> = 
-		StorageDoubleMap<_, Twox64Concat, u8, Twox64Concat, u8, MantaRandomValue>; 
-	
-	/// The set of UTXOs 
+	pub(super) type ShardCurrentPaths<T: Config> =
+		StorageMap<_, Twox64Concat, u8, SerializedPath, ValueQuery>;
+
+	/// Merkle root of each shard
 	#[pallet::storage]
-	pub(super) type UTXOSet<T: Config> = 
-		StorageMap<_, Twox64Concat, UTXO, bool, ValueQuery>;
+	pub(super) type ShardRoots<T: Config> =
+		StorageMap<_, Twox64Concat, u8, MantaRandomValue, ValueQuery>;
+
+	/// The set of UTXOs
+	#[pallet::storage]
+	pub(super) type UTXOSet<T: Config> = StorageMap<_, Twox64Concat, UTXO, bool, ValueQuery>;
 
 	/// The set of void numbers (similar to the nullifiers in ZCash)
 	#[pallet::storage]
-	pub(super) type VoidNumbers<T: Config> = 
+	pub(super) type VoidNumbers<T: Config> =
 		StorageMap<_, Twox64Concat, MantaRandomValue, bool, ValueQuery>;
 
 	/// The balance of all minted private coins for this asset_id.
@@ -273,72 +281,68 @@ pub mod pallet {
 		/// Mint private asset
 		/// FIXME: this part need to be moved out of pallet-manta-pay
 		#[pallet::weight(1000)]
-		pub fn mint_private_asset(origin: OriginFor<T>, mint_data: MintData) -> DispatchResultWithPostInfo {
+		pub fn mint_private_asset(
+			origin: OriginFor<T>,
+			mint_data: MintData,
+		) -> DispatchResultWithPostInfo {
 			let origin = ensure_signed(origin)?;
 
 			// asset id must exist
 			let asset_id = mint_data.asset_id;
-			ensure!(TotalSupply::<T>::contains_key(&mint_data.asset_id), <Error<T>>::BasecoinNotInit);
+			ensure!(
+				TotalSupply::<T>::contains_key(&mint_data.asset_id),
+				<Error<T>>::BasecoinNotInit
+			);
 
 			// get the original balance
 			let origin_account = origin.clone();
-			let origin_balance = Balances<T>::get(&origin_account, asset_id);
-			ensure!(origin_balance >= mint_data.amount, Error<T>::BalanceLow);
-			
-			// TODO: here need to be revisited, but I don't think we need to checksum the commit 
-			// parameters, since they should be part of the runtime code 
-			let mut hash_param_bytes = HASH_PARAM.data;
-			let hash_param = HashParam::deserialize(&mut hash_param_bytes)
-				.map_err::<DispatchError, _>(|e| {
+			let origin_balance = Balances::<T>::get(&origin_account, asset_id);
+			ensure!(origin_balance >= mint_data.value, Error::<T>::BalanceLow);
+
+			// get paramters for merkle tree, commitment
+			let leaf_param = try_leaf_parameters().map_err::<DispatchError, _>(|e| {
+				log::error!(target: "manta-pay", "failed to mint the asset with error: {:?}", e);
+				Error::<T>::ParamFail.into()
+			})?;
+
+			let two_to_one_param =
+				try_two_to_one_parameters().map_err::<DispatchError, _>(|e| {
 					log::error!(target: "manta-pay", "failed to mint the asset with error: {:?}", e);
 					Error::<T>::ParamFail.into()
 				})?;
 
-			let mut commit_param_bytes = COMMIT_PARAM.data;
-			let commit_param = CommitmentParam::deserialize(&mut commit_param_bytes)
-				.map_err::<DispatchError, _>(|e| {
-					log::error!(target: "manta-pay", "failed to mint the asset with error: {:?}", e);
-					Error::<T>::ParamFail.into()
-				})?;
-			
-			// check the validity of the commitment	
+			let commit_param = try_commitment_parameters().map_err::<DispatchError, _>(|e| {
+				log::error!(target: "manta-pay", "failed to mint the asset with error: {:?}", e);
+				Error::<T>::ParamFail.into()
+			})?;
+
+			// check the validity of the commitment
 			// i.e. check that `cm = COMM(asset_id || v || k, s)`.
-			let res = mint_data.sanity(&commit_param)
+			let res = mint_data
+				.sanity(&commit_param)
 				.map_err::<DispatchError, _>(|e| {
 					log::error!(target: "manta-pay", "failed to mint the asset with error: {:?}", e);
 					Error::<T>::MintFail.into()
 				})?;
 
-			ensure!(
-				res,
-				Error::<T>::MintFail
-			);
+			ensure!(res, Error::<T>::MintFail);
 
-			// check if this utxo already exists, if so, minting fails.
-			let utxo = mint_data.cm;
-			ensure!(
-				Pallet::<T>::utxo_exists(utxo),
-				Error::<T>::MintFail 
-			);
-			
 			// add commitment and encrypted note
 			// update merkle root
-			
 
 			Ok(().into())
 		}
-		 
+
 		/// Given an amount, and relevant data, mint the token to the ledger
 		#[pallet::weight(1000)]
-		pub fn private_transfer(origin: OriginFor<T>, private_transfer_data: PrivateTransferData) -> DispatchResultWithPostInfo {
+		pub fn private_transfer(
+			origin: OriginFor<T>,
+			private_transfer_data: PrivateTransferData,
+		) -> DispatchResultWithPostInfo {
 			let origin = ensure_signed(origin)?;
-
-
-
 
 			Ok(().into())
 		}
-
 	}
 
 	#[pallet::event]
@@ -397,7 +401,6 @@ pub mod pallet {
 
 // The main implementation block for the module.
 impl<T: Config> Pallet<T> {
-
 	/// Get the asset `id` balance of `who`.
 	pub fn balance(who: T::AccountId, what: AssetId) -> AssetBalance {
 		Balances::<T>::get(who, what)
@@ -408,21 +411,104 @@ impl<T: Config> Pallet<T> {
 		TotalSupply::<T>::get(what)
 	}
 
-	/// insert commitment and ciphertext into the map, 
-	/// update the merkle root and related proofs 
-	/// It caches the intermediate merkle tree proof and only add it in the end
-	fn add_commitments(commitments: Vec<(UTXO, MantaEciesCiphertext)>) -> Result<(), Error<T>>{
-		for cm in commitments {
-			UTXOSet::<T>::insert(key, val);
+	/// insert commitment and ciphertext into the map,
+	/// update the merkle root and related proofs
+	fn add_commitments(
+		leaf_param: &LeafHashParam,
+		two_to_one_param: &TwoToOneHashParam,
+		commitment_param: &CommitmentParam,
+		commitments: Vec<(UTXO, MantaEciesCiphertext)>,
+	) -> Result<(), MantaError> {
+		let re: Result<(), _> = commitments
+			.iter()
+			.map(|cm| {
+				if Pallet::<T>::utxo_exists(cm.0) {
+					Err("duplicate utxo")
+				} else {
+					let shard_index = shard_index(cm.0);
+					if LedgerShardIndices::<T>::contains_key(shard_index) {
+						// if the current shard is not empty
+						// get current uxto, auth_path, and sibling
+						let current_index = LedgerShardIndices::<T>::take(shard_index);
+						let (current_utxo, _) = LedgerShards::<T>::take(shard_index, current_index);
+						let current_auth_path = ShardCurrentPaths::<T>::take(shard_index).bytes;
+						let leaf_sibling = if Pallet::<T>::is_left_child(current_index) {
+							let utxo = try_default_leaf_hash()
+								.map_err(|x| "cannot get default leaf hash")?;
+							utxo
+						} else {
+							let (utxo, _) = LedgerShards::<T>::take(shard_index, current_index - 1);
+							utxo
+						};
+
+						// generate new path and root
+						let (path, root) =
+							<MantaCrypto as LightIncrementalMerkleTree>::next_path_and_root(
+								leaf_param,
+								two_to_one_param,
+								current_index as usize,
+								false,
+								&current_utxo,
+								&leaf_sibling,
+								&current_auth_path,
+								&cm.0,
+							)
+							.map_err(|_| "error generate new path and root")?;
+
+						// update ledger state
+						// TODO: emit warning if ledger is full
+						LedgerShardIndices::<T>::insert(shard_index, current_index + 1);
+						LedgerShards::<T>::insert(shard_index, current_index + 1, cm);
+						ShardCurrentPaths::<T>::insert(shard_index, SerializedPath { bytes: path });
+						ShardRoots::<T>::insert(shard_index, root);
+					} else {
+						// if the current shard is empty
+						// generate some dummy data
+						let current_utxo = [0u8; 32]; // a dummy one
+						let current_auth_path = SerializedPath::default().bytes; // a dummy one
+						let leaf_sibling = [0u8; 32]; // a dummy one
+
+						// generate path and root
+						let (path, root) =
+							<MantaCrypto as LightIncrementalMerkleTree>::next_path_and_root(
+								leaf_param,
+								two_to_one_param,
+								0,
+								true,
+								&current_utxo,
+								&leaf_sibling,
+								&current_auth_path,
+								&cm.0,
+							)
+							.map_err(|_| "error generate new path and root")?;
+
+						// update ledger state
+						LedgerShardIndices::<T>::insert(shard_index, 0);
+						LedgerShards::<T>::insert(shard_index, 0, cm);
+						ShardCurrentPaths::<T>::insert(shard_index, SerializedPath { bytes: path });
+						ShardRoots::<T>::insert(shard_index, root);
+					}
+					Ok(())
+				}
+			})
+			.collect();
+		match re {
+			Ok(()) => Ok(()),
+			_ => Err(MantaError::LedgerUpdateFail),
 		}
-		Ok(())
-	} 
+	}
 
 	/// Check if a UTXO exists in the ledger
 	fn utxo_exists(utxo: UTXO) -> bool {
 		match UTXOSet::<T>::try_get(utxo) {
 			Ok(_) => true,
-			_ => false
+			_ => false,
 		}
+	}
+
+	/// Return true iff the given index on its current level represents a left child
+	#[inline]
+	fn is_left_child(index_on_level: u128) -> bool {
+		index_on_level % 2 == 0
 	}
 }

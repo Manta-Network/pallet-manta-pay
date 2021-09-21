@@ -15,10 +15,7 @@
 // along with pallet-manta-pay.  If not, see <http://www.gnu.org/licenses/>.
 
 use frame_support::{
-	pallet_prelude::{ValueQuery},
-	storage::{types::StorageDoubleMap},
-	traits::StorageInstance,
-	Identity,
+	pallet_prelude::ValueQuery, storage::types::StorageDoubleMap, traits::StorageInstance, Identity,
 };
 use sp_io::TestExternalities;
 

@@ -1747,7 +1747,7 @@ dependencies = [
  "manta-asset 0.1.1",
  "manta-crypto 0.1.1",
  "manta-data 0.1.1",
- "manta-error",
+ "manta-error 0.1.1",
  "rand 0.7.3",
  "rand_chacha 0.2.2",
  "sha2 0.9.6",
@@ -1767,7 +1767,7 @@ dependencies = [
  "ark-serialize 0.2.0",
  "ark-std 0.2.0",
  "manta-crypto 0.1.1",
- "manta-error",
+ "manta-error 0.1.1",
  "parity-scale-codec",
  "rand_chacha 0.2.2",
 ]
@@ -1776,13 +1776,14 @@ dependencies = [
 name = "manta-asset"
 version = "0.2.0"
 dependencies = [
- "ark-crypto-primitives 0.3.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "ark-crypto-primitives 0.3.0 (git+https://github.com/arkworks-rs/crypto-primitives?branch=main)",
  "ark-ed-on-bls12-381 0.3.0",
  "ark-ff 0.3.0",
  "ark-serialize 0.3.0",
  "ark-std 0.3.0",
- "manta-crypto 0.1.1",
- "manta-error",
+ "blake2",
+ "manta-crypto 0.3.0",
+ "manta-error 0.2.0",
  "parity-scale-codec",
  "rand_chacha 0.3.1",
 ]
@@ -1803,7 +1804,7 @@ dependencies = [
  "ark-std 0.2.0",
  "blake2",
  "generic-array 0.14.4",
- "manta-error",
+ "manta-error 0.1.1",
  "parity-scale-codec",
  "x25519-dalek 1.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
@@ -1826,7 +1827,7 @@ dependencies = [
  "blake2",
  "derivative",
  "generic-array 0.14.4",
- "manta-error",
+ "manta-error 0.2.0",
  "parity-scale-codec",
  "rand_core 0.6.3",
  "x25519-dalek 1.1.1 (git+https://github.com/Manta-Network/x25519-dalek)",
@@ -1844,7 +1845,7 @@ dependencies = [
  "ark-std 0.2.0",
  "manta-asset 0.1.1",
  "manta-crypto 0.1.1",
- "manta-error",
+ "manta-error 0.1.1",
  "parity-scale-codec",
 ]
 
@@ -1858,8 +1859,8 @@ dependencies = [
  "ark-serialize 0.3.0",
  "ark-std 0.3.0",
  "manta-asset 0.2.0",
- "manta-crypto 0.1.1",
- "manta-error",
+ "manta-crypto 0.3.0",
+ "manta-error 0.2.0",
  "parity-scale-codec",
 ]
 
@@ -1877,11 +1878,24 @@ dependencies = [
 ]
 
 [[package]]
+name = "manta-error"
+version = "0.2.0"
+dependencies = [
+ "ark-crypto-primitives 0.3.0 (git+https://github.com/arkworks-rs/crypto-primitives?branch=main)",
+ "ark-relations 0.3.0",
+ "ark-serialize 0.3.0",
+ "ark-std 0.3.0",
+ "displaydoc",
+ "parity-scale-codec",
+]
+
+[[package]]
 name = "manta-ledger"
 version = "0.2.0"
 dependencies = [
- "manta-crypto 0.1.1",
- "manta-error",
+ "blake2",
+ "manta-crypto 0.3.0",
+ "manta-error 0.2.0",
  "parity-scale-codec",
  "sp-std 3.0.0",
 ]
@@ -2136,7 +2150,7 @@ dependencies = [
  "manta-asset 0.2.0",
  "manta-crypto 0.3.0",
  "manta-data 0.2.0",
- "manta-error",
+ "manta-error 0.2.0",
  "manta-ledger",
  "parity-scale-codec",
  "rand_chacha 0.2.2",
