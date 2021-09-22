@@ -101,7 +101,6 @@
 // Ensure we're `no_std` when compiling for Wasm.
 #![cfg_attr(not(feature = "std"), no_std)]
 
-use frame_system::Error;
 use manta_error::MantaError;
 pub use pallet::*;
 
@@ -119,18 +118,16 @@ pub use weights::WeightInfo;
 pub mod precomputed_coins;
 
 use manta_asset::{
-	shard_index, AssetBalance, AssetId, MantaPublicKey, MantaRandomValue, SanityCheck, UTXO,
+	shard_index, AssetBalance, AssetId, MantaRandomValue, SanityCheck, UTXO,
 };
 use manta_crypto::{
 	try_commitment_parameters, try_default_leaf_hash, try_leaf_parameters,
-	try_two_to_one_parameters, Checksum, CommitmentParam, LeafHashParam,
-	LightIncrementalMerkleTree, MantaCrypto, MantaEciesCiphertext, MantaSerDes, MantaZKPVerifier,
-	TwoToOneHashParam, COMMIT_PARAM, ON_CHAIN_PATH_SIZE,
+	try_two_to_one_parameters, LeafHashParam,
+	LightIncrementalMerkleTree, MantaCrypto, MantaEciesCiphertext, MantaZKPVerifier,
+	TwoToOneHashParam,
 };
-use manta_data::{MintData, PrivateTransferData, ReclaimData};
-use manta_ledger::SerializedPath;
+use manta_data::{MintData, PrivateTransferData, ReclaimData, SerializedPath};
 
-use sp_runtime::traits::{StaticLookup, Zero};
 use sp_std::prelude::*;
 
 /// An abstract struct for manta-pay.
@@ -141,6 +138,7 @@ pub mod pallet {
 	use super::*;
 	use frame_support::pallet_prelude::*;
 	use frame_system::pallet_prelude::*;
+use manta_crypto::{RECLAIM_VK, TRANSFER_VK};
 
 	#[pallet::pallet]
 	#[pallet::generate_store(pub(super) trait Store)]
@@ -329,17 +327,169 @@ pub mod pallet {
 
 			// add commitment and encrypted note
 			// update merkle root
+			Pallet::<T>::insert_commitments(&leaf_param, &two_to_one_param, vec![(mint_data.cm, mint_data.encrypted_note)]).map_err::<DispatchError, _>(|e| {
+				log::error!(target: "manta-pay", "failed to mint the asset with error: {:?}", e);
+				Error::<T>::LedgerUpdateFail.into()
+			})?;
 
+			// update pool balance
+			PoolBalance::<T>::mutate(asset_id, |balance| *balance += mint_data.value);
 			Ok(().into())
 		}
 
-		/// Given an amount, and relevant data, mint the token to the ledger
+		/// Manta's private transfer function that moves values from two
+		/// sender's private tokens into two receiver tokens. A proof is required to
+		/// make sure that this transaction is valid.
+		/// Neither the values nor the identities is leaked during this process.
 		#[pallet::weight(1000)]
 		pub fn private_transfer(
 			origin: OriginFor<T>,
 			private_transfer_data: PrivateTransferData,
 		) -> DispatchResultWithPostInfo {
+			ensure_signed(origin)?;
+
+			// get paramters for merkle tree, commitment
+			let leaf_param = try_leaf_parameters().map_err::<DispatchError, _>(|e| {
+				log::error!(target: "manta-pay", "failed to transfer the asset with error: {:?}", e);
+				Error::<T>::ParamFail.into()
+			})?;
+
+			let two_to_one_param =
+				try_two_to_one_parameters().map_err::<DispatchError, _>(|e| {
+					log::error!(target: "manta-pay", "failed to transfer the asset with error: {:?}", e);
+					Error::<T>::ParamFail.into()
+				})?;
+
+			// check if vn_old already spent
+			let senders = vec![private_transfer_data.sender_0, private_transfer_data.sender_1];
+			let re: Result<(), _> = senders.iter().map(|sender| {
+				if VoidNumbers::<T>::contains_key(sender.void_number){
+					Err("coin exists")
+				} else {
+					Ok(())
+				}
+			}).collect();
+			re.map_err::<DispatchError, _>(|e| {
+				log::error!(target: "manta-pay", "failed to transfer the private asset with error: {:?}", e);
+				Error::<T>::MantaCoinExist.into()
+			})?;
+
+			// verify senders merkle root
+			let re: Result<(), _> = senders.iter().map(|sender|{
+				if ShardRoots::<T>::take(sender.shard_index) != sender.root {
+					Err("invalid root")
+				} else{
+					Ok(())
+				}
+			}).collect();
+			re.map_err::<DispatchError, _>(|e| {
+				log::error!(target: "manta-pay", "failed to transfer the private asset with error: {:?}", e);
+				Error::<T>::InvalidLedgerState.into()
+			})?;
+			
+			// verify ZKP 
+			let transfer_vk = TRANSFER_VK;
+			ensure!(
+				private_transfer_data.verify(&transfer_vk),
+				Error::<T>::ZkpVerificationFail
+			);
+
+			// add commitment and encrypted note
+			// update merkle root
+			let coins = vec![
+				(private_transfer_data.receiver_0.cm, private_transfer_data.receiver_0.encrypted_note),
+				(private_transfer_data.receiver_1.cm, private_transfer_data.receiver_1.encrypted_note)
+				];
+			Pallet::<T>::insert_commitments(&leaf_param, &two_to_one_param, coins).map_err::<DispatchError, _>(|e| {
+				log::error!(target: "manta-pay", "failed to transfer the asset with error: {:?}", e);
+				Error::<T>::LedgerUpdateFail.into()
+			})?;
+
+			// insert void numbers
+			for sender in senders {
+				VoidNumbers::<T>::insert(sender.void_number, true);
+			}
+			
+			Ok(().into())
+		}
+
+		/// Manta's reclaim function that moves values from two
+		/// sender's private tokens into a receiver public account, and a private token.
+		/// A proof is required to
+		/// make sure that this transaction is valid.
+		/// Neither the values nor the identities is leaked during this process;
+		/// except for the reclaimed amount.
+		#[pallet::weight(1000)]
+		pub fn reclaim(
+			origin: OriginFor<T>,
+			reclaim_data: ReclaimData,
+		) -> DispatchResultWithPostInfo {
+			// make sure it is properly signed
 			let origin = ensure_signed(origin)?;
+			let origin_account = origin.clone();
+			
+			// make sure the asset_id exists
+			let asset_id = reclaim_data.asset_id;
+			ensure!(
+				TotalSupply::<T>::contains_key(asset_id),
+				Error::<T>::BasecoinNotInit
+			);
+
+			// get the params of hashes
+			let leaf_param = try_leaf_parameters().map_err::<DispatchError, _>(|e| {
+				log::error!(target: "manta-pay", "failed to reclaim the private asset with error: {:?}", e);
+				Error::<T>::ParamFail.into()
+			})?;
+
+			let two_to_one_param =
+				try_two_to_one_parameters().map_err::<DispatchError, _>(|e| {
+					log::error!(target: "manta-pay", "failed to reclaim the private asset with error: {:?}", e);
+					Error::<T>::ParamFail.into()
+				})?;
+
+			// check double spend 
+			let senders = vec![reclaim_data.sender_0, reclaim_data.sender_1];
+			let re: Result<(), _> = senders.iter().map(|sender|{
+				if VoidNumbers::<T>::contains_key(sender.void_number) {
+					Err("Double Spend")
+				} else {
+					Ok(())
+				}
+			}).collect();
+			re.map_err::<DispatchError, _>(|e| {
+				log::error!(target: "manta-pay", "failed to reclaim the private asset with error: {:?}", e);
+				Error::<T>::MantaCoinExist.into()
+			})?;
+
+			// verify zkp
+			let reclaim_vk = RECLAIM_VK;
+			ensure!(
+				reclaim_data.verify(&reclaim_vk),
+				Error::<T>::ZkpVerificationFail
+			);
+
+			// add commitment and encrypted note
+			// update merkle root
+			Pallet::<T>::insert_commitments(
+				&leaf_param, 
+				&two_to_one_param, 
+				vec![(reclaim_data.receiver.cm, reclaim_data.receiver.encrypted_note)]).map_err::<DispatchError, _>(|e| {
+				log::error!(target: "manta-pay", "failed to transfer the asset with error: {:?}", e);
+				Error::<T>::LedgerUpdateFail.into()
+			})?;
+
+			// insert void numbers
+			for sender in senders {
+				VoidNumbers::<T>::insert(sender.void_number, true);
+			}
+
+			// mutate balance and update the pool balance
+			Balances::<T>::mutate(origin_account, asset_id, |balance|{
+				*balance += reclaim_data.reclaim_value
+			});
+			PoolBalance::<T>::mutate(asset_id, |balance|{
+				*balance -= reclaim_data.reclaim_value
+			});
 
 			Ok(().into())
 		}
@@ -409,14 +559,13 @@ impl<T: Config> Pallet<T> {
 	/// Get the asset `id` total supply.
 	pub fn total_supply(what: AssetId) -> AssetBalance {
 		TotalSupply::<T>::get(what)
-	}
+	} 
 
 	/// insert commitment and ciphertext into the map,
 	/// update the merkle root and related proofs
-	fn add_commitments(
+	fn insert_commitments(
 		leaf_param: &LeafHashParam,
 		two_to_one_param: &TwoToOneHashParam,
-		commitment_param: &CommitmentParam,
 		commitments: Vec<(UTXO, MantaEciesCiphertext)>,
 	) -> Result<(), MantaError> {
 		let re: Result<(), _> = commitments
@@ -434,7 +583,7 @@ impl<T: Config> Pallet<T> {
 						let current_auth_path = ShardCurrentPaths::<T>::take(shard_index).bytes;
 						let leaf_sibling = if Pallet::<T>::is_left_child(current_index) {
 							let utxo = try_default_leaf_hash()
-								.map_err(|x| "cannot get default leaf hash")?;
+								.map_err(|_| "cannot get default leaf hash")?;
 							utxo
 						} else {
 							let (utxo, _) = LedgerShards::<T>::take(shard_index, current_index - 1);

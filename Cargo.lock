@@ -1219,7 +1219,7 @@ dependencies = [
  "sp-io",
  "sp-runtime",
  "sp-runtime-interface",
- "sp-std 4.0.0-dev",
+ "sp-std",
  "sp-storage",
 ]
 
@@ -1231,7 +1231,7 @@ dependencies = [
  "parity-scale-codec",
  "serde",
  "sp-core",
- "sp-std 4.0.0-dev",
+ "sp-std",
 ]
 
 [[package]]
@@ -1256,7 +1256,7 @@ dependencies = [
  "sp-runtime",
  "sp-staking",
  "sp-state-machine",
- "sp-std 4.0.0-dev",
+ "sp-std",
  "sp-tracing",
 ]
 
@@ -1307,7 +1307,7 @@ dependencies = [
  "sp-core",
  "sp-io",
  "sp-runtime",
- "sp-std 4.0.0-dev",
+ "sp-std",
  "sp-version",
 ]
 
@@ -1774,7 +1774,7 @@ dependencies = [
 
 [[package]]
 name = "manta-asset"
-version = "0.2.0"
+version = "0.3.0"
 dependencies = [
  "ark-crypto-primitives 0.3.0 (git+https://github.com/arkworks-rs/crypto-primitives?branch=main)",
  "ark-ed-on-bls12-381 0.3.0",
@@ -1851,14 +1851,14 @@ dependencies = [
 
 [[package]]
 name = "manta-data"
-version = "0.2.0"
+version = "0.3.0"
 dependencies = [
  "ark-ed-on-bls12-381 0.3.0",
  "ark-groth16 0.3.0",
  "ark-relations 0.3.0",
  "ark-serialize 0.3.0",
  "ark-std 0.3.0",
- "manta-asset 0.2.0",
+ "manta-asset 0.3.0",
  "manta-crypto 0.3.0",
  "manta-error 0.2.0",
  "parity-scale-codec",
@@ -1887,17 +1887,6 @@ dependencies = [
  "ark-std 0.3.0",
  "displaydoc",
  "parity-scale-codec",
-]
-
-[[package]]
-name = "manta-ledger"
-version = "0.2.0"
-dependencies = [
- "blake2",
- "manta-crypto 0.3.0",
- "manta-error 0.2.0",
- "parity-scale-codec",
- "sp-std 3.0.0",
 ]
 
 [[package]]
@@ -2147,18 +2136,17 @@ dependencies = [
  "frame-system",
  "log",
  "manta-api",
- "manta-asset 0.2.0",
+ "manta-asset 0.3.0",
  "manta-crypto 0.3.0",
- "manta-data 0.2.0",
+ "manta-data 0.3.0",
  "manta-error 0.2.0",
- "manta-ledger",
  "parity-scale-codec",
  "rand_chacha 0.2.2",
  "serde",
  "sp-core",
  "sp-io",
  "sp-runtime",
- "sp-std 4.0.0-dev",
+ "sp-std",
 ]
 
 [[package]]
@@ -2863,7 +2851,7 @@ dependencies = [
  "sp-core",
  "sp-runtime",
  "sp-state-machine",
- "sp-std 4.0.0-dev",
+ "sp-std",
  "sp-version",
  "thiserror",
 ]
@@ -2889,7 +2877,7 @@ dependencies = [
  "serde",
  "sp-core",
  "sp-io",
- "sp-std 4.0.0-dev",
+ "sp-std",
 ]
 
 [[package]]
@@ -2902,7 +2890,7 @@ dependencies = [
  "parity-scale-codec",
  "serde",
  "sp-debug-derive",
- "sp-std 4.0.0-dev",
+ "sp-std",
  "static_assertions",
 ]
 
@@ -2939,7 +2927,7 @@ dependencies = [
  "sp-debug-derive",
  "sp-externalities",
  "sp-runtime-interface",
- "sp-std 4.0.0-dev",
+ "sp-std",
  "sp-storage",
  "substrate-bip39",
  "thiserror",
@@ -2967,7 +2955,7 @@ source = "git+https://github.com/paritytech/substrate.git?branch=polkadot-v0.9.9
 dependencies = [
  "environmental",
  "parity-scale-codec",
- "sp-std 4.0.0-dev",
+ "sp-std",
  "sp-storage",
 ]
 
@@ -2981,7 +2969,7 @@ dependencies = [
  "parity-scale-codec",
  "sp-core",
  "sp-runtime",
- "sp-std 4.0.0-dev",
+ "sp-std",
  "thiserror",
 ]
 
@@ -3002,7 +2990,7 @@ dependencies = [
  "sp-maybe-compressed-blob",
  "sp-runtime-interface",
  "sp-state-machine",
- "sp-std 4.0.0-dev",
+ "sp-std",
  "sp-tracing",
  "sp-trie",
  "sp-wasm-interface",
@@ -3061,7 +3049,7 @@ dependencies = [
  "sp-arithmetic",
  "sp-core",
  "sp-io",
- "sp-std 4.0.0-dev",
+ "sp-std",
 ]
 
 [[package]]
@@ -3074,7 +3062,7 @@ dependencies = [
  "primitive-types",
  "sp-externalities",
  "sp-runtime-interface-proc-macro",
- "sp-std 4.0.0-dev",
+ "sp-std",
  "sp-storage",
  "sp-tracing",
  "sp-wasm-interface",
@@ -3100,7 +3088,7 @@ source = "git+https://github.com/paritytech/substrate.git?branch=polkadot-v0.9.9
 dependencies = [
  "parity-scale-codec",
  "sp-runtime",
- "sp-std 4.0.0-dev",
+ "sp-std",
 ]
 
 [[package]]
@@ -3118,19 +3106,13 @@ dependencies = [
  "sp-core",
  "sp-externalities",
  "sp-panic-handler",
- "sp-std 4.0.0-dev",
+ "sp-std",
  "sp-trie",
  "thiserror",
  "tracing",
  "trie-db",
  "trie-root",
 ]
-
-[[package]]
-name = "sp-std"
-version = "3.0.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "35391ea974fa5ee869cb094d5b437688fbf3d8127d64d1b9fed5822a1ed39b12"
 
 [[package]]
 name = "sp-std"
@@ -3147,7 +3129,7 @@ dependencies = [
  "ref-cast",
  "serde",
  "sp-debug-derive",
- "sp-std 4.0.0-dev",
+ "sp-std",
 ]
 
 [[package]]
@@ -3162,7 +3144,7 @@ dependencies = [
  "serde",
  "serde_json",
  "slog",
- "sp-std 4.0.0-dev",
+ "sp-std",
  "tracing",
  "tracing-core",
  "tracing-subscriber",
@@ -3177,7 +3159,7 @@ dependencies = [
  "memory-db",
  "parity-scale-codec",
  "sp-core",
- "sp-std 4.0.0-dev",
+ "sp-std",
  "trie-db",
  "trie-root",
 ]
@@ -3192,7 +3174,7 @@ dependencies = [
  "parity-wasm",
  "serde",
  "sp-runtime",
- "sp-std 4.0.0-dev",
+ "sp-std",
  "sp-version-proc-macro",
  "thiserror",
 ]
@@ -3216,7 +3198,7 @@ source = "git+https://github.com/paritytech/substrate.git?branch=polkadot-v0.9.9
 dependencies = [
  "impl-trait-for-tuples",
  "parity-scale-codec",
- "sp-std 4.0.0-dev",
+ "sp-std",
  "wasmi",
 ]
 
