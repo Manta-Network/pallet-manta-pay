@@ -35,10 +35,10 @@ ark-std = { version = "0.3.0", default-features = false }
 # If you need to change any of the below lines, make sure to reflect the changes in whichever script is supposed to modify them.
 # Search for "Check Pallet-Manta-Pay" in Manta-Network repositories to find the relevant scripts.
 manta-asset = { path="../manta-types/manta-asset", default-features = false }
-manta-crypto = { path = "../manta-crypto", default-features = false }
+manta-crypto = { branch = "manta", git = "https://github.com/Manta-Network/manta-crypto", default-features = false }
 manta-data = { path = "../manta-types/manta-data", default-features = false }
-manta-error = { path ="../manta-error", default-features = false }
-manta-api = { branch = "manta", git = "https://github.com/Manta-Network/manta-api", default-features = false, features = [ "std" ] }
+manta-error = { branch = "manta", git = "https://github.com/Manta-Network/manta-error", default-features = false }
+# manta-api = { branch = "manta", git = "https://github.com/Manta-Network/manta-api", default-features = false }
 
 [dev-dependencies]
 # benchmarking 
@@ -50,13 +50,13 @@ serde = { default-features = false, version = '1' }
 sp-core = { git = 'https://github.com/paritytech/substrate.git', default-features = false, branch = "polkadot-v0.9.9" }
 sp-io = { git = 'https://github.com/paritytech/substrate.git', default-features = false, branch = "polkadot-v0.9.9" }
 
-ark-bls12-381 = { version = "0.2.0", default-features = false, features = [ "curve" ] }
-ark-crypto-primitives = { version = "0.2.0", default-features = false, features = [ "r1cs" ] }
-ark-ed-on-bls12-381 = { version = "0.2.0", default-features = false, features = [ "r1cs" ] }
-ark-groth16 = { version = "0.2.0", default-features = false, features = [ "r1cs" ] }
-ark-ff = { version = "0.2.0", default-features = false }
-ark-relations = { version = "0.2.0", default-features = false }
-ark-serialize = { version = "0.2.0", default-features = false, features = [ "derive" ] }
+ark-bls12-381 = { version = "0.3.0", default-features = false, features = [ "curve" ] }
+ark-crypto-primitives = { git = "https://github.com/arkworks-rs/crypto-primitives.git", default-features = false, features = [ "r1cs" ] }
+ark-ed-on-bls12-381 = { version = "0.3.0", default-features = false, features = [ "r1cs" ] }
+ark-groth16 = { version = "0.3.0", default-features = false, features = [ "r1cs" ] }
+ark-ff = { version = "0.3.0", default-features = false }
+ark-relations = { version = "0.3.0", default-features = false }
+ark-serialize = { version = "0.3.0", default-features = false, features = [ "derive" ] }
 
 rand_chacha = { version = "0.2.0", default-features = false }
 
