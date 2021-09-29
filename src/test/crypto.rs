@@ -21,20 +21,19 @@ use ark_ff::ToConstraintField;
 use ark_groth16::{create_random_proof, generate_random_parameters, verify_proof};
 use ark_relations::r1cs::{ConstraintSynthesizer, ConstraintSystem};
 use ark_serialize::CanonicalDeserialize;
-use ark_std::rand::{RngCore, SeedableRng};
+use rand_chacha::rand_core::{RngCore, SeedableRng};
 use manta_api::{ReclaimCircuit, TransferCircuit};
 use manta_asset::*;
-use manta_crypto::*;
+use manta_crypto::{CommitmentParam, CommitmentOutput, Groth16Pvk, LeafHashParam, TwoToOneHashParam, Groth16Pk, commitment_parameters, leaf_parameters, two_to_one_parameters};
 use manta_data::BuildMetadata;
 use rand_chacha::ChaCha20Rng;
 
 /// this is a local test on zero knowledge proof generation and verifications
 #[test]
 fn test_transfer_zkp_local() {
-	let mut hash_param_bytes = HASH_PARAM.data;
-	let mut commit_param_bytes = COMMIT_PARAM.data;
-	let hash_param = HashParam::deserialize(&mut hash_param_bytes).unwrap();
-	let commit_param = CommitmentParam::deserialize(&mut commit_param_bytes).unwrap();
+	let leaf_param = leaf_parameters();
+	let two_to_one_param = two_to_one_parameters();
+	let commit_param = commitment_parameters();
 
 	let mut rng = ChaCha20Rng::from_seed([3u8; 32]);
 
@@ -58,8 +57,8 @@ fn test_transfer_zkp_local() {
 		list.push(cm_rand);
 	}
 
-	let sender_1 = sender_1.build(&hash_param, &list).unwrap();
-	let sender_2 = sender_2.build(&hash_param, &list).unwrap();
+	let sender_1 = sender_1.build(&leaf_param, &two_to_one_param, &list).unwrap();
+	let sender_2 = sender_2.build(&leaf_param, &two_to_one_param, &list).unwrap();
 
 	// receiver
 	rng.fill_bytes(&mut sk);
@@ -80,14 +79,11 @@ fn test_transfer_zkp_local() {
 
 	// build the circuit
 	let circuit = TransferCircuit {
-		commit_param: commit_param.clone(),
-		hash_param: hash_param.clone(),
-
-		sender_1: sender_1,
-		sender_2: sender_2,
-
-		receiver_1: receiver_1,
-		receiver_2: receiver_2,
+		commit_params: commit_param.clone(),
+		leaf_params: leaf_param.clone(),
+		two_to_one_params: two_to_one_param.clone(),
+		senders: [sender_1, sender_2],
+		receivers: [receiver_1, receiver_2],
 	};
 
 	let sanity_cs = ConstraintSystem::<Fq>::new_ref();
@@ -136,7 +132,8 @@ fn test_transfer_zkp_local() {
 
 	test_transfer_helper(
 		commit_param.clone(),
-		hash_param.clone(),
+		leaf_param.clone(),
+		two_to_one_param.clone(),
 		&pk,
 		sender_1,
 		sender_2,
@@ -173,7 +170,8 @@ fn test_transfer_zkp_local() {
 
 	test_transfer_helper(
 		commit_param.clone(),
-		hash_param.clone(),
+		leaf_param.clone(),
+		two_to_one_param.clone(),
 		&pk,
 		sender_1,
 		sender_2,
@@ -210,7 +208,8 @@ fn test_transfer_zkp_local() {
 
 	test_transfer_helper(
 		commit_param.clone(),
-		hash_param.clone(),
+		leaf_param.clone(),
+		two_to_one_param.clone(),
 		&pk,
 		sender_1,
 		sender_2,
@@ -247,7 +246,8 @@ fn test_transfer_zkp_local() {
 
 	test_transfer_helper(
 		commit_param.clone(),
-		hash_param.clone(),
+		leaf_param.clone(),
+		two_to_one_param.clone(),
 		&pk,
 		sender_1,
 		sender_2,
@@ -259,7 +259,8 @@ fn test_transfer_zkp_local() {
 
 fn test_transfer_helper(
 	commit_param: CommitmentParam,
-	hash_param: HashParam,
+	leaf_param: LeafHashParam,
+	two_to_one_param: TwoToOneHashParam,
 	pk: &Groth16Pk,
 	sender_1: MantaAsset,
 	sender_2: MantaAsset,
@@ -269,18 +270,15 @@ fn test_transfer_helper(
 ) {
 	let mut rng = ChaCha20Rng::from_seed([8u8; 32]);
 
-	let sender_1 = sender_1.build(&hash_param, list).unwrap();
-	let sender_2 = sender_2.build(&hash_param, list).unwrap();
+	let sender_1 = sender_1.build(&leaf_param, &two_to_one_param, list).unwrap();
+	let sender_2 = sender_2.build(&leaf_param, &two_to_one_param, list).unwrap();
 
 	let circuit = TransferCircuit {
-		commit_param: commit_param.clone(),
-		hash_param,
-
-		sender_1: sender_1.clone(),
-		sender_2: sender_2.clone(),
-
-		receiver_1: receiver_1.clone(),
-		receiver_2: receiver_2.clone(),
+		commit_params: commit_param.clone(),
+		leaf_params: leaf_param.clone(),
+		two_to_one_params: two_to_one_param.clone(),
+		senders: [sender_1.clone(), sender_2.clone()],
+		receivers: [receiver_1.clone(), receiver_2.clone()],
 	};
 
 	let sanity_cs = ConstraintSystem::<Fq>::new_ref();
@@ -325,10 +323,9 @@ fn test_transfer_helper(
 /// this is a local test on zero knowledge proof generation and verifications
 #[test]
 fn test_reclaim_zkp_local() {
-	let mut hash_param_bytes = HASH_PARAM.data;
-	let mut commit_param_bytes = COMMIT_PARAM.data;
-	let hash_param = HashParam::deserialize(&mut hash_param_bytes).unwrap();
-	let commit_param = CommitmentParam::deserialize(&mut commit_param_bytes).unwrap();
+	let leaf_param = leaf_parameters();
+	let two_to_one_param = two_to_one_parameters();
+	let commit_param = commitment_parameters();
 
 	let mut rng = ChaCha20Rng::from_seed([3u8; 32]);
 
@@ -357,17 +354,15 @@ fn test_reclaim_zkp_local() {
 		list.push(cm_rand);
 	}
 
-	let sender_1 = sender_1.build(&hash_param, &list).unwrap();
-	let sender_2 = sender_2.build(&hash_param, &list).unwrap();
+	let sender_1 = sender_1.build(&leaf_param, &two_to_one_param, &list).unwrap();
+	let sender_2 = sender_2.build(&leaf_param, &two_to_one_param, &list).unwrap();
 
 	// build the circuit
 	let circuit = ReclaimCircuit {
-		commit_param: commit_param.clone(),
-		hash_param: hash_param.clone(),
-
-		sender_1: sender_1.clone(),
-		sender_2: sender_2.clone(),
-
+		commit_params: commit_param.clone(),
+		leaf_params: leaf_param.clone(),
+		two_to_one_params: two_to_one_param.clone(),
+		senders: [sender_1.clone(), sender_2.clone()],
 		receiver: receiver,
 		asset_id: sender_1.asset.asset_id,
 		reclaim_value: 260,
@@ -403,7 +398,8 @@ fn test_reclaim_zkp_local() {
 
 	test_reclaim_helper(
 		commit_param.clone(),
-		hash_param.clone(),
+		leaf_param.clone(),
+		two_to_one_param.clone(),
 		&pk,
 		sender_1,
 		sender_2,
@@ -433,7 +429,8 @@ fn test_reclaim_zkp_local() {
 
 	test_reclaim_helper(
 		commit_param.clone(),
-		hash_param.clone(),
+		leaf_param.clone(),
+		two_to_one_param.clone(),
 		&pk,
 		sender_1,
 		sender_2,
@@ -462,7 +459,8 @@ fn test_reclaim_zkp_local() {
 		.unwrap();
 	test_reclaim_helper(
 		commit_param.clone(),
-		hash_param.clone(),
+		leaf_param.clone(),
+		two_to_one_param.clone(),
 		&pk,
 		sender_1,
 		sender_2,
@@ -492,7 +490,8 @@ fn test_reclaim_zkp_local() {
 
 	test_reclaim_helper(
 		commit_param.clone(),
-		hash_param.clone(),
+		leaf_param.clone(),
+		two_to_one_param.clone(),
 		&pk,
 		sender_1,
 		sender_2,
@@ -504,7 +503,8 @@ fn test_reclaim_zkp_local() {
 
 fn test_reclaim_helper(
 	commit_param: CommitmentParam,
-	hash_param: HashParam,
+	leaf_param: LeafHashParam,
+	two_to_one_param: TwoToOneHashParam,
 	pk: &Groth16Pk,
 	sender_1: MantaAsset,
 	sender_2: MantaAsset,
@@ -514,16 +514,14 @@ fn test_reclaim_helper(
 ) {
 	let mut rng = ChaCha20Rng::from_seed([8u8; 32]);
 
-	let sender_1 = sender_1.build(&hash_param, list).unwrap();
-	let sender_2 = sender_2.build(&hash_param, list).unwrap();
+	let sender_1 = sender_1.build(&leaf_param, &two_to_one_param, list).unwrap();
+	let sender_2 = sender_2.build(&leaf_param, &two_to_one_param,list).unwrap();
 
 	let circuit = ReclaimCircuit {
-		commit_param: commit_param.clone(),
-		hash_param,
-
-		sender_1: sender_1.clone(),
-		sender_2: sender_2.clone(),
-
+		commit_params: commit_param.clone(),
+		leaf_params: leaf_param.clone(),
+		two_to_one_params: two_to_one_param.clone(),
+		senders: [sender_1.clone(), sender_2.clone()],
 		receiver: receiver.clone(),
 		asset_id: sender_1.asset.asset_id,
 		reclaim_value,

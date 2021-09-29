@@ -1605,6 +1605,7 @@ dependencies = [
 [[package]]
 name = "manta-api"
 version = "0.3.0"
+source = "git+https://github.com/Manta-Network/manta-api?branch=manta#0b26ef93120e8573919f686739711828a0201d27"
 dependencies = [
  "ark-bls12-381",
  "ark-crypto-primitives",
@@ -1633,6 +1634,7 @@ dependencies = [
 [[package]]
 name = "manta-asset"
 version = "0.3.0"
+source = "git+https://github.com/Manta-Network/manta-types?branch=manta#ee9ab440e75b1028886fe0c70850cea5929f337f"
 dependencies = [
  "ark-crypto-primitives",
  "ark-ed-on-bls12-381",
@@ -1674,6 +1676,7 @@ dependencies = [
 [[package]]
 name = "manta-data"
 version = "0.3.0"
+source = "git+https://github.com/Manta-Network/manta-types?branch=manta#ee9ab440e75b1028886fe0c70850cea5929f337f"
 dependencies = [
  "ark-ed-on-bls12-381",
  "ark-groth16",
@@ -1948,7 +1951,7 @@ dependencies = [
  "manta-data",
  "manta-error",
  "parity-scale-codec",
- "rand_chacha 0.2.2",
+ "rand_chacha 0.3.1",
  "serde",
  "sp-core",
  "sp-io",
