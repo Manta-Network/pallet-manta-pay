@@ -123,7 +123,7 @@ use manta_asset::{
 use manta_crypto::{
 	try_commitment_parameters, try_default_leaf_hash, try_leaf_parameters,
 	try_two_to_one_parameters, LeafHashParam,
-	LightIncrementalMerkleTree, MantaCrypto, MantaEciesCiphertext, MantaZKPVerifier,
+	merkle_tree::LedgerMerkleTree, MantaCrypto, MantaEciesCiphertext, MantaZKPVerifier,
 	TwoToOneHashParam,
 };
 use manta_data::{MintData, PrivateTransferData, ReclaimData, ShardMetaData};
@@ -568,7 +568,7 @@ impl<T: Config> Pallet<T> {
 
 						// generate new path and root
 						let (path, root) =
-							<MantaCrypto as LightIncrementalMerkleTree>::next_path_and_root(
+							<MantaCrypto as LedgerMerkleTree>::next_path_and_root(
 								leaf_param,
 								two_to_one_param,
 								current_index as usize,
@@ -601,7 +601,7 @@ impl<T: Config> Pallet<T> {
 
 						// generate path and root
 						let (path, root) =
-							<MantaCrypto as LightIncrementalMerkleTree>::next_path_and_root(
+							<MantaCrypto as LedgerMerkleTree>::next_path_and_root(
 								leaf_param,
 								two_to_one_param,
 								0,
