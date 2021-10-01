@@ -644,6 +644,7 @@ impl<T: Config> Pallet<T> {
 					LedgerShardMetaData::<T>::insert(shard_index, new_meta_data);
 					LedgerShardRoots::<T>::insert(shard_index, root);
 				}
+				UTXOSet::<T>::insert(cm.0, true);
 			}
 		}
 		Ok(())
