@@ -117,14 +117,11 @@ pub mod weights;
 pub use weights::WeightInfo;
 pub mod precomputed_coins;
 
-use manta_asset::{
-	shard_index, AssetBalance, AssetId, MantaRandomValue, SanityCheck, UTXO,
-};
+use manta_asset::{shard_index, AssetBalance, AssetId, MantaRandomValue, SanityCheck, UTXO};
 use manta_crypto::{
-	try_commitment_parameters, try_default_leaf_hash, try_leaf_parameters,
-	try_two_to_one_parameters, LeafHashParam,
-	merkle_tree::LedgerMerkleTree, MantaCrypto, MantaEciesCiphertext, MantaZKPVerifier,
-	TwoToOneHashParam,
+	merkle_tree::LedgerMerkleTree, try_commitment_parameters, try_default_leaf_hash,
+	try_leaf_parameters, try_two_to_one_parameters, LeafHashParam, MantaCrypto,
+	MantaEciesCiphertext, MantaZKPVerifier, TwoToOneHashParam,
 };
 use manta_data::{MintData, PrivateTransferData, ReclaimData, ShardMetaData};
 
@@ -138,7 +135,7 @@ pub mod pallet {
 	use super::*;
 	use frame_support::pallet_prelude::*;
 	use frame_system::pallet_prelude::*;
-use manta_crypto::{RECLAIM_VK, TRANSFER_VK};
+	use manta_crypto::{RECLAIM_VK, TRANSFER_VK};
 
 	#[pallet::pallet]
 	#[pallet::generate_store(pub(super) trait Store)]
@@ -186,11 +183,13 @@ use manta_crypto::{RECLAIM_VK, TRANSFER_VK};
 	/// store of ShardMetaData
 	/// i.e. LedgerShardMetaData.get(0) is the 1st shard's next available index and serialized_path
 	#[pallet::storage]
-	pub(super) type LedgerShardMetaData<T: Config> = StorageMap<_, Identity, u8, ShardMetaData, ValueQuery>;
+	pub(super) type LedgerShardMetaData<T: Config> =
+		StorageMap<_, Identity, u8, ShardMetaData, ValueQuery>;
 
 	/// store of shard roots
 	#[pallet::storage]
-	pub(super) type LedgerShardRoots<T: Config> = StorageMap<_, Identity, u8, MantaRandomValue, ValueQuery>;
+	pub(super) type LedgerShardRoots<T: Config> =
+		StorageMap<_, Identity, u8, MantaRandomValue, ValueQuery>;
 
 	/// The set of UTXOs
 	#[pallet::storage]
@@ -222,8 +221,7 @@ use manta_crypto::{RECLAIM_VK, TRANSFER_VK};
 
 	#[pallet::genesis_build]
 	impl<T: Config> GenesisBuild<T> for GenesisConfig<T> {
-		fn build(&self) {
-		}
+		fn build(&self) {}
 	}
 
 	#[pallet::call]
@@ -316,7 +314,12 @@ use manta_crypto::{RECLAIM_VK, TRANSFER_VK};
 
 			// add commitment and encrypted note
 			// update merkle root
-			Pallet::<T>::insert_commitments(&leaf_param, &two_to_one_param, vec![(mint_data.cm, mint_data.encrypted_note)]).map_err::<DispatchError, _>(|e| {
+			Pallet::<T>::insert_commitments(
+				&leaf_param,
+				&two_to_one_param,
+				vec![(mint_data.cm, mint_data.encrypted_note)],
+			)
+			.map_err::<DispatchError, _>(|e| {
 				log::error!(target: "manta-pay", "failed to mint the asset with error: {:?}", e);
 				Error::<T>::LedgerUpdateFail.into()
 			})?;
@@ -349,25 +352,28 @@ use manta_crypto::{RECLAIM_VK, TRANSFER_VK};
 					Error::<T>::ParamFail.into()
 				})?;
 
-			let senders = [private_transfer_data.sender_0, private_transfer_data.sender_1];
+			let senders = [
+				private_transfer_data.sender_0,
+				private_transfer_data.sender_1,
+			];
 
 			// check if vn_old already spent and verfiy sender's merkle root
 			for sender in senders {
-				if VoidNumbers::<T>::contains_key(sender.void_number){
+				if VoidNumbers::<T>::contains_key(sender.void_number) {
 					Err("coin exists").map_err::<DispatchError, _>(|e| {
 						log::error!(target: "manta-pay", "failed to transfer the private asset with error: {:?}", e);
 						Error::<T>::MantaCoinExist.into()
 					})?;
 				}
-				if LedgerShardRoots::<T>::take(sender.shard_index) != sender.root {
+				if LedgerShardRoots::<T>::get(sender.shard_index) != sender.root {
 					Err("invalid root").map_err::<DispatchError, _>(|e| {
 						log::error!(target: "manta-pay", "failed to transfer the private asset with error: {:?}", e);
 						Error::<T>::InvalidLedgerState.into()
 					})?;
-				} 
+				}
 			}
-			
-			// verify ZKP 
+
+			// verify ZKP
 			let transfer_vk = TRANSFER_VK;
 			ensure!(
 				private_transfer_data.verify(&transfer_vk),
@@ -377,19 +383,26 @@ use manta_crypto::{RECLAIM_VK, TRANSFER_VK};
 			// add commitment and encrypted note
 			// update merkle root
 			let coins = vec![
-				(private_transfer_data.receiver_0.cm, private_transfer_data.receiver_0.encrypted_note),
-				(private_transfer_data.receiver_1.cm, private_transfer_data.receiver_1.encrypted_note)
-				];
-			Pallet::<T>::insert_commitments(&leaf_param, &two_to_one_param, coins).map_err::<DispatchError, _>(|e| {
-				log::error!(target: "manta-pay", "failed to transfer the asset with error: {:?}", e);
-				Error::<T>::LedgerUpdateFail.into()
-			})?;
+				(
+					private_transfer_data.receiver_0.cm,
+					private_transfer_data.receiver_0.encrypted_note,
+				),
+				(
+					private_transfer_data.receiver_1.cm,
+					private_transfer_data.receiver_1.encrypted_note,
+				),
+			];
+			Pallet::<T>::insert_commitments(&leaf_param, &two_to_one_param, coins)
+				.map_err::<DispatchError, _>(|e| {
+					log::error!(target: "manta-pay", "failed to transfer the asset with error: {:?}", e);
+					Error::<T>::LedgerUpdateFail.into()
+				})?;
 
 			// insert void numbers
 			for sender in senders {
 				VoidNumbers::<T>::insert(sender.void_number, true);
 			}
-			
+
 			Ok(().into())
 		}
 
@@ -406,8 +419,8 @@ use manta_crypto::{RECLAIM_VK, TRANSFER_VK};
 		) -> DispatchResultWithPostInfo {
 			// make sure it is properly signed
 			let origin = ensure_signed(origin)?;
-			let origin_account = origin.clone();
-			
+			let origin_account = origin;
+
 			// make sure the asset_id exists
 			let asset_id = reclaim_data.asset_id;
 			ensure!(
@@ -427,9 +440,8 @@ use manta_crypto::{RECLAIM_VK, TRANSFER_VK};
 					Error::<T>::ParamFail.into()
 				})?;
 
-			
 			let senders = [reclaim_data.sender_0, reclaim_data.sender_1];
-			
+
 			// check double spend
 			for sender in senders {
 				if VoidNumbers::<T>::contains_key(sender.void_number) {
@@ -438,8 +450,14 @@ use manta_crypto::{RECLAIM_VK, TRANSFER_VK};
 						Error::<T>::MantaCoinExist.into()
 					})?;
 				}
+				if LedgerShardRoots::<T>::get(sender.shard_index) != sender.root {
+					Err("invalid root").map_err::<DispatchError, _>(|e| {
+						log::error!(target: "manta-pay", "failed to reclaim the private asset with error: {:?}", e);
+						Error::<T>::InvalidLedgerState.into()
+					})?;
+				}
 			}
-			
+
 			// verify zkp
 			let reclaim_vk = RECLAIM_VK;
 			ensure!(
@@ -450,9 +468,14 @@ use manta_crypto::{RECLAIM_VK, TRANSFER_VK};
 			// add commitment and encrypted note
 			// update merkle root
 			Pallet::<T>::insert_commitments(
-				&leaf_param, 
-				&two_to_one_param, 
-				vec![(reclaim_data.receiver.cm, reclaim_data.receiver.encrypted_note)]).map_err::<DispatchError, _>(|e| {
+				&leaf_param,
+				&two_to_one_param,
+				vec![(
+					reclaim_data.receiver.cm,
+					reclaim_data.receiver.encrypted_note,
+				)],
+			)
+			.map_err::<DispatchError, _>(|e| {
 				log::error!(target: "manta-pay", "failed to transfer the asset with error: {:?}", e);
 				Error::<T>::LedgerUpdateFail.into()
 			})?;
@@ -463,12 +486,10 @@ use manta_crypto::{RECLAIM_VK, TRANSFER_VK};
 			}
 
 			// mutate balance and update the pool balance
-			Balances::<T>::mutate(origin_account, asset_id, |balance|{
+			Balances::<T>::mutate(origin_account, asset_id, |balance| {
 				*balance += reclaim_data.reclaim_value
 			});
-			PoolBalance::<T>::mutate(asset_id, |balance|{
-				*balance -= reclaim_data.reclaim_value
-			});
+			PoolBalance::<T>::mutate(asset_id, |balance| *balance -= reclaim_data.reclaim_value);
 
 			Ok(().into())
 		}
@@ -538,7 +559,7 @@ impl<T: Config> Pallet<T> {
 	/// Get the asset `id` total supply.
 	pub fn total_supply(what: AssetId) -> AssetBalance {
 		TotalSupply::<T>::get(what)
-	} 
+	}
 
 	/// insert commitment and ciphertext into the map,
 	/// update the merkle root and related proofs
@@ -548,91 +569,89 @@ impl<T: Config> Pallet<T> {
 		commitments: Vec<(UTXO, MantaEciesCiphertext)>,
 	) -> Result<(), MantaError> {
 		for cm in commitments {
-				if Pallet::<T>::utxo_exists(cm.0) {
-					Err("duplicate utxo").map_err(|_| MantaError::LedgerUpdateFail)?;
-				} else {
-					let shard_index = shard_index(cm.0);
-					if LedgerShardMetaData::<T>::contains_key(shard_index) {
-						// if the current shard is not empty
-						// get current uxto, auth_path, and sibling
-						let ShardMetaData {current_index, current_auth_path} = LedgerShardMetaData::<T>::take(shard_index);
-						let (current_utxo, _) = LedgerShards::<T>::take(shard_index, current_index);
-						let leaf_sibling = if Pallet::<T>::is_left_child(current_index) {
-							let utxo = try_default_leaf_hash()
-								.map_err(|_| MantaError::LedgerUpdateFail)?;
-							utxo
-						} else {
-							let (utxo, _) = LedgerShards::<T>::take(shard_index, current_index - 1);
-							utxo
-						};
-
-						// generate new path and root
-						let (path, root) =
-							<MantaCrypto as LedgerMerkleTree>::next_path_and_root(
-								leaf_param,
-								two_to_one_param,
-								current_index as usize,
-								false,
-								&current_utxo,
-								&leaf_sibling,
-								&current_auth_path,
-								&cm.0,
-							)
-							.map_err(|_| MantaError::LedgerUpdateFail)?;
-
-						// update ledger state
-						// TODO: emit warning if ledger is full
-						LedgerShards::<T>::insert(shard_index, current_index + 1, cm);
-						let new_meta_data = ShardMetaData {
-							current_index: current_index + 1,
-							current_auth_path: path,
-						};
-						LedgerShardMetaData::<T>::insert(shard_index, new_meta_data);
-						LedgerShardRoots::<T>::insert(shard_index, root);
+			if Pallet::<T>::utxo_exists(cm.0) {
+				Err("duplicate utxo").map_err(|_| MantaError::LedgerUpdateFail)?;
+			} else {
+				let shard_index = shard_index(cm.0);
+				if LedgerShardMetaData::<T>::contains_key(shard_index) {
+					// if the current shard is not empty
+					// get current uxto, auth_path, and sibling
+					let ShardMetaData {
+						current_index,
+						current_auth_path,
+					} = LedgerShardMetaData::<T>::get(shard_index);
+					let (current_utxo, _) = LedgerShards::<T>::get(shard_index, current_index);
+					let leaf_sibling = if Pallet::<T>::is_left_child(current_index) {
+						let utxo =
+							try_default_leaf_hash().map_err(|_| MantaError::LedgerUpdateFail)?;
+						utxo
 					} else {
-						// if the current shard is empty
-						// generate some dummy data
-						let current_utxo = [0u8; 32]; // a dummy one
-						let leaf_sibling = [0u8; 32]; // a dummy one
-						let ShardMetaData {
-							current_index: _,
-							current_auth_path,
-						} = ShardMetaData::default();
+						let (utxo, _) = LedgerShards::<T>::get(shard_index, current_index - 1);
+						utxo
+					};
 
-						// generate path and root
-						let (path, root) =
-							<MantaCrypto as LedgerMerkleTree>::next_path_and_root(
-								leaf_param,
-								two_to_one_param,
-								0,
-								true,
-								&current_utxo,
-								&leaf_sibling,
-								&current_auth_path,
-								&cm.0,
-							)
-							.map_err(|_| MantaError::LedgerUpdateFail)?;
+					// generate new path and root
+					let (path, root) = <MantaCrypto as LedgerMerkleTree>::next_path_and_root(
+						leaf_param,
+						two_to_one_param,
+						current_index as usize,
+						false,
+						&current_utxo,
+						&leaf_sibling,
+						&current_auth_path,
+						&cm.0,
+					)
+					.map_err(|_| MantaError::LedgerUpdateFail)?;
 
-						// update ledger state
-						LedgerShards::<T>::insert(shard_index, 0, cm);
-						let new_meta_data = ShardMetaData {
-							current_index: 0,
-							current_auth_path: path,
-						};
-						LedgerShardMetaData::<T>::insert(shard_index, new_meta_data);
-						LedgerShardRoots::<T>::insert(shard_index, root);
-					}
+					// update ledger state
+					// TODO: emit warning if ledger is full
+					LedgerShards::<T>::insert(shard_index, current_index + 1, cm);
+					let new_meta_data = ShardMetaData {
+						current_index: current_index + 1,
+						current_auth_path: path,
+					};
+					LedgerShardMetaData::<T>::insert(shard_index, new_meta_data);
+					LedgerShardRoots::<T>::insert(shard_index, root);
+				} else {
+					// if the current shard is empty
+					// generate some dummy data
+					let current_utxo = [0u8; 32]; // a dummy one
+					let leaf_sibling = [0u8; 32]; // a dummy one
+					let ShardMetaData {
+						current_index: _,
+						current_auth_path,
+					} = ShardMetaData::default();
+
+					// generate path and root
+					let (path, root) = <MantaCrypto as LedgerMerkleTree>::next_path_and_root(
+						leaf_param,
+						two_to_one_param,
+						0,
+						true,
+						&current_utxo,
+						&leaf_sibling,
+						&current_auth_path,
+						&cm.0,
+					)
+					.map_err(|_| MantaError::LedgerUpdateFail)?;
+
+					// update ledger state
+					LedgerShards::<T>::insert(shard_index, 0, cm);
+					let new_meta_data = ShardMetaData {
+						current_index: 0,
+						current_auth_path: path,
+					};
+					LedgerShardMetaData::<T>::insert(shard_index, new_meta_data);
+					LedgerShardRoots::<T>::insert(shard_index, root);
 				}
 			}
-			Ok(())
+		}
+		Ok(())
 	}
 
 	/// Check if a UTXO exists in the ledger
 	fn utxo_exists(utxo: UTXO) -> bool {
-		match UTXOSet::<T>::try_get(utxo) {
-			Ok(_) => true,
-			_ => false,
-		}
+		UTXOSet::<T>::try_get(utxo).is_ok()
 	}
 
 	/// Return true iff the given index on its current level represents a left child
