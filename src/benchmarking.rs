@@ -14,6 +14,8 @@
 // You should have received a copy of the GNU General Public License
 // along with pallet-manta-pay.  If not, see <http://www.gnu.org/licenses/>.
 
+// TODO: move all these precomputed coins to build script
+
 #![cfg(feature = "runtime-benchmarks")]
 use super::*;
 

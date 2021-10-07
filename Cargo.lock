@@ -588,6 +588,31 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "baf1de4339761588bc0619e3cbc0120ee582ebb74b53b4efbf79117bd2da40fd"
 
 [[package]]
+name = "chacha20"
+version = "0.7.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f08493fa7707effc63254c66c6ea908675912493cd67952eda23c09fae2610b1"
+dependencies = [
+ "cfg-if 1.0.0",
+ "cipher",
+ "cpufeatures",
+ "zeroize",
+]
+
+[[package]]
+name = "chacha20poly1305"
+version = "0.8.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b6547abe025f4027edacd9edaa357aded014eecec42a5070d9b885c3c334aba2"
+dependencies = [
+ "aead",
+ "chacha20",
+ "cipher",
+ "poly1305",
+ "zeroize",
+]
+
+[[package]]
 name = "chrono"
 version = "0.4.19"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -626,6 +651,21 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ddfc5b9aa5d4507acaf872de71051dfd0e309860e88966e1051e462a077aac4f"
 dependencies = [
  "bitflags",
+]
+
+[[package]]
+name = "cocoon"
+version = "0.2.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3330c1645bbbe8e3bc9054613e0f25b266b5bfe2b215f8e8f7cda029ec6c5a3e"
+dependencies = [
+ "aes-gcm",
+ "chacha20poly1305",
+ "hmac 0.7.1",
+ "pbkdf2 0.3.0",
+ "rand 0.7.3",
+ "sha2 0.8.2",
+ "zeroize",
 ]
 
 [[package]]
@@ -1604,8 +1644,8 @@ dependencies = [
 
 [[package]]
 name = "manta-api"
-version = "0.3.0"
-source = "git+https://github.com/Manta-Network/manta-api?branch=manta#0b26ef93120e8573919f686739711828a0201d27"
+version = "0.3.2"
+source = "git+https://github.com/Manta-Network/manta-api?branch=sample-with-balance#5b7705fde55b219f9d3186c5677714463f174a0e"
 dependencies = [
  "ark-bls12-381",
  "ark-crypto-primitives",
@@ -1618,6 +1658,8 @@ dependencies = [
  "ark-std",
  "bip32",
  "blake2",
+ "bs58",
+ "cocoon",
  "getrandom 0.2.3",
  "hkdf",
  "manta-asset",
@@ -1634,7 +1676,7 @@ dependencies = [
 [[package]]
 name = "manta-asset"
 version = "0.3.0"
-source = "git+https://github.com/Manta-Network/manta-types?branch=manta#ee9ab440e75b1028886fe0c70850cea5929f337f"
+source = "git+https://github.com/Manta-Network/manta-types?branch=manta#e281d37b047ea705c96ebb70655a28f2788f98cf"
 dependencies = [
  "ark-crypto-primitives",
  "ark-ed-on-bls12-381",
@@ -1650,8 +1692,8 @@ dependencies = [
 
 [[package]]
 name = "manta-crypto"
-version = "0.3.0"
-source = "git+https://github.com/Manta-Network/manta-crypto?branch=manta#82409d5a0b61e72d6128b7115441838a575a50b3"
+version = "0.3.1"
+source = "git+https://github.com/Manta-Network/manta-crypto?branch=manta#d32ab9589e05d00b579b5443260104e457a360cc"
 dependencies = [
  "aes-gcm",
  "ark-bls12-381",
@@ -1669,6 +1711,7 @@ dependencies = [
  "generic-array 0.14.4",
  "manta-error",
  "parity-scale-codec",
+ "rand_chacha 0.3.1",
  "rand_core 0.6.3",
  "x25519-dalek",
 ]
@@ -1676,7 +1719,7 @@ dependencies = [
 [[package]]
 name = "manta-data"
 version = "0.3.0"
-source = "git+https://github.com/Manta-Network/manta-types?branch=manta#ee9ab440e75b1028886fe0c70850cea5929f337f"
+source = "git+https://github.com/Manta-Network/manta-types?branch=manta#e281d37b047ea705c96ebb70655a28f2788f98cf"
 dependencies = [
  "ark-ed-on-bls12-381",
  "ark-groth16",
@@ -1944,6 +1987,7 @@ dependencies = [
  "frame-benchmarking",
  "frame-support",
  "frame-system",
+ "lazy_static",
  "log",
  "manta-api",
  "manta-asset",
@@ -2074,6 +2118,18 @@ checksum = "acbf547ad0c65e31259204bd90935776d1c693cec2f4ff7abb7a1bbbd40dfe58"
 
 [[package]]
 name = "pbkdf2"
+version = "0.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "006c038a43a45995a9670da19e67600114740e8511d4333bf97a56e66a7542d9"
+dependencies = [
+ "byteorder",
+ "crypto-mac 0.7.0",
+ "hmac 0.7.1",
+ "sha2 0.8.2",
+]
+
+[[package]]
+name = "pbkdf2"
 version = "0.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "216eaa586a190f0a738f2f918511eecfa90f13295abec0e457cdebcceda80cbd"
@@ -2137,6 +2193,17 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "521fa9638fa597e1dc53e9412a4f9cefb01187ee1f7413076f9e6749e2885ba9"
 dependencies = [
  "plotters-backend",
+]
+
+[[package]]
+name = "poly1305"
+version = "0.7.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "048aeb476be11a4b6ca432ca569e375810de9294ae78f4774e78ea98a9246ede"
+dependencies = [
+ "cpufeatures",
+ "opaque-debug 0.3.0",
+ "universal-hash",
 ]
 
 [[package]]
@@ -3312,7 +3379,7 @@ version = "1.6.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1f559b464de2e2bdabcac6a210d12e9b5a5973c251e102c44c585c71d51bd78e"
 dependencies = [
- "cfg-if 1.0.0",
+ "cfg-if 0.1.10",
  "rand 0.8.4",
  "static_assertions",
 ]
@@ -3538,9 +3605,9 @@ dependencies = [
 
 [[package]]
 name = "zeroize"
-version = "1.4.2"
+version = "1.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "bf68b08513768deaa790264a7fac27a58cbf2705cfcdc9448362229217d7e970"
+checksum = "4756f7db3f7b5574938c3eb1c117038b8e07f95ee6718c0efad4ac21508f1efd"
 dependencies = [
  "zeroize_derive",
 ]
