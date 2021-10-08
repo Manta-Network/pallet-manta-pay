@@ -22,13 +22,15 @@ use manta_api::{
 	generate_mint_struct, generate_private_transfer_struct,
 	zkp::{keys::write_zkp_keys, sample::*},
 };
-use manta_asset::TEST_ASSET;
+use manta_asset::{TEST_ASSET, MantaAssetProcessedReceiver};
 use manta_crypto::{
 	commitment_parameters, leaf_parameters, two_to_one_parameters, CommitmentParam, Groth16Pk,
 	LeafHashParam, TwoToOneHashParam,
 };
+use manta_data::{SenderMetaData, BuildMetadata};
 use rand_chacha::{rand_core::SeedableRng, ChaCha20Rng};
-use std::{fs::File, io::Read, sync::Once};
+use std::{fs::File, io::Read, sync::Once, collections::HashMap};
+use core::convert::TryInto;
 
 lazy_static::lazy_static! {
 	static ref COMMIT_PARAMS: CommitmentParam = commitment_parameters();
@@ -91,6 +93,64 @@ fn mint_tokens_to_empty_pool(
 	}
 }
 
+/// Insert utxo to the commitment set
+fn insert_utxo(utxo: &UTXO, commitment_set: &mut HashMap<u8, Vec<[u8; 32]>>) {
+	let shard_index = shard_index(*utxo);
+	let shard = commitment_set.entry(shard_index).or_default();
+	shard.push(utxo.clone());
+}
+
+/// We cannot just simply use `fixed_transfer` here since it would generate wrong merkle proof
+fn sample_fixed_sender_and_receiver(
+	sender_count: usize,
+	receiver_count: usize,
+	leaf_params: &LeafHashParam,
+	two_to_one_params: &TwoToOneHashParam,
+	commit_params: &CommitmentParam,
+	asset_id: &AssetId,
+	total_balance: &AssetBalance,
+	commitment_set: &mut HashMap<u8, Vec<[u8; 32]>>,
+	rng: &mut ChaCha20Rng,
+) -> (Vec<SenderMetaData>, Vec<MantaAssetProcessedReceiver>) {
+	let (sender_values, receiver_values) =
+		( value_distribution(sender_count, *total_balance, rng),
+		  value_distribution(receiver_count, *total_balance, rng));
+	
+	let sender_assets = IntoIterator::into_iter(sender_values)
+		.map(|value| {
+			let asset = fixed_asset(commit_params, asset_id, &value, rng);
+			insert_utxo(&asset.utxo, commitment_set);
+			asset
+		})
+		.collect::<Vec<_>>();
+	
+	let senders = sender_assets
+		.into_iter()
+		.map(|asset| {
+			let ledger = commitment_set.get(&shard_index(asset.utxo)).unwrap();
+			asset
+				.build(leaf_params, two_to_one_params, ledger)
+				.unwrap()
+		})
+		.collect::<Vec<_>>();
+	
+	let receivers = IntoIterator::into_iter(receiver_values)
+		.map(|value| fixed_receiver(commit_params, asset_id, &value, rng))
+		.collect::<Vec<_>>();
+	(senders, receivers)
+}
+
+/// Copied from manta_api::util, maybe we should make this function public in manta_api?
+fn into_array_unchecked<V, T, const N: usize>(v: V) -> [T; N]
+where
+	V: TryInto<[T; N]>,
+{
+	match v.try_into() {
+		Ok(array) => array,
+		_ => unreachable!(),
+	}
+}
+
 /// Perform `transfer_count` times random private transfer
 fn transfer_test(transfer_count: usize, rng: &mut ChaCha20Rng) {
 	// generate asset_id and transfer balances
@@ -99,10 +159,13 @@ fn transfer_test(transfer_count: usize, rng: &mut ChaCha20Rng) {
 	let balances: Vec<AssetBalance> = value_distribution(transfer_count, total_balance, rng);
 	initialize_test(&asset_id, &total_balance);
 
-	let mut utxo_set = Vec::new();
+	let mut utxo_set = HashMap::new();
+	let mut current_pool_balance = 0;
 	let transfer_pk = transfer_pk();
 	for balance in balances {
-		let (senders, receivers) = fixed_transfer(
+		let (senders, receivers) = sample_fixed_sender_and_receiver(
+			2,
+			2,
 			&LEAF_PARAMS,
 			&TWO_TO_ONE_PARAMS,
 			&COMMIT_PARAMS,
@@ -126,8 +189,8 @@ fn transfer_test(transfer_count: usize, rng: &mut ChaCha20Rng) {
 			LEAF_PARAMS.clone(),
 			TWO_TO_ONE_PARAMS.clone(),
 			&transfer_pk,
-			senders,
-			receivers,
+			into_array_unchecked(senders),
+			into_array_unchecked(receivers.clone()),
 			rng,
 		)
 		.unwrap();
@@ -165,7 +228,8 @@ fn transfer_test(transfer_count: usize, rng: &mut ChaCha20Rng) {
 
 		// TODO: check the wellformness of ciphertexts
 		// Check pool balance and utxo exists
-		assert_eq!(PoolBalance::<Test>::get(asset_id), total_balance);
+		current_pool_balance += balance;
+		assert_eq!(PoolBalance::<Test>::get(asset_id), current_pool_balance);
 		for receiver in receivers {
 			assert!(MantaPayPallet::utxo_exists(receiver.utxo));
 		}
@@ -214,16 +278,18 @@ fn test_mint_should_work() {
 
 #[test]
 fn over_mint_should_not_work() {
-	let mut rng = ChaCha20Rng::from_seed([42u8; 32]);
-	let asset_id = rng.gen();
-	let total_supply = 32579;
-	initialize_test(&asset_id, &total_supply);
-	let asset = fixed_asset(&COMMIT_PARAMS, &asset_id, &32580, &mut rng);
-	let mint_data = generate_mint_struct(&asset);
-	assert_noop!(
-		MantaPayPallet::mint_private_asset(Origin::signed(1), mint_data),
-		Error::<Test>::MintFail
-	);
+	new_test_ext().execute_with(|| {
+		let mut rng = ChaCha20Rng::from_seed([42u8; 32]);
+		let asset_id = rng.gen();
+		let total_supply = 32579;
+		initialize_test(&asset_id, &total_supply);
+		let asset = fixed_asset(&COMMIT_PARAMS, &asset_id, &32580, &mut rng);
+		let mint_data = generate_mint_struct(&asset);
+		assert_noop!(
+			MantaPayPallet::mint_private_asset(Origin::signed(1), mint_data),
+			Error::<Test>::BalanceLow
+		);
+	});
 }
 
 #[test]
@@ -243,4 +309,10 @@ fn mint_without_init_should_not_work() {
 fn test_transfer_should_work() {
 	let mut rng = ChaCha20Rng::from_seed([42u8; 32]);
 	new_test_ext().execute_with(|| transfer_test(1, &mut rng));
+}
+
+#[test]
+fn test_transfer_5_times_should_work() {
+	let mut rng = ChaCha20Rng::from_seed([41u8; 32]);
+	new_test_ext().execute_with(|| transfer_test(5, &mut rng));
 }
