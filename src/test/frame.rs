@@ -17,20 +17,20 @@
 use crate::{mock::*, Error, LedgerShardMetaData, LedgerShards, PoolBalance, VoidNumbers, *};
 use ark_serialize::CanonicalDeserialize;
 use ark_std::rand::Rng;
+use core::convert::TryInto;
 use frame_support::{assert_noop, assert_ok};
 use manta_api::{
-	generate_mint_struct, generate_private_transfer_struct,
+	generate_mint_struct, generate_private_transfer_struct, generate_reclaim_struct,
 	zkp::{keys::write_zkp_keys, sample::*},
 };
-use manta_asset::{TEST_ASSET, MantaAssetProcessedReceiver};
+use manta_asset::{MantaAssetProcessedReceiver, TEST_ASSET};
 use manta_crypto::{
 	commitment_parameters, leaf_parameters, two_to_one_parameters, CommitmentParam, Groth16Pk,
 	LeafHashParam, TwoToOneHashParam,
 };
-use manta_data::{SenderMetaData, BuildMetadata};
+use manta_data::{BuildMetadata, SenderMetaData};
 use rand_chacha::{rand_core::SeedableRng, ChaCha20Rng};
-use std::{fs::File, io::Read, sync::Once, collections::HashMap};
-use core::convert::TryInto;
+use std::{collections::HashMap, fs::File, io::Read, sync::Once};
 
 lazy_static::lazy_static! {
 	static ref COMMIT_PARAMS: CommitmentParam = commitment_parameters();
@@ -62,7 +62,7 @@ fn transfer_pk() -> Groth16Pk {
 }
 
 /// Return proving key for reclaim
-fn params_for_reclaim() -> Groth16Pk {
+fn reclaim_pk() -> Groth16Pk {
 	load_zkp_key("reclaim_pk.bin")
 }
 
@@ -108,14 +108,16 @@ fn sample_fixed_sender_and_receiver(
 	two_to_one_params: &TwoToOneHashParam,
 	commit_params: &CommitmentParam,
 	asset_id: &AssetId,
-	total_balance: &AssetBalance,
+	total_sender_balance: &AssetBalance,
+	total_receiver_balance: &AssetBalance,
 	commitment_set: &mut HashMap<u8, Vec<[u8; 32]>>,
 	rng: &mut ChaCha20Rng,
 ) -> (Vec<SenderMetaData>, Vec<MantaAssetProcessedReceiver>) {
-	let (sender_values, receiver_values) =
-		( value_distribution(sender_count, *total_balance, rng),
-		  value_distribution(receiver_count, *total_balance, rng));
-	
+	let (sender_values, receiver_values) = (
+		value_distribution(sender_count, *total_sender_balance, rng),
+		value_distribution(receiver_count, *total_receiver_balance, rng),
+	);
+
 	let sender_assets = IntoIterator::into_iter(sender_values)
 		.map(|value| {
 			let asset = fixed_asset(commit_params, asset_id, &value, rng);
@@ -123,17 +125,15 @@ fn sample_fixed_sender_and_receiver(
 			asset
 		})
 		.collect::<Vec<_>>();
-	
+
 	let senders = sender_assets
 		.into_iter()
 		.map(|asset| {
 			let ledger = commitment_set.get(&shard_index(asset.utxo)).unwrap();
-			asset
-				.build(leaf_params, two_to_one_params, ledger)
-				.unwrap()
+			asset.build(leaf_params, two_to_one_params, ledger).unwrap()
 		})
 		.collect::<Vec<_>>();
-	
+
 	let receivers = IntoIterator::into_iter(receiver_values)
 		.map(|value| fixed_receiver(commit_params, asset_id, &value, rng))
 		.collect::<Vec<_>>();
@@ -170,6 +170,7 @@ fn transfer_test(transfer_count: usize, rng: &mut ChaCha20Rng) {
 			&TWO_TO_ONE_PARAMS,
 			&COMMIT_PARAMS,
 			&asset_id,
+			&balance,
 			&balance,
 			&mut utxo_set,
 			rng,
@@ -233,6 +234,73 @@ fn transfer_test(transfer_count: usize, rng: &mut ChaCha20Rng) {
 		for receiver in receivers {
 			assert!(MantaPayPallet::utxo_exists(receiver.utxo));
 		}
+	}
+}
+
+/// Perform `reclaim_count` times reclaim
+fn reclaim_test(reclaim_count: usize, rng: &mut ChaCha20Rng) {
+	let asset_id = rng.gen();
+	let total_balance = rng.gen();
+	let balances: Vec<AssetBalance> = value_distribution(reclaim_count, total_balance, rng);
+	initialize_test(&asset_id, &total_balance);
+
+	let mut utxo_set = HashMap::new();
+	let mut current_pool_balance = 0;
+	let reclaim_pk = reclaim_pk();
+	for balance in balances {
+		let reclaim_balances = value_distribution(2, balance, rng);
+		let (receiver_value, reclaim_value) = (reclaim_balances[0], reclaim_balances[1]);
+
+		let (senders, receivers) = sample_fixed_sender_and_receiver(
+			2,
+			1,
+			&LEAF_PARAMS,
+			&TWO_TO_ONE_PARAMS,
+			&COMMIT_PARAMS,
+			&asset_id,
+			&balance,
+			&receiver_value,
+			&mut utxo_set,
+			rng,
+		);
+
+		// mint private tokens
+		for sender in senders.clone() {
+			let mint_data = generate_mint_struct(&sender.asset);
+			assert_ok!(MantaPayPallet::mint_private_asset(
+				Origin::signed(1),
+				mint_data
+			));
+		}
+		current_pool_balance += balance;
+		assert_eq!(PoolBalance::<Test>::get(asset_id), current_pool_balance);
+
+		let receiver = receivers[0];
+
+		// make reclaim
+		let reclaim_data = generate_reclaim_struct(
+			COMMIT_PARAMS.clone(),
+			LEAF_PARAMS.clone(),
+			TWO_TO_ONE_PARAMS.clone(),
+			&reclaim_pk,
+			into_array_unchecked(senders),
+			receiver.clone(),
+			reclaim_value,
+			rng,
+		)
+		.unwrap();
+
+		assert_ok!(MantaPayPallet::reclaim(Origin::signed(1), reclaim_data));
+		current_pool_balance -= reclaim_value;
+		assert_eq!(PoolBalance::<Test>::get(asset_id), current_pool_balance);
+
+		// Check ledger state has been correctly updated
+		let shard_index = shard_index(receiver.utxo);
+		let meta_data = LedgerShardMetaData::<Test>::get(shard_index);
+		let ledger_entry = LedgerShards::<Test>::get(shard_index, meta_data.current_index);
+		assert_eq!(ledger_entry.0, receiver.utxo);
+		assert_eq!(ledger_entry.1, receiver.encrypted_note);
+		assert!(MantaPayPallet::utxo_exists(receiver.utxo));
 	}
 }
 
@@ -315,4 +383,16 @@ fn test_transfer_should_work() {
 fn test_transfer_5_times_should_work() {
 	let mut rng = ChaCha20Rng::from_seed([41u8; 32]);
 	new_test_ext().execute_with(|| transfer_test(5, &mut rng));
+}
+
+#[test]
+fn test_reclaim_should_work() {
+	let mut rng = ChaCha20Rng::from_seed([42u8; 32]);
+	new_test_ext().execute_with(|| reclaim_test(1, &mut rng));
+}
+
+#[test]
+fn test_reclaim_5_times_should_work() {
+	let mut rng = ChaCha20Rng::from_seed([41u8; 32]);
+	new_test_ext().execute_with(|| reclaim_test(5, &mut rng));
 }
