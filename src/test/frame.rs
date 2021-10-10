@@ -16,17 +16,17 @@
 
 use crate::{mock::*, Error, LedgerShardMetaData, LedgerShards, PoolBalance, VoidNumbers, *};
 use ark_serialize::CanonicalDeserialize;
-use ark_std::rand::Rng;
+use ark_std::rand::{Rng, RngCore};
 use core::convert::TryInto;
 use frame_support::{assert_noop, assert_ok};
 use manta_api::{
 	generate_mint_struct, generate_private_transfer_struct, generate_reclaim_struct,
 	zkp::{keys::write_zkp_keys, sample::*},
 };
-use manta_asset::{MantaAssetProcessedReceiver, TEST_ASSET};
+use manta_asset::{MantaAsset, MantaAssetProcessedReceiver, Sampling, NUM_BYTE_ZKP, TEST_ASSET};
 use manta_crypto::{
 	commitment_parameters, leaf_parameters, two_to_one_parameters, CommitmentParam, Groth16Pk,
-	LeafHashParam, TwoToOneHashParam,
+	LeafHashParam, MantaSerDes, Parameter, TwoToOneHashParam,
 };
 use manta_data::{BuildMetadata, SenderMetaData};
 use rand_chacha::{rand_core::SeedableRng, ChaCha20Rng};
@@ -149,6 +149,23 @@ where
 		Ok(array) => array,
 		_ => unreachable!(),
 	}
+}
+
+/// flip a random bit in the proof
+fn random_bit_flip_in_zkp(proof: &mut [u8; NUM_BYTE_ZKP], rng: &mut ChaCha20Rng) {
+	let byte_to_flip = rng.gen_range(0..NUM_BYTE_ZKP);
+	let masks = [
+		0b1000_0000,
+		0b0100_0000,
+		0b0010_0000,
+		0b0001_0000,
+		0b0000_1000,
+		0b0000_0100,
+		0b0000_0010,
+		0b0000_0001,
+	];
+	let bit_to_flip = rng.gen_range(0..8);
+	proof[byte_to_flip] = proof[byte_to_flip] ^ masks[bit_to_flip];
 }
 
 /// Perform `transfer_count` times random private transfer
@@ -374,6 +391,48 @@ fn mint_without_init_should_not_work() {
 }
 
 #[test]
+fn mint_existing_coin_should_not_work() {
+	new_test_ext().execute_with(|| {
+		let mut rng = ChaCha20Rng::from_seed([41u8; 32]);
+		let asset_id = rng.gen();
+		let total_supply = 32579;
+		initialize_test(&asset_id, &total_supply);
+		let asset = fixed_asset(&COMMIT_PARAMS, &asset_id, &100, &mut rng);
+		let mint_data = generate_mint_struct(&asset);
+		assert_ok!(MantaPayPallet::mint_private_asset(
+			Origin::signed(1),
+			mint_data
+		));
+		assert_noop!(
+			MantaPayPallet::mint_private_asset(Origin::signed(1), mint_data),
+			Error::<Test>::LedgerUpdateFail
+		);
+	});
+}
+
+#[test]
+fn mint_with_invalid_commitment_should_not_work() {
+	new_test_ext().execute_with(|| {
+		let mut rng = ChaCha20Rng::from_seed([3u8; 32]);
+		let asset_id = rng.gen();
+		initialize_test(&asset_id, &100);
+
+		let data: &[u8; 81664] = &[5u8; 81664];
+		let mut raw_param = Parameter { data };
+		let commit_param = CommitmentParam::deserialize(&mut raw_param.data).unwrap();
+		let mut sk = [0u8; 32];
+		rng.fill_bytes(&mut sk);
+		let asset = MantaAsset::sample(&commit_param, &sk, &asset_id, &50).unwrap();
+		let payload = generate_mint_struct(&asset);
+
+		assert_noop!(
+			MantaPayPallet::mint_private_asset(Origin::signed(1), payload),
+			Error::<Test>::MintFail
+		);
+	});
+}
+
+#[test]
 fn test_transfer_should_work() {
 	let mut rng = ChaCha20Rng::from_seed([42u8; 32]);
 	new_test_ext().execute_with(|| transfer_test(1, &mut rng));
@@ -386,6 +445,110 @@ fn test_transfer_5_times_should_work() {
 }
 
 #[test]
+fn double_spend_in_transfer_shoud_not_work() {
+	let mut rng = ChaCha20Rng::from_seed([37u8; 32]);
+	new_test_ext().execute_with(|| {
+		let asset_id = rng.gen();
+		initialize_test(&asset_id, &800000);
+
+		let transfer_pk = transfer_pk();
+		let mut utxo_set = HashMap::new();
+		let (senders, receivers) = sample_fixed_sender_and_receiver(
+			2,
+			2,
+			&LEAF_PARAMS,
+			&TWO_TO_ONE_PARAMS,
+			&COMMIT_PARAMS,
+			&asset_id,
+			&5000,
+			&5000,
+			&mut utxo_set,
+			&mut rng,
+		);
+
+		// mint private tokens
+		for sender in senders.clone() {
+			let mint_data = generate_mint_struct(&sender.asset);
+			assert_ok!(MantaPayPallet::mint_private_asset(
+				Origin::signed(1),
+				mint_data
+			));
+		}
+		// transfer private tokens
+		let priv_trans_data = generate_private_transfer_struct(
+			COMMIT_PARAMS.clone(),
+			LEAF_PARAMS.clone(),
+			TWO_TO_ONE_PARAMS.clone(),
+			&transfer_pk,
+			into_array_unchecked(senders),
+			into_array_unchecked(receivers.clone()),
+			&mut rng,
+		)
+		.unwrap();
+		assert_ok!(MantaPayPallet::private_transfer(
+			Origin::signed(1),
+			priv_trans_data
+		));
+
+		// try to spend again, this time should fail
+		assert_noop!(
+			MantaPayPallet::private_transfer(Origin::signed(1), priv_trans_data),
+			Error::<Test>::MantaCoinSpent
+		);
+	});
+}
+
+#[test]
+fn transfer_with_invalid_zkp_should_not_work() {
+	let mut rng = ChaCha20Rng::from_seed([37u8; 32]);
+	new_test_ext().execute_with(|| {
+		let asset_id = rng.gen();
+		initialize_test(&asset_id, &800000);
+
+		let transfer_pk = transfer_pk();
+		let mut utxo_set = HashMap::new();
+		let (senders, receivers) = sample_fixed_sender_and_receiver(
+			2,
+			2,
+			&LEAF_PARAMS,
+			&TWO_TO_ONE_PARAMS,
+			&COMMIT_PARAMS,
+			&asset_id,
+			&5000,
+			&5000,
+			&mut utxo_set,
+			&mut rng,
+		);
+
+		// mint private tokens
+		for sender in senders.clone() {
+			let mint_data = generate_mint_struct(&sender.asset);
+			assert_ok!(MantaPayPallet::mint_private_asset(
+				Origin::signed(1),
+				mint_data
+			));
+		}
+		// transfer private tokens
+		let mut priv_trans_data = generate_private_transfer_struct(
+			COMMIT_PARAMS.clone(),
+			LEAF_PARAMS.clone(),
+			TWO_TO_ONE_PARAMS.clone(),
+			&transfer_pk,
+			into_array_unchecked(senders),
+			into_array_unchecked(receivers.clone()),
+			&mut rng,
+		)
+		.unwrap();
+		// flip a random bit in zkp
+		random_bit_flip_in_zkp(&mut priv_trans_data.proof, &mut rng);
+		assert_noop!(
+			MantaPayPallet::private_transfer(Origin::signed(1), priv_trans_data),
+			Error::<Test>::ZkpVerificationFail
+		);
+	});
+}
+
+#[test]
 fn test_reclaim_should_work() {
 	let mut rng = ChaCha20Rng::from_seed([42u8; 32]);
 	new_test_ext().execute_with(|| reclaim_test(1, &mut rng));
@@ -395,4 +558,120 @@ fn test_reclaim_should_work() {
 fn test_reclaim_5_times_should_work() {
 	let mut rng = ChaCha20Rng::from_seed([41u8; 32]);
 	new_test_ext().execute_with(|| reclaim_test(5, &mut rng));
+}
+
+#[test]
+fn double_spend_in_reclaim_should_not_work() {
+	let mut rng = ChaCha20Rng::from_seed([41u8; 32]);
+	new_test_ext().execute_with(|| {
+		let asset_id = rng.gen();
+		let total_balance = 3289172;
+		let receiver_value = 12590;
+		let reclaim_value = total_balance - receiver_value;
+		initialize_test(&asset_id, &total_balance);
+
+		let mut utxo_set = HashMap::new();
+		let reclaim_pk = reclaim_pk();
+		let (senders, receivers) = sample_fixed_sender_and_receiver(
+			2,
+			1,
+			&LEAF_PARAMS,
+			&TWO_TO_ONE_PARAMS,
+			&COMMIT_PARAMS,
+			&asset_id,
+			&total_balance,
+			&receiver_value,
+			&mut utxo_set,
+			&mut rng,
+		);
+
+		// mint private tokens
+		for sender in senders.clone() {
+			let mint_data = generate_mint_struct(&sender.asset);
+			assert_ok!(MantaPayPallet::mint_private_asset(
+				Origin::signed(1),
+				mint_data
+			));
+		}
+
+		let receiver = receivers[0];
+
+		// make reclaim
+		let reclaim_data = generate_reclaim_struct(
+			COMMIT_PARAMS.clone(),
+			LEAF_PARAMS.clone(),
+			TWO_TO_ONE_PARAMS.clone(),
+			&reclaim_pk,
+			into_array_unchecked(senders),
+			receiver.clone(),
+			reclaim_value,
+			&mut rng,
+		)
+		.unwrap();
+
+		assert_ok!(MantaPayPallet::reclaim(Origin::signed(1), reclaim_data));
+		// double spend should fail
+		assert_noop!(
+			MantaPayPallet::reclaim(Origin::signed(1), reclaim_data),
+			Error::<Test>::MantaCoinSpent,
+		);
+	});
+}
+
+#[test]
+fn reclaim_with_invalid_zkp_should_not_work() {
+	let mut rng = ChaCha20Rng::from_seed([55u8; 32]);
+	new_test_ext().execute_with(|| {
+		let asset_id = rng.gen();
+		let total_balance = 3289172;
+		let receiver_value = 12590;
+		let reclaim_value = total_balance - receiver_value;
+		initialize_test(&asset_id, &total_balance);
+
+		let mut utxo_set = HashMap::new();
+		let reclaim_pk = reclaim_pk();
+		let (senders, receivers) = sample_fixed_sender_and_receiver(
+			2,
+			1,
+			&LEAF_PARAMS,
+			&TWO_TO_ONE_PARAMS,
+			&COMMIT_PARAMS,
+			&asset_id,
+			&total_balance,
+			&receiver_value,
+			&mut utxo_set,
+			&mut rng,
+		);
+
+		// mint private tokens
+		for sender in senders.clone() {
+			let mint_data = generate_mint_struct(&sender.asset);
+			assert_ok!(MantaPayPallet::mint_private_asset(
+				Origin::signed(1),
+				mint_data
+			));
+		}
+
+		let receiver = receivers[0];
+
+		// make reclaim
+		let mut reclaim_data = generate_reclaim_struct(
+			COMMIT_PARAMS.clone(),
+			LEAF_PARAMS.clone(),
+			TWO_TO_ONE_PARAMS.clone(),
+			&reclaim_pk,
+			into_array_unchecked(senders),
+			receiver.clone(),
+			reclaim_value,
+			&mut rng,
+		)
+		.unwrap();
+
+		// flip a random bit in zkp
+		random_bit_flip_in_zkp(&mut reclaim_data.proof, &mut rng);
+		assert_noop!(
+			MantaPayPallet::reclaim(Origin::signed(1), reclaim_data),
+			Error::<Test>::ZkpVerificationFail,
+		);
+	});
 }

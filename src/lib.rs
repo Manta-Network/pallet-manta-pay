@@ -362,7 +362,7 @@ pub mod pallet {
 				if VoidNumbers::<T>::contains_key(sender.void_number) {
 					Err("coin exists").map_err::<DispatchError, _>(|e| {
 						log::error!(target: "manta-pay", "failed to transfer the private asset with error: {:?}", e);
-						Error::<T>::MantaCoinExist.into()
+						Error::<T>::MantaCoinSpent.into()
 					})?;
 				}
 				if LedgerShardRoots::<T>::get(sender.shard_index) != sender.root {
@@ -447,7 +447,7 @@ pub mod pallet {
 				if VoidNumbers::<T>::contains_key(sender.void_number) {
 					Err("Double Spend").map_err::<DispatchError, _>(|e| {
 						log::error!(target: "manta-pay", "failed to reclaim the private asset with error: {:?}", e);
-						Error::<T>::MantaCoinExist.into()
+						Error::<T>::MantaCoinSpent.into()
 					})?;
 				}
 				if LedgerShardRoots::<T>::get(sender.shard_index) != sender.root {
@@ -534,8 +534,6 @@ pub mod pallet {
 		MantaNotCoinExist,
 		/// MantaCoin already spend
 		MantaCoinSpent,
-		/// ZKP parameter failed
-		ZkpParamFail,
 		/// ZKP verification failed
 		ZkpVerificationFail,
 		/// invalid ledger state
