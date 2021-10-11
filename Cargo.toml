@@ -23,18 +23,21 @@ sp-std = { git = 'https://github.com/paritytech/substrate.git', default-features
 codec = { package = "parity-scale-codec", version = "2.0.0", default-features = false, features = ["derive"] }
 data-encoding = { version = "2.3.2", default-features = false, features = [ "alloc" ] }
 log = { version = "0.4.14", default-features = false }
+rand_chacha = { version = "0.3.1", default-features = false }
+lazy_static = "1.4.0"
 
 # Arkworks dependencies
 
 # Attention! This needs to be included before the manta dependencies.
 ark-std = { version = "0.3.0", default-features = false }
+ark-serialize = { version = "0.3.0", default-features = false, features = [ "derive" ] }
 
 # Manta Dependencies
 manta-asset = { branch = "manta", git = "https://github.com/Manta-Network/manta-types", default-features = false }
 manta-crypto = { branch = "manta", git = "https://github.com/Manta-Network/manta-crypto", default-features = false }
 manta-data = { branch = "manta", git = "https://github.com/Manta-Network/manta-types", default-features = false }
 manta-error = { branch = "manta", git = "https://github.com/Manta-Network/manta-error", default-features = false }
-manta-api = { branch = "sample-with-balance", git = "https://github.com/Manta-Network/manta-api", default-features = false, features = ["signer"] }
+manta-api = { branch = "api-update", git = "https://github.com/Manta-Network/manta-api", default-features = false, features = ["signer"] }
 
 [dev-dependencies]
 # benchmarking 
@@ -58,17 +61,14 @@ ark-serialize = { version = "0.3.0", default-features = false, features = [ "der
 
 rand_chacha = { version = "0.3.1", default-features = false }
 
-[[bench]]
-name = "manta_bench"
-harness = false
-
 [features]
 default = [ 
 	'std' 
 	]
 
 runtime-benchmarks = [
-	"frame-benchmarking",
+	"frame-benchmarking/std",
+	"std",
 ]
 
 std = [

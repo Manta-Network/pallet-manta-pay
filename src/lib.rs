@@ -115,7 +115,6 @@ pub mod benchmarking;
 
 pub mod weights;
 pub use weights::WeightInfo;
-pub mod precomputed_coins;
 
 use manta_asset::{shard_index, AssetBalance, AssetId, MantaRandomValue, SanityCheck, UTXO};
 use manta_crypto::{
@@ -251,15 +250,15 @@ pub mod pallet {
 				<Error<T>>::AlreadyInitialized
 			);
 
-			// deposit the event then update the storage
-			Self::deposit_event(Event::Issued(asset_id, origin.clone(), total));
-
 			// initialize the asset with `total` number of supplies
 			// the total number of private asset (pool balance) remain 0
 			// the assets is credit to the sender's account
 			PoolBalance::<T>::insert(asset_id, 0);
 			TotalSupply::<T>::insert(asset_id, total);
 			Balances::<T>::insert(&origin, asset_id, total);
+
+			// deposit the event then update the storage
+			Self::deposit_event(Event::Issued(asset_id, origin.clone(), total));
 			Ok(().into())
 		}
 
