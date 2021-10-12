@@ -3,7 +3,7 @@ name = "pallet-manta-pay"
 version = "3.1.0"
 authors = ["Manta Network <contact@manta.network>"]
 edition = "2018"
-license = "Apache-2.0"
+license = "GPL 3.0"
 repository = "https://github.com/Manta-Network/pallet-manta-pay"
 description = "MantaPay Pallet"
 readme = "README.md"
@@ -13,18 +13,16 @@ targets = ["x86_64-unknown-linux-gnu"]
 
 [dependencies]
 # Substrate dependencies
-frame-benchmarking = { git = 'https://github.com/paritytech/substrate.git', default-features = false, branch = "polkadot-v0.9.9", optional = true }
-frame-support = { git = 'https://github.com/paritytech/substrate.git', default-features = false, branch = "polkadot-v0.9.9" }
-frame-system = { git = 'https://github.com/paritytech/substrate.git', default-features = false, branch = "polkadot-v0.9.9" }
-sp-runtime = { git = 'https://github.com/paritytech/substrate.git', default-features = false, branch = "polkadot-v0.9.9" }
-sp-std = { git = 'https://github.com/paritytech/substrate.git', default-features = false, branch = "polkadot-v0.9.9" }
+frame-benchmarking = { git = 'https://github.com/paritytech/substrate.git', default-features = false, branch = "polkadot-v0.9.10", optional = true }
+frame-support = { git = 'https://github.com/paritytech/substrate.git', default-features = false, branch = "polkadot-v0.9.10" }
+frame-system = { git = 'https://github.com/paritytech/substrate.git', default-features = false, branch = "polkadot-v0.9.10" }
+sp-runtime = { git = 'https://github.com/paritytech/substrate.git', default-features = false, branch = "polkadot-v0.9.10" }
+sp-std = { git = 'https://github.com/paritytech/substrate.git', default-features = false, branch = "polkadot-v0.9.10" }
 
 # Other Dependencies
 codec = { package = "parity-scale-codec", version = "2.0.0", default-features = false, features = ["derive"] }
 data-encoding = { version = "2.3.2", default-features = false, features = [ "alloc" ] }
 log = { version = "0.4.14", default-features = false }
-rand_chacha = { version = "0.3.1", default-features = false }
-lazy_static = "1.4.0"
 
 # Arkworks dependencies
 
@@ -37,7 +35,6 @@ manta-asset = { branch = "manta", git = "https://github.com/Manta-Network/manta-
 manta-crypto = { branch = "manta", git = "https://github.com/Manta-Network/manta-crypto", default-features = false }
 manta-data = { branch = "manta", git = "https://github.com/Manta-Network/manta-types", default-features = false }
 manta-error = { branch = "manta", git = "https://github.com/Manta-Network/manta-error", default-features = false }
-manta-api = { branch = "api-update", git = "https://github.com/Manta-Network/manta-api", default-features = false, features = ["signer"] }
 
 [dev-dependencies]
 # benchmarking 
@@ -46,8 +43,8 @@ criterion = "0.3.4"
 
 # testing
 serde = { default-features = false, version = '1' }
-sp-core = { git = 'https://github.com/paritytech/substrate.git', default-features = false, branch = "polkadot-v0.9.9" }
-sp-io = { git = 'https://github.com/paritytech/substrate.git', default-features = false, branch = "polkadot-v0.9.9" }
+sp-core = { git = 'https://github.com/paritytech/substrate.git', default-features = false, branch = "polkadot-v0.9.10" }
+sp-io = { git = 'https://github.com/paritytech/substrate.git', default-features = false, branch = "polkadot-v0.9.10" }
 
 lazy_static = "1.4.0"
 
@@ -60,6 +57,7 @@ ark-relations = { version = "0.3.0", default-features = false }
 ark-serialize = { version = "0.3.0", default-features = false, features = [ "derive" ] }
 
 rand_chacha = { version = "0.3.1", default-features = false }
+manta-api = { branch = "manta", git = "https://github.com/Manta-Network/manta-api", default-features = false, features = ["std"]}
 
 [features]
 default = [ 
