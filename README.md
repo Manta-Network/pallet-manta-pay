@@ -14,11 +14,11 @@ cargo doc --open
 ```
 
 
-## Pre-computed tokens
-
+## Update pre-computed tokens
 ``` sh
-cargo run --bin pre_comp --release
+cargo run --release --bin precompute_coins --features=precompute-coins > /src/precomputed_coins.rs
 ```
+Note: This is only needed when the zero-knowledge-proof circuit has been changed.
 
 ## Test coverage
 * install [grcov](https://github.com/mozilla/grcov):

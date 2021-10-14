@@ -23,9 +23,10 @@ sp-std = { git = 'https://github.com/paritytech/substrate.git', default-features
 codec = { package = "parity-scale-codec", version = "2.0.0", default-features = false, features = ["derive"] }
 data-encoding = { version = "2.3.2", default-features = false, features = [ "alloc" ] }
 log = { version = "0.4.14", default-features = false }
+rand_chacha = { version = "0.3.1", default-features = false, optional = true }
+indoc = { version = "1.0.3", default-features = false, optional = true}
 
 # Arkworks dependencies
-
 # Attention! This needs to be included before the manta dependencies.
 ark-std = { version = "0.3.0", default-features = false }
 ark-serialize = { version = "0.3.0", default-features = false, features = [ "derive" ] }
@@ -35,6 +36,7 @@ manta-asset = { branch = "manta", git = "https://github.com/Manta-Network/manta-
 manta-crypto = { branch = "manta", git = "https://github.com/Manta-Network/manta-crypto", default-features = false }
 manta-data = { branch = "manta", git = "https://github.com/Manta-Network/manta-types", default-features = false }
 manta-error = { branch = "manta", git = "https://github.com/Manta-Network/manta-error", default-features = false }
+manta-api = { branch = "manta", git = "https://github.com/Manta-Network/manta-api", default-features = false, optional = true}
 
 [dev-dependencies]
 # benchmarking 
@@ -73,3 +75,13 @@ std = [
 	"frame-benchmarking/std",
 	"frame-system/std",
 ]
+
+precompute-coins = [
+	"manta-api",
+	"rand_chacha",
+	"indoc",
+]
+
+[[bin]]
+name = "precompute_coins"
+required-features = ["precompute-coins"]

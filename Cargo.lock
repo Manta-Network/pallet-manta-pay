@@ -1448,6 +1448,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "indoc"
+version = "1.0.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e5a75aeaaef0ce18b58056d306c27b07436fbb34b8816c53094b76dd81803136"
+dependencies = [
+ "unindent",
+]
+
+[[package]]
 name = "instant"
 version = "0.1.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1623,7 +1632,7 @@ dependencies = [
 [[package]]
 name = "manta-api"
 version = "0.3.2"
-source = "git+https://github.com/Manta-Network/manta-api?branch=manta#d70e2dfec60754e714d4514237489fce745b0d4a"
+source = "git+https://github.com/Manta-Network/manta-api?branch=manta#5d07f374fcf040ec91609d63be5c7e000bf39e2c"
 dependencies = [
  "ark-bls12-381",
  "ark-crypto-primitives",
@@ -1652,7 +1661,7 @@ dependencies = [
 [[package]]
 name = "manta-asset"
 version = "0.3.0"
-source = "git+https://github.com/Manta-Network/manta-types?branch=manta#e281d37b047ea705c96ebb70655a28f2788f98cf"
+source = "git+https://github.com/Manta-Network/manta-types?branch=manta#aee76cd8c154b43d4c95b459c25d18d2837e66eb"
 dependencies = [
  "ark-crypto-primitives",
  "ark-ed-on-bls12-381",
@@ -1695,7 +1704,7 @@ dependencies = [
 [[package]]
 name = "manta-data"
 version = "0.3.0"
-source = "git+https://github.com/Manta-Network/manta-types?branch=manta#e281d37b047ea705c96ebb70655a28f2788f98cf"
+source = "git+https://github.com/Manta-Network/manta-types?branch=manta#aee76cd8c154b43d4c95b459c25d18d2837e66eb"
 dependencies = [
  "ark-ed-on-bls12-381",
  "ark-groth16",
@@ -1963,6 +1972,7 @@ dependencies = [
  "frame-benchmarking",
  "frame-support",
  "frame-system",
+ "indoc",
  "lazy_static",
  "log",
  "manta-api",
@@ -3375,6 +3385,12 @@ name = "unicode-xid"
 version = "0.2.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8ccb82d61f80a663efe1f787a51b16b5a51e3314d6ac365b08639f52387b33f3"
+
+[[package]]
+name = "unindent"
+version = "0.1.7"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f14ee04d9415b52b3aeab06258a3f07093182b88ba0f9b8d203f211a7a7d41c7"
 
 [[package]]
 name = "universal-hash"
