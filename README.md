@@ -16,7 +16,7 @@ cargo doc --open
 
 ## Update pre-computed tokens
 ``` sh
-cargo run --release --bin precompute_coins --features=precompute-coins > /src/precomputed_coins.rs
+cargo run --release --bin precompute_coins --features=precompute-coins > ./src/benchmark/precomputed_coins.rs
 ```
 Note: This is only needed when the zero-knowledge-proof circuit has been changed.
 

@@ -64,11 +64,12 @@ manta-api = { branch = "manta", git = "https://github.com/Manta-Network/manta-ap
 [features]
 default = [ 
 	'std' 
-	]
+]
 
 runtime-benchmarks = [
-	"frame-benchmarking/std",
-	"std",
+	"frame-benchmarking",
+	"sp-runtime/runtime-benchmarks",
+	"frame-system/runtime-benchmarks",
 ]
 
 std = [

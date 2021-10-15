@@ -111,7 +111,7 @@ mod mock;
 mod test;
 
 #[cfg(feature = "runtime-benchmarks")]
-pub mod benchmarking;
+pub mod benchmark;
 
 pub mod weights;
 pub use weights::WeightInfo;
@@ -337,7 +337,7 @@ pub mod pallet {
 			origin: OriginFor<T>,
 			private_transfer_data: PrivateTransferData,
 		) -> DispatchResultWithPostInfo {
-			ensure_signed(origin)?;
+			let origin = ensure_signed(origin)?;
 
 			// get paramters for merkle tree, commitment
 			let leaf_param = try_leaf_parameters().map_err::<DispatchError, _>(|e| {
@@ -402,6 +402,9 @@ pub mod pallet {
 				VoidNumbers::<T>::insert(sender.void_number, true);
 			}
 
+			// deposit the event then update the storage
+			Self::deposit_event(Event::PrivateTransferred(origin));
+
 			Ok(().into())
 		}
 
@@ -418,7 +421,6 @@ pub mod pallet {
 		) -> DispatchResultWithPostInfo {
 			// make sure it is properly signed
 			let origin = ensure_signed(origin)?;
-			let origin_account = origin;
 
 			// make sure the asset_id exists
 			let asset_id = reclaim_data.asset_id;
@@ -485,11 +487,17 @@ pub mod pallet {
 			}
 
 			// mutate balance and update the pool balance
-			Balances::<T>::mutate(origin_account, asset_id, |balance| {
+			Balances::<T>::mutate(origin.clone(), asset_id, |balance| {
 				*balance += reclaim_data.reclaim_value
 			});
 			PoolBalance::<T>::mutate(asset_id, |balance| *balance -= reclaim_data.reclaim_value);
 
+			// register the event
+			Self::deposit_event(Event::Reclaimed(
+				asset_id,
+				origin,
+				reclaim_data.reclaim_value,
+			));
 			Ok(().into())
 		}
 	}
@@ -507,7 +515,7 @@ pub mod pallet {
 		/// Private transfer
 		PrivateTransferred(T::AccountId),
 		/// The assets was reclaimed
-		PrivateReclaimed(AssetId, T::AccountId, AssetBalance),
+		Reclaimed(AssetId, T::AccountId, AssetBalance),
 	}
 
 	/// Error messages.

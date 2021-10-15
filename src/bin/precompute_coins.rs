@@ -133,7 +133,11 @@ fn precompute_coins() -> (
 /// Writes a new `const` definition to `$writer`.
 macro_rules! print_const {
 	($var:ident) => {
-		println!("const {}: &[u8] = &{:?};\n", stringify!($var), $var)
+		println!(
+			"pub(crate) const {}: &[u8] = &{:?};\n",
+			stringify!($var),
+			$var
+		)
 	};
 }
 
