@@ -2,17 +2,15 @@
 
 This is a pallet that enables MantaPay, a multi-asset, decentralized shielded payment protocol.
 The best way to use this repo is to invoke it with a `manta-runtime`,
-available from either [manta](https://github.com/Manta-Network/manta).
+available from [manta](https://github.com/Manta-Network/manta).
 
 __Disclaimer__: The code has not been properly reviewed or audited and is likely to have 
 severe bugs or security pitfalls.Use at your own risk!
 
 ## Documentations
-
 ``` sh
 cargo doc --open
 ```
-
 
 ## Update pre-computed tokens
 ``` sh
@@ -30,14 +28,10 @@ cargo install grcov
 export CARGO_INCREMENTAL=0
 export RUSTFLAGS="-Zprofile -Ccodegen-units=1 -Copt-level=0 -Clink-dead-code -Coverflow-checks=off -Zpanic_abort_tests -Cpanic=abort"
 export RUSTDOCFLAGS="-Cpanic=abort"
-cargo +nightly-2021-01-29 test
+cargo +nightly test
 ```
 * generate the report 
 ``` sh
 grcov . -s . --binary-path ./target/debug/ -t html --branch --ignore-not-existing -o ./target/debug/coverage/
 open target/debug/coverage/index.html
 ```
-
-## Benchmark
-
-TBD

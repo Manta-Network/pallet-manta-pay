@@ -27,6 +27,9 @@ use frame_benchmarking::{account, benchmarks, impl_benchmark_test_suite, whiteli
 use frame_system::{EventRecord, RawOrigin};
 use manta_asset::TEST_ASSET;
 use manta_crypto::MantaSerDes;
+use sp_runtime::traits::StaticLookup;
+
+const SEED: u32 = 0;
 
 pub fn assert_last_event<T: Config>(generic_event: <T as Config>::Event) {
 	let events = frame_system::Pallet::<T>::events();
@@ -43,6 +46,26 @@ benchmarks! {
 	verify {
 		assert_last_event::<T>(Event::Issued(TEST_ASSET, caller.clone(), total).into());
 		assert_eq!(<TotalSupply<T>>::get(TEST_ASSET), total);
+	}
+
+	transfer_asset {
+		let caller: T::AccountId = whitelisted_caller();
+		let origin: T::Origin = T::Origin::from(RawOrigin::Signed(caller.clone()));
+		Balances::<T>::insert(&caller, TEST_ASSET, 1_000);
+		assert!(Pallet::<T>::init_asset(origin, TEST_ASSET, 1_000).is_ok());
+		let recipient: T::AccountId = account("recipient", 0, SEED);
+		let recipient_lookup: <T::Lookup as StaticLookup>::Source = T::Lookup::unlookup(recipient.clone());
+		let transfer_amount = 10;
+	}: transfer_asset(
+		RawOrigin::Signed(caller.clone()),
+		recipient_lookup,
+		TEST_ASSET,
+		transfer_amount)
+	verify {
+		assert_last_event::<T>(
+			Event::Transferred(TEST_ASSET, caller.clone(), recipient.clone(), transfer_amount).into()
+		);
+		assert_eq!(Balances::<T>::get(&recipient, TEST_ASSET), transfer_amount);
 	}
 
 	mint_private_asset {

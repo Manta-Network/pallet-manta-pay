@@ -135,6 +135,7 @@ pub mod pallet {
 	use frame_support::pallet_prelude::*;
 	use frame_system::pallet_prelude::*;
 	use manta_crypto::{RECLAIM_VK, TRANSFER_VK};
+	use sp_runtime::traits::StaticLookup;
 
 	#[pallet::pallet]
 	#[pallet::generate_store(pub(super) trait Store)]
@@ -262,9 +263,42 @@ pub mod pallet {
 			Ok(().into())
 		}
 
+		/// Move some assets from one holder to another.
+		///
+		/// # <weight>
+		/// - `O(1)`
+		/// - 1 static lookup
+		/// - 2 storage mutations (codec `O(1)`).
+		/// - 1 event.
+		/// # </weight>
+		#[pallet::weight(T::WeightInfo::transfer_asset())]
+		pub fn transfer_asset(
+			origin: OriginFor<T>,
+			target: <T::Lookup as StaticLookup>::Source,
+			asset_id: AssetId,
+			amount: AssetBalance,
+		) -> DispatchResultWithPostInfo {
+			let origin = ensure_signed(origin)?;
+			// Make sure the base coin is initialized
+			ensure!(
+				TotalSupply::<T>::contains_key(&asset_id),
+				Error::<T>::BasecoinNotInit
+			);
+
+			let origin_balance = Balances::<T>::get(&origin, asset_id);
+			let target = T::Lookup::lookup(target)?;
+			ensure!(amount > 0, Error::<T>::AmountZero);
+			ensure!(origin_balance >= amount, Error::<T>::BalanceLow);
+			Balances::<T>::mutate(origin.clone(), asset_id, |balance| *balance -= amount);
+			Balances::<T>::mutate(target.clone(), asset_id, |balance| *balance += amount);
+
+			Self::deposit_event(Event::Transferred(asset_id, origin, target, amount));
+
+			Ok(().into())
+		}
+
 		/// Mint private asset
-		/// FIXME: this part need to be moved out of pallet-manta-pay
-		#[pallet::weight(1000)]
+		#[pallet::weight(T::WeightInfo::mint_private_asset())]
 		pub fn mint_private_asset(
 			origin: OriginFor<T>,
 			mint_data: MintData,
@@ -332,7 +366,7 @@ pub mod pallet {
 		/// sender's private tokens into two receiver tokens. A proof is required to
 		/// make sure that this transaction is valid.
 		/// Neither the values nor the identities is leaked during this process.
-		#[pallet::weight(1000)]
+		#[pallet::weight(T::WeightInfo::private_transfer())]
 		pub fn private_transfer(
 			origin: OriginFor<T>,
 			private_transfer_data: PrivateTransferData,
@@ -414,7 +448,7 @@ pub mod pallet {
 		/// make sure that this transaction is valid.
 		/// Neither the values nor the identities is leaked during this process;
 		/// except for the reclaimed amount.
-		#[pallet::weight(1000)]
+		#[pallet::weight(T::WeightInfo::reclaim())]
 		pub fn reclaim(
 			origin: OriginFor<T>,
 			reclaim_data: ReclaimData,
