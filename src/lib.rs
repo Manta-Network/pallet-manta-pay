@@ -259,7 +259,7 @@ pub mod pallet {
 			Balances::<T>::insert(&origin, asset_id, total);
 
 			// deposit the event then update the storage
-			Self::deposit_event(Event::Issued(asset_id, origin.clone(), total));
+			Self::deposit_event(Event::Issued(asset_id, origin, total));
 			Ok(().into())
 		}
 
@@ -293,7 +293,6 @@ pub mod pallet {
 			Balances::<T>::mutate(target.clone(), asset_id, |balance| *balance += amount);
 
 			Self::deposit_event(Event::Transferred(asset_id, origin, target, amount));
-
 			Ok(().into())
 		}
 
@@ -313,8 +312,7 @@ pub mod pallet {
 			);
 
 			// get the original balance
-			let origin_account = origin.clone();
-			let origin_balance = Balances::<T>::get(&origin_account, asset_id);
+			let origin_balance = Balances::<T>::get(&origin, asset_id);
 			ensure!(origin_balance >= mint_data.value, Error::<T>::BalanceLow);
 
 			// get paramters for merkle tree, commitment
@@ -359,6 +357,7 @@ pub mod pallet {
 
 			// update pool balance
 			PoolBalance::<T>::mutate(asset_id, |balance| *balance += mint_data.value);
+			Self::deposit_event(Event::<T>::Minted(asset_id, origin, mint_data.value));
 			Ok(().into())
 		}
 
@@ -609,7 +608,8 @@ impl<T: Config> Pallet<T> {
 	) -> Result<(), MantaError> {
 		for cm in commitments {
 			if Pallet::<T>::utxo_exists(cm.0) {
-				Err("duplicate utxo").map_err(|_| MantaError::LedgerUpdateFail)?;
+				log::error!(target: "manta-pay", "duplicate utxo");
+				Err(MantaError::LedgerUpdateFail)?;
 			} else {
 				let shard_index = shard_index(cm.0);
 				if LedgerShardMetaData::<T>::contains_key(shard_index) {
@@ -621,9 +621,7 @@ impl<T: Config> Pallet<T> {
 					} = LedgerShardMetaData::<T>::get(shard_index);
 					let (current_utxo, _) = LedgerShards::<T>::get(shard_index, current_index);
 					let leaf_sibling = if Pallet::<T>::is_left_child(current_index) {
-						let utxo =
-							try_default_leaf_hash().map_err(|_| MantaError::LedgerUpdateFail)?;
-						utxo
+						try_default_leaf_hash().map_err(|_| MantaError::LedgerUpdateFail)?
 					} else {
 						let (utxo, _) = LedgerShards::<T>::get(shard_index, current_index - 1);
 						utxo
@@ -691,7 +689,7 @@ impl<T: Config> Pallet<T> {
 
 	/// Check if a UTXO exists in the ledger
 	fn utxo_exists(utxo: UTXO) -> bool {
-		UTXOSet::<T>::try_get(utxo).is_ok()
+		UTXOSet::<T>::contains_key(utxo)
 	}
 
 	/// Return true iff the given index on its current level represents a left child
