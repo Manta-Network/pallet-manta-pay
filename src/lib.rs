@@ -226,7 +226,7 @@ decl_module! {
 					log::error!(target: "manta-pay", "failed to init the asset with error: {:?}", e);
 					<Error<T>>::ParamFail.into()
 				})?;
-
+// SBP M2 Is it safe not to rollback values set in case of error?
 			ReclaimZkpKeyChecksum::put(reclaim_key_digest);
 
 			// deposit the event then update the storage
@@ -280,6 +280,9 @@ decl_module! {
 			);
 
 			// todo: figure out the different between insert and mutate.
+// Update allows to mutate the existing value w/o having to read it first
+
+// SBP M2 Is this overflow safe?
 			<Balances<T>>::insert(origin_account, asset_id, origin_balance - amount);
 			<Balances<T>>::mutate(target, asset_id, |balance| *balance += amount);
 		}
@@ -378,6 +381,7 @@ decl_module! {
 
 			CoinShards::put(coin_shards);
 			EncValueList::put(enc_value_list);
+// SBP M2 Is this overflow safe?
 			PoolBalance::mutate(
 				mint_data.asset_id,
 				|balance| *balance = old_pool_balance + mint_data.amount
@@ -494,6 +498,7 @@ decl_module! {
 			);
 
 			// TODO: revisit replay attack here
+// SBP M2 Do you have a strategy to consider those holistically?
 
 			// update ledger storage
 			let mut enc_value_list = EncValueList::get();
@@ -551,6 +556,7 @@ decl_module! {
 			// check the balance is greater than amount
 			let mut pool = PoolBalance::get(reclaim_data.asset_id);
 			ensure!(pool>=reclaim_data.reclaim_amount, <Error<T>>::PoolOverdrawn);
+// SBP M2 Is this overflow safe?
 			pool -= reclaim_data.reclaim_amount;
 
 			// check if sn_old already spent
@@ -610,7 +616,7 @@ decl_module! {
 			// update ledger storage
 			let mut enc_value_list = EncValueList::get();
 			enc_value_list.push(reclaim_data.receiver.encrypted_note);
-
+// SBP M2 Is it safe not to rollback values set in case of error?
 			coin_shards
 				.update(&reclaim_data.receiver.cm, hash_param)
 				.map_err::<DispatchError, _>(|e| {
@@ -629,6 +635,7 @@ decl_module! {
 			<Balances<T>>::mutate(
 				origin_account,
 				reclaim_data.asset_id,
+// SBP M2 Is this overflow safe?
 				|balance| *balance = origin_balance + reclaim_data.reclaim_amount
 			);
 		}
