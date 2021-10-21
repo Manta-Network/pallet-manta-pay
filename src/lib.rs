@@ -14,9 +14,10 @@
 // You should have received a copy of the GNU General Public License
 // along with pallet-manta-pay.  If not, see <http://www.gnu.org/licenses/>.
 
-//! # Manta pay Module
+//! # MantaPay Module
 //!
-//! A simple, secure module for manta pay: an anonymous transfer protocol
+//! MantaPay is a Multi-Asset Shielded Payment protocol.
+//! The design is similar though not the same with MASP (Multi-Asset Shielded Pool).
 //!
 //! ## Overview
 //!
@@ -101,7 +102,7 @@
 // Ensure we're `no_std` when compiling for Wasm.
 #![cfg_attr(not(feature = "std"), no_std)]
 
-use manta_error::MantaError;
+use frame_support::dispatch::DispatchResult;
 pub use pallet::*;
 
 #[cfg(test)]
@@ -114,8 +115,10 @@ mod test;
 pub mod benchmark;
 
 pub mod weights;
+use sp_runtime::DispatchError;
 pub use weights::WeightInfo;
 
+use frame_support::ensure;
 use manta_asset::{shard_index, AssetBalance, AssetId, MantaRandomValue, SanityCheck, UTXO};
 use manta_crypto::{
 	merkle_tree::LedgerMerkleTree, try_commitment_parameters, try_default_leaf_hash,
@@ -316,30 +319,20 @@ pub mod pallet {
 			ensure!(origin_balance >= mint_data.value, Error::<T>::BalanceLow);
 
 			// get paramters for merkle tree, commitment
-			let leaf_param = try_leaf_parameters().map_err::<DispatchError, _>(|e| {
-				log::error!(target: "manta-pay", "failed to mint the asset with error: {:?}", e);
-				Error::<T>::ParamFail.into()
-			})?;
+			let leaf_param = try_leaf_parameters()
+				.map_err::<DispatchError, _>(|_| Error::<T>::ParamFail.into())?;
 
-			let two_to_one_param =
-				try_two_to_one_parameters().map_err::<DispatchError, _>(|e| {
-					log::error!(target: "manta-pay", "failed to mint the asset with error: {:?}", e);
-					Error::<T>::ParamFail.into()
-				})?;
+			let two_to_one_param = try_two_to_one_parameters()
+				.map_err::<DispatchError, _>(|_| Error::<T>::ParamFail.into())?;
 
-			let commit_param = try_commitment_parameters().map_err::<DispatchError, _>(|e| {
-				log::error!(target: "manta-pay", "failed to mint the asset with error: {:?}", e);
-				Error::<T>::ParamFail.into()
-			})?;
+			let commit_param = try_commitment_parameters()
+				.map_err::<DispatchError, _>(|_| Error::<T>::ParamFail.into())?;
 
 			// check the validity of the commitment
 			// i.e. check that `cm = COMM(asset_id || v || k, s)`.
 			let res = mint_data
 				.sanity(&commit_param)
-				.map_err::<DispatchError, _>(|e| {
-					log::error!(target: "manta-pay", "failed to mint the asset with error: {:?}", e);
-					Error::<T>::MintFail.into()
-				})?;
+				.map_err::<DispatchError, _>(|_| Error::<T>::MintFail.into())?;
 
 			ensure!(res, Error::<T>::MintFail);
 
@@ -350,10 +343,7 @@ pub mod pallet {
 				&two_to_one_param,
 				vec![(mint_data.cm, mint_data.encrypted_note)],
 			)
-			.map_err::<DispatchError, _>(|e| {
-				log::error!(target: "manta-pay", "failed to mint the asset with error: {:?}", e);
-				Error::<T>::LedgerUpdateFail.into()
-			})?;
+			.map_err::<DispatchError, _>(|_| Error::<T>::LedgerUpdateFail.into())?;
 
 			// update pool balance
 			PoolBalance::<T>::mutate(asset_id, |balance| *balance += mint_data.value);
@@ -373,16 +363,11 @@ pub mod pallet {
 			let origin = ensure_signed(origin)?;
 
 			// get paramters for merkle tree, commitment
-			let leaf_param = try_leaf_parameters().map_err::<DispatchError, _>(|e| {
-				log::error!(target: "manta-pay", "failed to transfer the asset with error: {:?}", e);
-				Error::<T>::ParamFail.into()
-			})?;
+			let leaf_param = try_leaf_parameters()
+				.map_err::<DispatchError, _>(|_| Error::<T>::ParamFail.into())?;
 
-			let two_to_one_param =
-				try_two_to_one_parameters().map_err::<DispatchError, _>(|e| {
-					log::error!(target: "manta-pay", "failed to transfer the asset with error: {:?}", e);
-					Error::<T>::ParamFail.into()
-				})?;
+			let two_to_one_param = try_two_to_one_parameters()
+				.map_err::<DispatchError, _>(|_| Error::<T>::ParamFail.into())?;
 
 			let senders = [
 				private_transfer_data.sender_0,
@@ -391,18 +376,14 @@ pub mod pallet {
 
 			// check if vn_old already spent and verfiy sender's merkle root
 			for sender in senders {
-				if VoidNumbers::<T>::contains_key(sender.void_number) {
-					Err("coin exists").map_err::<DispatchError, _>(|e| {
-						log::error!(target: "manta-pay", "failed to transfer the private asset with error: {:?}", e);
-						Error::<T>::MantaCoinSpent.into()
-					})?;
-				}
-				if LedgerShardRoots::<T>::get(sender.shard_index) != sender.root {
-					Err("invalid root").map_err::<DispatchError, _>(|e| {
-						log::error!(target: "manta-pay", "failed to transfer the private asset with error: {:?}", e);
-						Error::<T>::InvalidLedgerState.into()
-					})?;
-				}
+				ensure!(
+					!VoidNumbers::<T>::contains_key(sender.void_number),
+					Error::<T>::MantaCoinSpent
+				);
+				ensure!(
+					LedgerShardRoots::<T>::get(sender.shard_index) == sender.root,
+					Error::<T>::InvalidLedgerState
+				)
 			}
 
 			// verify ZKP
@@ -425,10 +406,7 @@ pub mod pallet {
 				),
 			];
 			Pallet::<T>::insert_commitments(&leaf_param, &two_to_one_param, coins)
-				.map_err::<DispatchError, _>(|e| {
-					log::error!(target: "manta-pay", "failed to transfer the asset with error: {:?}", e);
-					Error::<T>::LedgerUpdateFail.into()
-				})?;
+				.map_err::<DispatchError, _>(|_| Error::<T>::LedgerUpdateFail.into())?;
 
 			// insert void numbers
 			for sender in senders {
@@ -463,33 +441,23 @@ pub mod pallet {
 			);
 
 			// get the params of hashes
-			let leaf_param = try_leaf_parameters().map_err::<DispatchError, _>(|e| {
-				log::error!(target: "manta-pay", "failed to reclaim the private asset with error: {:?}", e);
-				Error::<T>::ParamFail.into()
-			})?;
+			let leaf_param = try_leaf_parameters()
+				.map_err::<DispatchError, _>(|_| Error::<T>::ParamFail.into())?;
 
-			let two_to_one_param =
-				try_two_to_one_parameters().map_err::<DispatchError, _>(|e| {
-					log::error!(target: "manta-pay", "failed to reclaim the private asset with error: {:?}", e);
-					Error::<T>::ParamFail.into()
-				})?;
+			let two_to_one_param = try_two_to_one_parameters()
+				.map_err::<DispatchError, _>(|_| Error::<T>::ParamFail.into())?;
 
+			// check senders are valid: no double spend and root is valid
 			let senders = [reclaim_data.sender_0, reclaim_data.sender_1];
-
-			// check double spend
 			for sender in senders {
-				if VoidNumbers::<T>::contains_key(sender.void_number) {
-					Err("Double Spend").map_err::<DispatchError, _>(|e| {
-						log::error!(target: "manta-pay", "failed to reclaim the private asset with error: {:?}", e);
-						Error::<T>::MantaCoinSpent.into()
-					})?;
-				}
-				if LedgerShardRoots::<T>::get(sender.shard_index) != sender.root {
-					Err("invalid root").map_err::<DispatchError, _>(|e| {
-						log::error!(target: "manta-pay", "failed to reclaim the private asset with error: {:?}", e);
-						Error::<T>::InvalidLedgerState.into()
-					})?;
-				}
+				ensure!(
+					!VoidNumbers::<T>::contains_key(sender.void_number),
+					Error::<T>::MantaCoinSpent
+				);
+				ensure!(
+					LedgerShardRoots::<T>::get(sender.shard_index) == sender.root,
+					Error::<T>::InvalidLedgerState
+				)
 			}
 
 			// verify zkp
@@ -509,10 +477,7 @@ pub mod pallet {
 					reclaim_data.receiver.encrypted_note,
 				)],
 			)
-			.map_err::<DispatchError, _>(|e| {
-				log::error!(target: "manta-pay", "failed to transfer the asset with error: {:?}", e);
-				Error::<T>::LedgerUpdateFail.into()
-			})?;
+			.map_err::<DispatchError, _>(|_| Error::<T>::LedgerUpdateFail.into())?;
 
 			// insert void numbers
 			for sender in senders {
@@ -605,84 +570,84 @@ impl<T: Config> Pallet<T> {
 		leaf_param: &LeafHashParam,
 		two_to_one_param: &TwoToOneHashParam,
 		commitments: Vec<(UTXO, MantaEciesCiphertext)>,
-	) -> Result<(), MantaError> {
+	) -> DispatchResult {
 		for cm in commitments {
-			if Pallet::<T>::utxo_exists(cm.0) {
-				log::error!(target: "manta-pay", "duplicate utxo");
-				Err(MantaError::LedgerUpdateFail)?;
-			} else {
-				let shard_index = shard_index(cm.0);
-				if LedgerShardMetaData::<T>::contains_key(shard_index) {
-					// if the current shard is not empty
-					// get current uxto, auth_path, and sibling
-					let ShardMetaData {
-						current_index,
-						current_auth_path,
-					} = LedgerShardMetaData::<T>::get(shard_index);
-					let (current_utxo, _) = LedgerShards::<T>::get(shard_index, current_index);
-					let leaf_sibling = if Pallet::<T>::is_left_child(current_index) {
-						try_default_leaf_hash().map_err(|_| MantaError::LedgerUpdateFail)?
-					} else {
-						let (utxo, _) = LedgerShards::<T>::get(shard_index, current_index - 1);
-						utxo
-					};
+			ensure!(
+				!Pallet::<T>::utxo_exists(cm.0),
+				Error::<T>::LedgerUpdateFail
+			);
 
-					// generate new path and root
-					let (path, root) = <MantaCrypto as LedgerMerkleTree>::next_path_and_root(
-						leaf_param,
-						two_to_one_param,
-						current_index as usize,
-						false,
-						&current_utxo,
-						&leaf_sibling,
-						&current_auth_path,
-						&cm.0,
-					)
-					.map_err(|_| MantaError::LedgerUpdateFail)?;
-
-					// update ledger state
-					// TODO: emit warning if ledger is full
-					LedgerShards::<T>::insert(shard_index, current_index + 1, cm);
-					let new_meta_data = ShardMetaData {
-						current_index: current_index + 1,
-						current_auth_path: path,
-					};
-					LedgerShardMetaData::<T>::insert(shard_index, new_meta_data);
-					LedgerShardRoots::<T>::insert(shard_index, root);
+			let shard_index = shard_index(cm.0);
+			if LedgerShardMetaData::<T>::contains_key(shard_index) {
+				// if the current shard is not empty
+				// get current uxto, auth_path, and sibling
+				let ShardMetaData {
+					current_index,
+					current_auth_path,
+				} = LedgerShardMetaData::<T>::get(shard_index);
+				let (current_utxo, _) = LedgerShards::<T>::get(shard_index, current_index);
+				let leaf_sibling = if Pallet::<T>::is_left_child(current_index) {
+					try_default_leaf_hash().map_err(|_| Error::<T>::LedgerUpdateFail)?
 				} else {
-					// if the current shard is empty
-					// generate some dummy data
-					let current_utxo = [0u8; 32]; // a dummy one
-					let leaf_sibling = [0u8; 32]; // a dummy one
-					let ShardMetaData {
-						current_index: _,
-						current_auth_path,
-					} = ShardMetaData::default();
+					let (utxo, _) = LedgerShards::<T>::get(shard_index, current_index - 1);
+					utxo
+				};
 
-					// generate path and root
-					let (path, root) = <MantaCrypto as LedgerMerkleTree>::next_path_and_root(
-						leaf_param,
-						two_to_one_param,
-						0,
-						true,
-						&current_utxo,
-						&leaf_sibling,
-						&current_auth_path,
-						&cm.0,
-					)
-					.map_err(|_| MantaError::LedgerUpdateFail)?;
+				// generate new path and root
+				let (path, root) = <MantaCrypto as LedgerMerkleTree>::next_path_and_root(
+					leaf_param,
+					two_to_one_param,
+					current_index as usize,
+					false,
+					&current_utxo,
+					&leaf_sibling,
+					&current_auth_path,
+					&cm.0,
+				)
+				.map_err(|_| Error::<T>::LedgerUpdateFail)?;
 
-					// update ledger state
-					LedgerShards::<T>::insert(shard_index, 0, cm);
-					let new_meta_data = ShardMetaData {
-						current_index: 0,
-						current_auth_path: path,
-					};
-					LedgerShardMetaData::<T>::insert(shard_index, new_meta_data);
-					LedgerShardRoots::<T>::insert(shard_index, root);
-				}
-				UTXOSet::<T>::insert(cm.0, true);
+				// update ledger state
+				// TODO: emit warning if ledger is full
+				LedgerShards::<T>::insert(shard_index, current_index + 1, cm);
+				let new_meta_data = ShardMetaData {
+					current_index: current_index + 1,
+					current_auth_path: path,
+				};
+				LedgerShardMetaData::<T>::insert(shard_index, new_meta_data);
+				LedgerShardRoots::<T>::insert(shard_index, root);
+			} else {
+				// if the current shard is empty
+				// generate some dummy data
+				let current_utxo = [0u8; 32]; // a dummy one
+				let leaf_sibling = [0u8; 32]; // a dummy one
+				let ShardMetaData {
+					current_index: _,
+					current_auth_path,
+				} = ShardMetaData::default();
+
+				// generate path and root
+				let (path, root) = <MantaCrypto as LedgerMerkleTree>::next_path_and_root(
+					leaf_param,
+					two_to_one_param,
+					0,
+					true,
+					&current_utxo,
+					&leaf_sibling,
+					&current_auth_path,
+					&cm.0,
+				)
+				.map_err(|_| Error::<T>::LedgerUpdateFail)?;
+
+				// update ledger state
+				LedgerShards::<T>::insert(shard_index, 0, cm);
+				let new_meta_data = ShardMetaData {
+					current_index: 0,
+					current_auth_path: path,
+				};
+				LedgerShardMetaData::<T>::insert(shard_index, new_meta_data);
+				LedgerShardRoots::<T>::insert(shard_index, root);
 			}
+			UTXOSet::<T>::insert(cm.0, true);
 		}
 		Ok(())
 	}

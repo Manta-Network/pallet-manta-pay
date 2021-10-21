@@ -97,7 +97,7 @@ fn mint_tokens_to_empty_pool(
 fn insert_utxo(utxo: &UTXO, commitment_set: &mut HashMap<u8, Vec<[u8; 32]>>) {
 	let shard_index = shard_index(*utxo);
 	let shard = commitment_set.entry(shard_index).or_default();
-	shard.push(utxo.clone());
+	shard.push(*utxo);
 }
 
 /// We cannot just simply use `fixed_transfer` here since it would generate wrong merkle proof
@@ -481,7 +481,7 @@ fn double_spend_in_transfer_shoud_not_work() {
 			TWO_TO_ONE_PARAMS.clone(),
 			&transfer_pk,
 			into_array_unchecked(senders),
-			into_array_unchecked(receivers.clone()),
+			into_array_unchecked(receivers),
 			&mut rng,
 		)
 		.unwrap();
@@ -535,7 +535,7 @@ fn transfer_with_invalid_zkp_should_not_work() {
 			TWO_TO_ONE_PARAMS.clone(),
 			&transfer_pk,
 			into_array_unchecked(senders),
-			into_array_unchecked(receivers.clone()),
+			into_array_unchecked(receivers),
 			&mut rng,
 		)
 		.unwrap();
@@ -603,7 +603,7 @@ fn double_spend_in_reclaim_should_not_work() {
 			TWO_TO_ONE_PARAMS.clone(),
 			&reclaim_pk,
 			into_array_unchecked(senders),
-			receiver.clone(),
+			receiver,
 			reclaim_value,
 			&mut rng,
 		)
@@ -661,7 +661,7 @@ fn reclaim_with_invalid_zkp_should_not_work() {
 			TWO_TO_ONE_PARAMS.clone(),
 			&reclaim_pk,
 			into_array_unchecked(senders),
-			receiver.clone(),
+			receiver,
 			reclaim_value,
 			&mut rng,
 		)

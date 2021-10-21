@@ -24,21 +24,16 @@ use manta_api::{
 	},
 };
 use manta_asset::{shard_index, TEST_ASSET, UTXO};
-use manta_crypto::{
-	commitment_parameters, leaf_parameters, two_to_one_parameters, Groth16Pk, MantaSerDes,
-};
-use manta_data::{
-	BuildMetadata, MintData, MintPayload, PrivateTransferPayload, ReclaimPayload,
-	MINT_PAYLOAD_SIZE, PRIVATE_TRANSFER_PAYLOAD_SIZE, RECLAIM_PAYLOAD_SIZE,
-};
+use manta_crypto::{commitment_parameters, leaf_parameters, two_to_one_parameters, MantaSerDes};
+use manta_data::{BuildMetadata, MintPayload, PrivateTransferPayload, ReclaimPayload};
 use rand_chacha::{rand_core::SeedableRng, ChaCha20Rng};
-use std::{collections::HashMap, fs::File, io::Read, sync::Once};
+use std::collections::HashMap;
 
 /// Insert utxo to the commitment set
 fn insert_utxo(utxo: &UTXO, commitment_set: &mut HashMap<u8, Vec<[u8; 32]>>) {
 	let shard_index = shard_index(*utxo);
 	let shard = commitment_set.entry(shard_index).or_default();
-	shard.push(utxo.clone());
+	shard.push(*utxo);
 }
 
 /// Generate a precomputed coins

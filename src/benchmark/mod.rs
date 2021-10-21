@@ -44,7 +44,7 @@ benchmarks! {
 		let total = 1000_000u128;
 	}: init_asset (RawOrigin::Signed(caller.clone()), TEST_ASSET, total)
 	verify {
-		assert_last_event::<T>(Event::Issued(TEST_ASSET, caller.clone(), total).into());
+		assert_last_event::<T>(Event::Issued(TEST_ASSET, caller, total).into());
 		assert_eq!(<TotalSupply<T>>::get(TEST_ASSET), total);
 	}
 
@@ -63,7 +63,7 @@ benchmarks! {
 		transfer_amount)
 	verify {
 		assert_last_event::<T>(
-			Event::Transferred(TEST_ASSET, caller.clone(), recipient.clone(), transfer_amount).into()
+			Event::Transferred(TEST_ASSET, caller, recipient.clone(), transfer_amount).into()
 		);
 		assert_eq!(Balances::<T>::get(&recipient, TEST_ASSET), transfer_amount);
 	}
@@ -105,7 +105,7 @@ benchmarks! {
 		RawOrigin::Signed(caller.clone()),
 		transfer_data)
 	verify {
-		assert_last_event::<T>(Event::PrivateTransferred(caller.clone()).into());
+		assert_last_event::<T>(Event::PrivateTransferred(caller).into());
 		assert_eq!(TotalSupply::<T>::get(TEST_ASSET), 1000_000);
 		assert_eq!(PoolBalance::<T>::get(TEST_ASSET), 179_515);
 	}
@@ -131,7 +131,7 @@ benchmarks! {
 		reclaim_data
 	)
 	verify {
-		assert_last_event::<T>(Event::Reclaimed(TEST_ASSET, caller.clone(), 79_515).into());
+		assert_last_event::<T>(Event::Reclaimed(TEST_ASSET, caller, 79_515).into());
 		assert_eq!(TotalSupply::<T>::get(TEST_ASSET), 1000_000);
 		assert_eq!(PoolBalance::<T>::get(TEST_ASSET), 100_000);
 	}
