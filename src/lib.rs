@@ -289,8 +289,8 @@ pub mod pallet {
 			let target = T::Lookup::lookup(target)?;
 			ensure!(amount > 0, Error::<T>::AmountZero);
 			ensure!(origin_balance >= amount, Error::<T>::BalanceLow);
-			Balances::<T>::mutate(origin.clone(), asset_id, |balance| *balance -= amount);
-			Balances::<T>::mutate(target.clone(), asset_id, |balance| *balance += amount);
+			Balances::<T>::mutate(&origin, asset_id, |balance| *balance -= amount);
+			Balances::<T>::mutate(&target, asset_id, |balance| *balance += amount);
 
 			Self::deposit_event(Event::Transferred(asset_id, origin, target, amount));
 			Ok(().into())
@@ -520,7 +520,7 @@ pub mod pallet {
 			}
 
 			// mutate balance and update the pool balance
-			Balances::<T>::mutate(origin.clone(), asset_id, |balance| {
+			Balances::<T>::mutate(&origin, asset_id, |balance| {
 				*balance += reclaim_data.reclaim_value
 			});
 			PoolBalance::<T>::mutate(asset_id, |balance| *balance -= reclaim_data.reclaim_value);
