@@ -14,17 +14,12 @@
 // You should have received a copy of the GNU General Public License
 // along with pallet-manta-pay.  If not, see <http://www.gnu.org/licenses/>.
 
-//! Test utilities.
-//! Most of the code in this repo follows from
-//! https://github.com/paritytech/substrate/blob/master/frame/balances/src/tests_composite.rs
+use crate as pallet_manta_pay;
 
-#![cfg(feature = "runtime-benchmarks")]
-
-use crate::{self as pallet_manta_pay, Config};
-use ark_std::{boxed::Box, string::String, vec::Vec};
 use frame_support::parameter_types;
+
+use frame_system as system;
 use sp_core::H256;
-use sp_io;
 use sp_runtime::{
 	testing::Header,
 	traits::{BlakeTwo256, IdentityLookup},
@@ -40,10 +35,11 @@ frame_support::construct_runtime!(
 		NodeBlock = Block,
 		UncheckedExtrinsic = UncheckedExtrinsic,
 	{
-		System: frame_system::{Module, Call, Config, Storage, Event<T>},
-		MantaModule: pallet_manta_pay::{Module, Call, Storage, Event<T>},
+		System: frame_system::{Pallet, Call, Config, Storage, Event<T>},
+		MantaPayPallet: pallet_manta_pay::{Pallet, Call, Storage, Event<T>},
 	}
 );
+
 type BlockNumber = u64;
 
 parameter_types! {
@@ -51,52 +47,40 @@ parameter_types! {
 	pub const SS58Prefix: u8 = 42;
 }
 
-impl frame_system::Config for Test {
+impl system::Config for Test {
 	type BaseCallFilter = ();
+	type BlockWeights = ();
+	type BlockLength = ();
+	type DbWeight = ();
 	type Origin = Origin;
-	type Index = u64;
 	type Call = Call;
+	type Index = u64;
 	type BlockNumber = u64;
 	type Hash = H256;
 	type Hashing = BlakeTwo256;
 	type AccountId = u64;
 	type Lookup = IdentityLookup<Self::AccountId>;
 	type Header = Header;
-	type Event = ();
+	type Event = Event;
 	type BlockHashCount = BlockHashCount;
-	type DbWeight = ();
 	type Version = ();
+	type PalletInfo = PalletInfo;
 	type AccountData = ();
 	type OnNewAccount = ();
 	type OnKilledAccount = ();
 	type SystemWeightInfo = ();
-	type PalletInfo = PalletInfo;
-	type BlockWeights = ();
-	type BlockLength = ();
 	type SS58Prefix = SS58Prefix;
+	type OnSetCode = ();
 }
 
-impl Config for Test {
-	type Event = ();
+impl pallet_manta_pay::Config for Test {
+	type Event = Event;
 	type WeightInfo = ();
 }
 
-pub struct ExtBuilder {}
-
-impl Default for ExtBuilder {
-	fn default() -> Self {
-		Self {}
-	}
-}
-
-impl ExtBuilder {
-	pub fn build(self) -> sp_io::TestExternalities {
-		let t = frame_system::GenesisConfig::default()
-			.build_storage::<Test>()
-			.unwrap();
-
-		let mut ext = sp_io::TestExternalities::new(t);
-		ext.execute_with(|| System::set_block_number(1));
-		ext
-	}
+pub fn new_test_ext() -> sp_io::TestExternalities {
+	system::GenesisConfig::default()
+		.build_storage::<Test>()
+		.unwrap()
+		.into()
 }

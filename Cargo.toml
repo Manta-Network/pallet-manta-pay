@@ -1,11 +1,11 @@
 [package]
 name = "pallet-manta-pay"
-version = "3.0.1"
+version = "0.2.0"
 authors = ["Manta Network <contact@manta.network>"]
 edition = "2018"
-license = "Apache-2.0"
+license = "GPL 3.0"
 repository = "https://github.com/Manta-Network/pallet-manta-pay"
-description = "Manta pay scheme"
+description = "MantaPay Pallet"
 readme = "README.md"
 
 [package.metadata.docs.rs]
@@ -13,33 +13,30 @@ targets = ["x86_64-unknown-linux-gnu"]
 
 [dependencies]
 # Substrate dependencies
-frame-benchmarking = { default-features = false, version = '3.0.0', optional = true }
-frame-support = { default-features = false, version = '3.0.0' }
-frame-system = { default-features = false, version = '3.0.0' }
-sp-runtime = { default-features = false, version = '3.0.0' }
-sp-std = { default-features = false, version = '3.0.0' }
+frame-benchmarking = { git = 'https://github.com/paritytech/substrate.git', default-features = false, branch = "polkadot-v0.9.10", optional = true }
+frame-support = { git = 'https://github.com/paritytech/substrate.git', default-features = false, branch = "polkadot-v0.9.10" }
+frame-system = { git = 'https://github.com/paritytech/substrate.git', default-features = false, branch = "polkadot-v0.9.10" }
+sp-runtime = { git = 'https://github.com/paritytech/substrate.git', default-features = false, branch = "polkadot-v0.9.10" }
+sp-std = { git = 'https://github.com/paritytech/substrate.git', default-features = false, branch = "polkadot-v0.9.10" }
 
 # Other Dependencies
 codec = { package = "parity-scale-codec", version = "2.0.0", default-features = false, features = ["derive"] }
 data-encoding = { version = "2.3.2", default-features = false, features = [ "alloc" ] }
 log = { version = "0.4.14", default-features = false }
+rand_chacha = { version = "0.3.1", default-features = false, optional = true }
+indoc = { version = "1.0.3", default-features = false, optional = true}
 
 # Arkworks dependencies
-
 # Attention! This needs to be included before the manta dependencies.
-ark-std = { version = "0.2.0", default-features = false }
+ark-std = { version = "0.3.0", default-features = false }
+ark-serialize = { version = "0.3.0", default-features = false, features = [ "derive" ] }
 
 # Manta Dependencies
-
-# Attention! Our integration test scripts modify these dependencies with "sed" command.
-# If you need to change any of the below lines, make sure to reflect the changes in whichever script is supposed to modify them.
-# Search for "Check Pallet-Manta-Pay" in Manta-Network repositories to find the relevant scripts.
 manta-asset = { branch = "manta", git = "https://github.com/Manta-Network/manta-types", default-features = false }
 manta-crypto = { branch = "manta", git = "https://github.com/Manta-Network/manta-crypto", default-features = false }
 manta-data = { branch = "manta", git = "https://github.com/Manta-Network/manta-types", default-features = false }
 manta-error = { branch = "manta", git = "https://github.com/Manta-Network/manta-error", default-features = false }
-manta-ledger = { branch = "manta", git = "https://github.com/Manta-Network/manta-types", default-features = false }
-manta-api = { branch = "manta", git = "https://github.com/Manta-Network/manta-api", default-features = false, features = [ "std" ] }
+manta-api = { branch = "manta", git = "https://github.com/Manta-Network/manta-api", default-features = false, optional = true}
 
 [dev-dependencies]
 # benchmarking 
@@ -48,33 +45,44 @@ criterion = "0.3.4"
 
 # testing
 serde = { default-features = false, version = '1' }
-sp-core = { default-features = false, version = '3.0.0' }
-sp-io = { default-features = false, version = '3.0.0' }
+sp-core = { git = 'https://github.com/paritytech/substrate.git', default-features = false, branch = "polkadot-v0.9.10" }
+sp-io = { git = 'https://github.com/paritytech/substrate.git', default-features = false, branch = "polkadot-v0.9.10" }
 
-ark-bls12-381 = { version = "0.2.0", default-features = false, features = [ "curve" ] }
-ark-crypto-primitives = { version = "0.2.0", default-features = false, features = [ "r1cs" ] }
-ark-ed-on-bls12-381 = { version = "0.2.0", default-features = false, features = [ "r1cs" ] }
-ark-groth16 = { version = "0.2.0", default-features = false, features = [ "r1cs" ] }
-ark-ff = { version = "0.2.0", default-features = false }
-ark-relations = { version = "0.2.0", default-features = false }
-ark-serialize = { version = "0.2.0", default-features = false, features = [ "derive" ] }
+lazy_static = "1.4.0"
 
-rand_chacha = { version = "0.2.0", default-features = false }
+ark-bls12-381 = { version = "0.3.0", default-features = false, features = [ "curve" ] }
+ark-crypto-primitives = { version = "0.3.0", default-features = false, features = [ "r1cs" ] }
+ark-ed-on-bls12-381 = { version = "0.3.0", default-features = false, features = [ "r1cs" ] }
+ark-groth16 = { version = "0.3.0", default-features = false, features = [ "r1cs" ] }
+ark-ff = { version = "0.3.0", default-features = false }
+ark-relations = { version = "0.3.0", default-features = false }
+ark-serialize = { version = "0.3.0", default-features = false, features = [ "derive" ] }
 
-[[bench]]
-name = "manta_bench"
-harness = false
+rand_chacha = { version = "0.3.1", default-features = false }
+manta-api = { branch = "manta", git = "https://github.com/Manta-Network/manta-api", default-features = false, features = ["std"]}
 
 [features]
 default = [ 
 	'std' 
-	]
+]
 
 runtime-benchmarks = [
 	"frame-benchmarking",
+	"sp-runtime/runtime-benchmarks",
+	"frame-system/runtime-benchmarks",
 ]
 
 std = [
 	"frame-benchmarking/std",
 	"frame-system/std",
 ]
+
+precompute-coins = [
+	"manta-api",
+	"rand_chacha",
+	"indoc",
+]
+
+[[bin]]
+name = "precompute_coins"
+required-features = ["precompute-coins"]
