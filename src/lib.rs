@@ -102,9 +102,6 @@
 // Ensure we're `no_std` when compiling for Wasm.
 #![cfg_attr(not(feature = "std"), no_std)]
 
-use frame_support::dispatch::DispatchResult;
-pub use pallet::*;
-
 #[cfg(test)]
 mod mock;
 
@@ -114,11 +111,12 @@ mod test;
 #[cfg(feature = "runtime-benchmarks")]
 pub mod benchmark;
 
+#[allow(clippy::unnecessary_cast)] // NOTE: This file is auto-generated.
 pub mod weights;
-use sp_runtime::DispatchError;
+
 pub use weights::WeightInfo;
 
-use frame_support::ensure;
+use frame_support::{dispatch::DispatchResult, ensure};
 use manta_asset::{shard_index, AssetBalance, AssetId, MantaRandomValue, SanityCheck, UTXO};
 use manta_crypto::{
 	merkle_tree::LedgerMerkleTree, try_commitment_parameters, try_default_leaf_hash,
@@ -126,11 +124,8 @@ use manta_crypto::{
 	MantaEciesCiphertext, MantaZKPVerifier, TwoToOneHashParam,
 };
 use manta_data::{MintData, PrivateTransferData, ReclaimData, ShardMetaData};
-
+use sp_runtime::DispatchError;
 use sp_std::prelude::*;
-
-/// An abstract struct for manta-pay.
-pub struct MantaPay;
 
 #[frame_support::pallet]
 pub mod pallet {
@@ -551,6 +546,8 @@ pub mod pallet {
 		PayloadDesFail,
 	}
 }
+
+pub use pallet::*;
 
 // The main implementation block for the module.
 impl<T: Config> Pallet<T> {
