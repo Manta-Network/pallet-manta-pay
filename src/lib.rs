@@ -369,7 +369,13 @@ pub mod pallet {
 				private_transfer_data.sender_1,
 			];
 
-			// check if vn_old already spent and verfiy sender's merkle root
+			// Check that both void numbers are unique.
+			ensure!(
+				senders[0].void_number != senders[1].void_number,
+				Error::<T>::MantaCoinSpent
+			);
+
+			// Check if void numbers are already spent and verfiy sender's merkle root.
 			for sender in senders {
 				ensure!(
 					!VoidNumbers::<T>::contains_key(sender.void_number),
@@ -378,7 +384,7 @@ pub mod pallet {
 				ensure!(
 					LedgerShardRoots::<T>::get(sender.shard_index) == sender.root,
 					Error::<T>::InvalidLedgerState
-				)
+				);
 			}
 
 			// verify ZKP
@@ -400,6 +406,10 @@ pub mod pallet {
 					private_transfer_data.receiver_1.encrypted_note,
 				),
 			];
+
+			// Check that both utxos are unique.
+			ensure!(coins[0].0 != coins[1].0, Error::<T>::MantaCoinExist);
+
 			Pallet::<T>::insert_commitments(&leaf_param, &two_to_one_param, coins)
 				.map_err::<DispatchError, _>(|_| Error::<T>::LedgerUpdateFail.into())?;
 
@@ -442,8 +452,15 @@ pub mod pallet {
 			let two_to_one_param = try_two_to_one_parameters()
 				.map_err::<DispatchError, _>(|_| Error::<T>::ParamFail.into())?;
 
-			// check senders are valid: no double spend and root is valid
 			let senders = [reclaim_data.sender_0, reclaim_data.sender_1];
+
+			// Check that both void numbers are unique.
+			ensure!(
+				senders[0].void_number != senders[1].void_number,
+				Error::<T>::MantaCoinSpent
+			);
+
+			// Check if void numbers are already spent and verfiy sender's merkle root.
 			for sender in senders {
 				ensure!(
 					!VoidNumbers::<T>::contains_key(sender.void_number),
@@ -549,20 +566,26 @@ pub mod pallet {
 
 pub use pallet::*;
 
-// The main implementation block for the module.
 impl<T: Config> Pallet<T> {
-	/// Get the asset `id` balance of `who`.
-	pub fn balance(who: T::AccountId, what: AssetId) -> AssetBalance {
-		Balances::<T>::get(who, what)
+	/// Returns the balance of `account` for the asset with the given `id`.
+	#[inline]
+	pub fn balance(account: T::AccountId, id: AssetId) -> AssetBalance {
+		Balances::<T>::get(account, id)
 	}
 
-	/// Get the asset `id` total supply.
-	pub fn total_supply(what: AssetId) -> AssetBalance {
-		TotalSupply::<T>::get(what)
+	/// Returns the total supply of the asset with the given `id`.
+	#[inline]
+	pub fn total_supply(id: AssetId) -> AssetBalance {
+		TotalSupply::<T>::get(id)
 	}
 
-	/// insert commitment and ciphertext into the map,
-	/// update the merkle root and related proofs
+	/// Returns `true` if `utxo` is stored in the ledger.
+	#[inline]
+	fn utxo_exists(utxo: UTXO) -> bool {
+		UTXOSet::<T>::contains_key(utxo)
+	}
+
+	/// Inserts the new UTXOs and encrypted notes into the map, updating the merkle root and path.
 	fn insert_commitments(
 		leaf_param: &LeafHashParam,
 		two_to_one_param: &TwoToOneHashParam,
@@ -618,8 +641,7 @@ impl<T: Config> Pallet<T> {
 				let current_utxo = [0u8; 32]; // a dummy one
 				let leaf_sibling = [0u8; 32]; // a dummy one
 				let ShardMetaData {
-					current_index: _,
-					current_auth_path,
+					current_auth_path, ..
 				} = ShardMetaData::default();
 
 				// generate path and root
@@ -649,14 +671,9 @@ impl<T: Config> Pallet<T> {
 		Ok(())
 	}
 
-	/// Check if a UTXO exists in the ledger
-	fn utxo_exists(utxo: UTXO) -> bool {
-		UTXOSet::<T>::contains_key(utxo)
-	}
-
-	/// Return true iff the given index on its current level represents a left child
+	/// Returns `true` if and only if the given `index` represents a left child.
 	#[inline]
-	fn is_left_child(index_on_level: u64) -> bool {
-		index_on_level % 2 == 0
+	fn is_left_child(index: u64) -> bool {
+		index % 2 == 0
 	}
 }
