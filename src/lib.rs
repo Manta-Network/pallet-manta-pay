@@ -345,7 +345,8 @@ pub mod pallet {
 			)
 			.map_err::<DispatchError, _>(|_| Error::<T>::LedgerUpdateFail.into())?;
 
-			// update pool balance
+			// update public balance and pool balance
+			Balances::<T>::mutate(&origin, asset_id, |balance| *balance -= mint_data.value);
 			PoolBalance::<T>::mutate(asset_id, |balance| *balance += mint_data.value);
 			Self::deposit_event(Event::<T>::Minted(asset_id, origin, mint_data.value));
 			Ok(().into())
