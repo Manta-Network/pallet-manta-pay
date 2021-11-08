@@ -41,7 +41,7 @@ pub fn assert_last_event<T: Config>(generic_event: <T as Config>::Event) {
 benchmarks! {
 	init_asset {
 		let caller: T::AccountId = whitelisted_caller();
-		let total = 1000_000u128;
+		let total = 1_000_000_u128;
 	}: init_asset (RawOrigin::Signed(caller.clone()), TEST_ASSET, total)
 	verify {
 		assert_last_event::<T>(Event::Issued(TEST_ASSET, caller, total).into());
@@ -71,8 +71,8 @@ benchmarks! {
 	mint_private_asset {
 		let caller: T::AccountId = whitelisted_caller();
 		let origin: T::Origin = T::Origin::from(RawOrigin::Signed(caller.clone()));
-		<Balances<T>>::insert(&caller, TEST_ASSET, 1000_000);
-		assert!(Pallet::<T>::init_asset(origin, TEST_ASSET, 1000_000).is_ok());
+		<Balances<T>>::insert(&caller, TEST_ASSET, 1_000_000);
+		assert!(Pallet::<T>::init_asset(origin, TEST_ASSET, 1_000_000).is_ok());
 		let mut mint_bytes: Vec<u8> = Vec::new();
 		mint_bytes.extend_from_slice(COIN_1);
 		let mint_data = MintData::deserialize(&mut mint_bytes.as_ref()).unwrap();
@@ -80,15 +80,15 @@ benchmarks! {
 		RawOrigin::Signed(caller),
 		mint_data)
 	verify {
-		assert_eq!(TotalSupply::<T>::get(TEST_ASSET), 1000_000);
+		assert_eq!(TotalSupply::<T>::get(TEST_ASSET), 1_000_000);
 		assert_eq!(PoolBalance::<T>::get(TEST_ASSET), 89_757);
 	}
 
 	private_transfer {
 		let caller: T::AccountId = whitelisted_caller();
 		let origin: T::Origin = T::Origin::from(RawOrigin::Signed(caller.clone()));
-		<Balances<T>>::insert(&caller, TEST_ASSET, 1000_000);
-		assert!(Pallet::<T>::init_asset(origin.clone(), TEST_ASSET, 1000_000).is_ok());
+		<Balances<T>>::insert(&caller, TEST_ASSET, 1_000_000);
+		assert!(Pallet::<T>::init_asset(origin.clone(), TEST_ASSET, 1_000_000).is_ok());
 
 		for coin in [COIN_1, COIN_2] {
 			let mut coin_bytes: Vec<u8> = Vec::new();
@@ -106,15 +106,15 @@ benchmarks! {
 		transfer_data)
 	verify {
 		assert_last_event::<T>(Event::PrivateTransferred(caller).into());
-		assert_eq!(TotalSupply::<T>::get(TEST_ASSET), 1000_000);
+		assert_eq!(TotalSupply::<T>::get(TEST_ASSET), 1_000_000);
 		assert_eq!(PoolBalance::<T>::get(TEST_ASSET), 179_515);
 	}
 
 	reclaim {
 		let caller: T::AccountId = whitelisted_caller();
 		let origin: T::Origin = T::Origin::from(RawOrigin::Signed(caller.clone()));
-		<Balances<T>>::insert(&caller, TEST_ASSET, 1000_000);
-		assert!(Pallet::<T>::init_asset(origin.clone(), TEST_ASSET, 1000_000).is_ok());
+		<Balances<T>>::insert(&caller, TEST_ASSET, 1_000_000);
+		assert!(Pallet::<T>::init_asset(origin.clone(), TEST_ASSET, 1_000_000).is_ok());
 
 		for coin in [COIN_1, COIN_2] {
 			let mut coin_bytes: Vec<u8> = Vec::new();
@@ -132,7 +132,7 @@ benchmarks! {
 	)
 	verify {
 		assert_last_event::<T>(Event::Reclaimed(TEST_ASSET, caller, 79_515).into());
-		assert_eq!(TotalSupply::<T>::get(TEST_ASSET), 1000_000);
+		assert_eq!(TotalSupply::<T>::get(TEST_ASSET), 1_000_000);
 		assert_eq!(PoolBalance::<T>::get(TEST_ASSET), 100_000);
 	}
 }

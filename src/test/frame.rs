@@ -67,11 +67,7 @@ fn reclaim_pk() -> Groth16Pk {
 }
 
 /// Mint manta assets with specified asset_id and balances to an empty pool
-fn mint_tokens_to_empty_pool(
-	asset_id: &AssetId,
-	balances: &Vec<AssetBalance>,
-	rng: &mut ChaCha20Rng,
-) {
+fn mint_tokens_to_empty_pool(asset_id: &AssetId, balances: &[AssetBalance], rng: &mut ChaCha20Rng) {
 	// make sure the pool is empty from start
 	let mut pool = 0;
 	assert_eq!(PoolBalance::<Test>::get(asset_id), pool);
@@ -101,6 +97,7 @@ fn insert_utxo(utxo: &UTXO, commitment_set: &mut HashMap<u8, Vec<[u8; 32]>>) {
 }
 
 /// We cannot just simply use `fixed_transfer` here since it would generate wrong merkle proof
+#[allow(clippy::too_many_arguments)]
 fn sample_fixed_sender_and_receiver(
 	sender_count: usize,
 	receiver_count: usize,
@@ -118,19 +115,17 @@ fn sample_fixed_sender_and_receiver(
 		value_distribution(receiver_count, *total_receiver_balance, rng),
 	);
 
-	let sender_assets = IntoIterator::into_iter(sender_values)
+	let senders = IntoIterator::into_iter(sender_values)
 		.map(|value| {
 			let asset = fixed_asset(commit_params, asset_id, &value, rng);
 			insert_utxo(&asset.utxo, commitment_set);
 			asset
-		})
-		.collect::<Vec<_>>();
-
-	let senders = sender_assets
-		.into_iter()
-		.map(|asset| {
-			let ledger = commitment_set.get(&shard_index(asset.utxo)).unwrap();
-			asset.build(leaf_params, two_to_one_params, ledger).unwrap()
+				.build(
+					leaf_params,
+					two_to_one_params,
+					commitment_set.get(&shard_index(asset.utxo)).unwrap(),
+				)
+				.unwrap()
 		})
 		.collect::<Vec<_>>();
 
@@ -165,7 +160,7 @@ fn random_bit_flip_in_zkp(proof: &mut [u8; NUM_BYTE_ZKP], rng: &mut ChaCha20Rng)
 		0b0000_0001,
 	];
 	let bit_to_flip = rng.gen_range(0..8);
-	proof[byte_to_flip] = proof[byte_to_flip] ^ masks[bit_to_flip];
+	proof[byte_to_flip] ^= masks[bit_to_flip];
 }
 
 /// Perform `transfer_count` times random private transfer
@@ -301,7 +296,7 @@ fn reclaim_test(reclaim_count: usize, rng: &mut ChaCha20Rng) {
 			TWO_TO_ONE_PARAMS.clone(),
 			&reclaim_pk,
 			into_array_unchecked(senders),
-			receiver.clone(),
+			receiver,
 			reclaim_value,
 			rng,
 		)

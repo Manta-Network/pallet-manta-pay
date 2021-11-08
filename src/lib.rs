@@ -102,9 +102,6 @@
 // Ensure we're `no_std` when compiling for Wasm.
 #![cfg_attr(not(feature = "std"), no_std)]
 
-use frame_support::dispatch::DispatchResult;
-pub use pallet::*;
-
 #[cfg(test)]
 mod mock;
 
@@ -114,11 +111,12 @@ mod test;
 #[cfg(feature = "runtime-benchmarks")]
 pub mod benchmark;
 
+#[allow(clippy::unnecessary_cast)] // NOTE: This file is auto-generated.
 pub mod weights;
-use sp_runtime::DispatchError;
+
 pub use weights::WeightInfo;
 
-use frame_support::ensure;
+use frame_support::{dispatch::DispatchResult, ensure};
 use manta_asset::{shard_index, AssetBalance, AssetId, MantaRandomValue, SanityCheck, UTXO};
 use manta_crypto::{
 	merkle_tree::LedgerMerkleTree, try_commitment_parameters, try_default_leaf_hash,
@@ -126,11 +124,8 @@ use manta_crypto::{
 	MantaEciesCiphertext, MantaZKPVerifier, TwoToOneHashParam,
 };
 use manta_data::{MintData, PrivateTransferData, ReclaimData, ShardMetaData};
-
+use sp_runtime::DispatchError;
 use sp_std::prelude::*;
-
-/// An abstract struct for manta-pay.
-pub struct MantaPay;
 
 #[frame_support::pallet]
 pub mod pallet {
@@ -375,7 +370,13 @@ pub mod pallet {
 				private_transfer_data.sender_1,
 			];
 
-			// check if vn_old already spent and verfiy sender's merkle root
+			// Check that both void numbers are unique.
+			ensure!(
+				senders[0].void_number != senders[1].void_number,
+				Error::<T>::MantaCoinSpent
+			);
+
+			// Check if void numbers are already spent and verfiy sender's merkle root.
 			for sender in senders {
 				ensure!(
 					!VoidNumbers::<T>::contains_key(sender.void_number),
@@ -384,7 +385,7 @@ pub mod pallet {
 				ensure!(
 					LedgerShardRoots::<T>::get(sender.shard_index) == sender.root,
 					Error::<T>::InvalidLedgerState
-				)
+				);
 			}
 
 			// verify ZKP
@@ -406,6 +407,10 @@ pub mod pallet {
 					private_transfer_data.receiver_1.encrypted_note,
 				),
 			];
+
+			// Check that both utxos are unique.
+			ensure!(coins[0].0 != coins[1].0, Error::<T>::MantaCoinExist);
+
 			Pallet::<T>::insert_commitments(&leaf_param, &two_to_one_param, coins)
 				.map_err::<DispatchError, _>(|_| Error::<T>::LedgerUpdateFail.into())?;
 
@@ -448,8 +453,15 @@ pub mod pallet {
 			let two_to_one_param = try_two_to_one_parameters()
 				.map_err::<DispatchError, _>(|_| Error::<T>::ParamFail.into())?;
 
-			// check senders are valid: no double spend and root is valid
 			let senders = [reclaim_data.sender_0, reclaim_data.sender_1];
+
+			// Check that both void numbers are unique.
+			ensure!(
+				senders[0].void_number != senders[1].void_number,
+				Error::<T>::MantaCoinSpent
+			);
+
+			// Check if void numbers are already spent and verfiy sender's merkle root.
 			for sender in senders {
 				ensure!(
 					!VoidNumbers::<T>::contains_key(sender.void_number),
@@ -553,114 +565,204 @@ pub mod pallet {
 	}
 }
 
-// The main implementation block for the module.
+pub use pallet::*;
+
 impl<T: Config> Pallet<T> {
-	/// Get the asset `id` balance of `who`.
-	pub fn balance(who: T::AccountId, what: AssetId) -> AssetBalance {
-		Balances::<T>::get(who, what)
+	/// Returns the balance of `account` for the asset with the given `id`.
+	#[inline]
+	pub fn balance(account: T::AccountId, id: AssetId) -> AssetBalance {
+		Balances::<T>::get(account, id)
 	}
 
-	/// Get the asset `id` total supply.
-	pub fn total_supply(what: AssetId) -> AssetBalance {
-		TotalSupply::<T>::get(what)
+	/// Returns the total supply of the asset with the given `id`.
+	#[inline]
+	pub fn total_supply(id: AssetId) -> AssetBalance {
+		TotalSupply::<T>::get(id)
 	}
 
-	/// insert commitment and ciphertext into the map,
-	/// update the merkle root and related proofs
+	/// Returns `true` if `utxo` is stored in the ledger.
+	#[inline]
+	fn utxo_exists(utxo: UTXO) -> bool {
+		UTXOSet::<T>::contains_key(utxo)
+	}
+
+	/// Returns the `commitments` split into the shards they will be inserted into.
+	#[inline]
+	fn split_commitments_by_shard(
+		commitments: Vec<(UTXO, MantaEciesCiphertext)>,
+	) -> Result<Vec<ShardCommitments>, Error<T>> {
+		let mut shards = Vec::<ShardCommitments>::new();
+		for cm in commitments {
+			ensure!(!Self::utxo_exists(cm.0), Error::<T>::LedgerUpdateFail);
+			let index = shard_index(cm.0);
+			match shards.iter_mut().find(move |s| s.index == index) {
+				Some(shard) => shard.commitments.push(cm),
+				_ => shards.push(ShardCommitments {
+					index,
+					commitments: vec![cm],
+				}),
+			}
+		}
+		// TODO: Loop over each shard and emit error if shard would overflow.
+		Ok(shards)
+	}
+
+	/// Loads the `ShardUpdatingData` from the ledger for the shard at `shard_index`, returning
+	/// a default value if the shard is empty.
+	#[inline]
+	fn load_shard_updating_data(shard_index: u8) -> Result<ShardUpdatingData, Error<T>> {
+		Ok(match LedgerShardMetaData::<T>::try_get(shard_index) {
+			Ok(metadata) => ShardUpdatingData {
+				is_empty: false,
+				current_utxo: LedgerShards::<T>::get(shard_index, metadata.current_index).0,
+				leaf_sibling: Self::get_sibling_utxo(metadata.current_index, || {
+					LedgerShards::<T>::get(shard_index, metadata.current_index - 1).0
+				})?,
+				metadata,
+			},
+			_ => Default::default(),
+		})
+	}
+
+	/// Generates the data required on updating the ledger for the given `shard`.
+	#[inline]
+	fn generate_shard_update(
+		leaf_param: &LeafHashParam,
+		two_to_one_param: &TwoToOneHashParam,
+		shard: ShardCommitments,
+	) -> Result<ShardUpdate, Error<T>> {
+		let ShardUpdatingData {
+			mut is_empty,
+			mut current_utxo,
+			mut leaf_sibling,
+			metadata: ShardMetaData {
+				mut current_index,
+				mut current_auth_path,
+			},
+		} = Self::load_shard_updating_data(shard.index)?;
+		let mut update = ShardUpdate {
+			shard,
+			root: Default::default(),
+			metadata: ShardMetaData {
+				current_index: current_index.wrapping_sub(is_empty as u64),
+				current_auth_path,
+			},
+		};
+		for (cm, _) in &update.shard.commitments {
+			let (path, root) = <MantaCrypto as LedgerMerkleTree>::next_path_and_root(
+				leaf_param,
+				two_to_one_param,
+				current_index as usize,
+				is_empty,
+				&current_utxo,
+				&leaf_sibling,
+				&current_auth_path,
+				cm,
+			)
+			.map_err(move |_| Error::<T>::LedgerUpdateFail)?;
+			if !is_empty {
+				current_index += 1;
+			}
+			is_empty = false;
+			leaf_sibling = Self::get_sibling_utxo(current_index, move || current_utxo)?;
+			current_utxo = *cm;
+			current_auth_path = path;
+			update.root = root;
+		}
+		update.metadata.current_auth_path = current_auth_path;
+		Ok(update)
+	}
+
+	/// Inserts the new UTXOs and encrypted notes into the map, updating the merkle root and path.
+	#[inline]
 	fn insert_commitments(
 		leaf_param: &LeafHashParam,
 		two_to_one_param: &TwoToOneHashParam,
 		commitments: Vec<(UTXO, MantaEciesCiphertext)>,
 	) -> DispatchResult {
-		for cm in commitments {
-			ensure!(
-				!Pallet::<T>::utxo_exists(cm.0),
-				Error::<T>::LedgerUpdateFail
-			);
-
-			let shard_index = shard_index(cm.0);
-			if LedgerShardMetaData::<T>::contains_key(shard_index) {
-				// if the current shard is not empty
-				// get current uxto, auth_path, and sibling
-				let ShardMetaData {
-					current_index,
-					current_auth_path,
-				} = LedgerShardMetaData::<T>::get(shard_index);
-				let (current_utxo, _) = LedgerShards::<T>::get(shard_index, current_index);
-				let leaf_sibling = if Pallet::<T>::is_left_child(current_index) {
-					try_default_leaf_hash().map_err(|_| Error::<T>::LedgerUpdateFail)?
-				} else {
-					let (utxo, _) = LedgerShards::<T>::get(shard_index, current_index - 1);
-					utxo
-				};
-
-				// generate new path and root
-				let (path, root) = <MantaCrypto as LedgerMerkleTree>::next_path_and_root(
-					leaf_param,
-					two_to_one_param,
-					current_index as usize,
-					false,
-					&current_utxo,
-					&leaf_sibling,
-					&current_auth_path,
-					&cm.0,
-				)
-				.map_err(|_| Error::<T>::LedgerUpdateFail)?;
-
-				// update ledger state
-				// TODO: emit warning if ledger is full
-				LedgerShards::<T>::insert(shard_index, current_index + 1, cm);
-				let new_meta_data = ShardMetaData {
-					current_index: current_index + 1,
-					current_auth_path: path,
-				};
-				LedgerShardMetaData::<T>::insert(shard_index, new_meta_data);
-				LedgerShardRoots::<T>::insert(shard_index, root);
-			} else {
-				// if the current shard is empty
-				// generate some dummy data
-				let current_utxo = [0u8; 32]; // a dummy one
-				let leaf_sibling = [0u8; 32]; // a dummy one
-				let ShardMetaData {
-					current_index: _,
-					current_auth_path,
-				} = ShardMetaData::default();
-
-				// generate path and root
-				let (path, root) = <MantaCrypto as LedgerMerkleTree>::next_path_and_root(
-					leaf_param,
-					two_to_one_param,
-					0,
-					true,
-					&current_utxo,
-					&leaf_sibling,
-					&current_auth_path,
-					&cm.0,
-				)
-				.map_err(|_| Error::<T>::LedgerUpdateFail)?;
-
-				// update ledger state
-				LedgerShards::<T>::insert(shard_index, 0, cm);
-				let new_meta_data = ShardMetaData {
-					current_index: 0,
-					current_auth_path: path,
-				};
-				LedgerShardMetaData::<T>::insert(shard_index, new_meta_data);
-				LedgerShardRoots::<T>::insert(shard_index, root);
+		if commitments.is_empty() {
+			return Ok(());
+		}
+		let updates = Self::split_commitments_by_shard(commitments)?
+			.into_iter()
+			.map(|shard| Self::generate_shard_update(leaf_param, two_to_one_param, shard))
+			.collect::<Result<Vec<_>, Error<T>>>()?;
+		for ShardUpdate {
+			shard,
+			root,
+			mut metadata,
+		} in updates
+		{
+			for cm in shard.commitments {
+				metadata.current_index = metadata.current_index.wrapping_add(1);
+				LedgerShards::<T>::insert(shard.index, metadata.current_index, cm);
+				UTXOSet::<T>::insert(cm.0, true);
 			}
-			UTXOSet::<T>::insert(cm.0, true);
+			LedgerShardMetaData::<T>::insert(shard.index, metadata);
+			LedgerShardRoots::<T>::insert(shard.index, root);
 		}
 		Ok(())
 	}
 
-	/// Check if a UTXO exists in the ledger
-	fn utxo_exists(utxo: UTXO) -> bool {
-		UTXOSet::<T>::contains_key(utxo)
-	}
-
-	/// Return true iff the given index on its current level represents a left child
+	/// Returns the sibling of the node at the given `index`, using `previous` to get the node to
+	/// the left of `index` if it is the sibling.
 	#[inline]
-	fn is_left_child(index_on_level: u64) -> bool {
-		index_on_level % 2 == 0
+	fn get_sibling_utxo<F>(index: u64, previous: F) -> Result<UTXO, Error<T>>
+	where
+		F: FnOnce() -> UTXO,
+	{
+		if index % 2 == 0 {
+			try_default_leaf_hash().map_err(move |_| Error::<T>::LedgerUpdateFail)
+		} else {
+			Ok(previous())
+		}
 	}
+}
+
+/// Shard Commitments
+struct ShardCommitments {
+	/// Index of the target shard
+	index: u8,
+
+	/// Commitments to insert
+	commitments: Vec<(UTXO, MantaEciesCiphertext)>,
+}
+
+/// Shard Updating Data
+struct ShardUpdatingData {
+	/// Empty Shard Flag
+	is_empty: bool,
+
+	/// Current UTXO
+	current_utxo: UTXO,
+
+	/// Sibling to the Current UTXO
+	leaf_sibling: UTXO,
+
+	/// Shard Metadata
+	metadata: ShardMetaData,
+}
+
+impl Default for ShardUpdatingData {
+	#[inline]
+	fn default() -> Self {
+		Self {
+			is_empty: true,
+			current_utxo: Default::default(),
+			leaf_sibling: Default::default(),
+			metadata: Default::default(),
+		}
+	}
+}
+
+/// Shard Update
+struct ShardUpdate {
+	/// Shard Index and Commitments to Insert
+	shard: ShardCommitments,
+
+	/// New Root
+	root: MantaRandomValue,
+
+	/// New Metadata
+	metadata: ShardMetaData,
 }
