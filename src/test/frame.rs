@@ -318,11 +318,7 @@ fn reclaim_test(reclaim_count: usize, rng: &mut ChaCha20Rng) {
 
 // Init tests:
 fn initialize_test(asset_id: &AssetId, amount: &AssetBalance) {
-	MantaPayPallet::init_asset(
-		1,
-		*asset_id,
-		*amount
-	);
+	MantaPayPallet::init_asset(1, *asset_id, *amount);
 	assert_eq!(MantaPayPallet::balance(1, *asset_id), *amount);
 	assert_eq!(PoolBalance::<Test>::get(*asset_id), 0);
 }

@@ -133,7 +133,7 @@ pub mod pallet {
 	use frame_support::pallet_prelude::*;
 	use frame_system::pallet_prelude::*;
 	use manta_crypto::{RECLAIM_VK, TRANSFER_VK};
-	use sp_runtime::{traits::StaticLookup};
+	use sp_runtime::traits::StaticLookup;
 
 	#[pallet::pallet]
 	#[pallet::generate_store(pub(super) trait Store)]
@@ -563,10 +563,7 @@ impl<T: Config> Pallet<T> {
 
 	/// Init testnet asset
 	#[inline]
-	fn init_asset(owner: T::AccountId,
-		asset_id: AssetId,
-		total: AssetBalance,
-	)  {
+	fn init_asset(owner: T::AccountId, asset_id: AssetId, total: AssetBalance) {
 		// initialize the asset with `total` number of supplies
 		// the total number of private asset (pool balance) remain 0
 		// the assets is credit to the sender's account
