@@ -25,6 +25,7 @@ data-encoding = { version = "2.3.2", default-features = false, features = [ "all
 log = { version = "0.4.14", default-features = false }
 rand_chacha = { version = "0.3.1", default-features = false, optional = true }
 indoc = { version = "1.0.3", default-features = false, optional = true}
+hex-literal = "0.3.3"
 
 # Arkworks dependencies
 # Attention! This needs to be included before the manta dependencies.

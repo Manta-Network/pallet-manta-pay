@@ -39,20 +39,12 @@ pub fn assert_last_event<T: Config>(generic_event: <T as Config>::Event) {
 }
 
 benchmarks! {
-	init_asset {
-		let caller: T::AccountId = whitelisted_caller();
-		let total = 1_000_000_u128;
-	}: init_asset (RawOrigin::Signed(caller.clone()), TEST_ASSET, total)
-	verify {
-		assert_last_event::<T>(Event::Issued(TEST_ASSET, caller, total).into());
-		assert_eq!(<TotalSupply<T>>::get(TEST_ASSET), total);
-	}
 
 	transfer_asset {
 		let caller: T::AccountId = whitelisted_caller();
 		let origin: T::Origin = T::Origin::from(RawOrigin::Signed(caller.clone()));
 		Balances::<T>::insert(&caller, TEST_ASSET, 1_000);
-		assert!(Pallet::<T>::init_asset(origin, TEST_ASSET, 1_000).is_ok());
+		Pallet::<T>::init_asset(caller.clone(), TEST_ASSET, 1_000);
 		let recipient: T::AccountId = account("recipient", 0, SEED);
 		let recipient_lookup: <T::Lookup as StaticLookup>::Source = T::Lookup::unlookup(recipient.clone());
 		let transfer_amount = 10;
@@ -72,7 +64,7 @@ benchmarks! {
 		let caller: T::AccountId = whitelisted_caller();
 		let origin: T::Origin = T::Origin::from(RawOrigin::Signed(caller.clone()));
 		<Balances<T>>::insert(&caller, TEST_ASSET, 1_000_000);
-		assert!(Pallet::<T>::init_asset(origin, TEST_ASSET, 1_000_000).is_ok());
+		Pallet::<T>::init_asset(caller.clone(), TEST_ASSET, 1_000_000);
 		let mut mint_bytes: Vec<u8> = Vec::new();
 		mint_bytes.extend_from_slice(COIN_1);
 		let mint_data = MintData::deserialize(&mut mint_bytes.as_ref()).unwrap();
@@ -88,7 +80,7 @@ benchmarks! {
 		let caller: T::AccountId = whitelisted_caller();
 		let origin: T::Origin = T::Origin::from(RawOrigin::Signed(caller.clone()));
 		<Balances<T>>::insert(&caller, TEST_ASSET, 1_000_000);
-		assert!(Pallet::<T>::init_asset(origin.clone(), TEST_ASSET, 1_000_000).is_ok());
+		Pallet::<T>::init_asset(caller.clone(), TEST_ASSET, 1_000_000);
 
 		for coin in [COIN_1, COIN_2] {
 			let mut coin_bytes: Vec<u8> = Vec::new();
@@ -114,7 +106,7 @@ benchmarks! {
 		let caller: T::AccountId = whitelisted_caller();
 		let origin: T::Origin = T::Origin::from(RawOrigin::Signed(caller.clone()));
 		<Balances<T>>::insert(&caller, TEST_ASSET, 1_000_000);
-		assert!(Pallet::<T>::init_asset(origin.clone(), TEST_ASSET, 1_000_000).is_ok());
+		Pallet::<T>::init_asset(caller.clone(), TEST_ASSET, 1_000_000);
 
 		for coin in [COIN_1, COIN_2] {
 			let mut coin_bytes: Vec<u8> = Vec::new();

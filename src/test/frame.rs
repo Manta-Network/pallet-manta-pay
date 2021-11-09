@@ -23,7 +23,7 @@ use manta_api::{
 	generate_mint_struct, generate_private_transfer_struct, generate_reclaim_struct,
 	zkp::{keys::write_zkp_keys, sample::*},
 };
-use manta_asset::{MantaAsset, MantaAssetProcessedReceiver, Sampling, NUM_BYTE_ZKP, TEST_ASSET};
+use manta_asset::{MantaAsset, MantaAssetProcessedReceiver, Sampling, NUM_BYTE_ZKP};
 use manta_crypto::{
 	commitment_parameters, leaf_parameters, two_to_one_parameters, CommitmentParam, Groth16Pk,
 	LeafHashParam, MantaSerDes, Parameter, TwoToOneHashParam,
@@ -317,27 +317,12 @@ fn reclaim_test(reclaim_count: usize, rng: &mut ChaCha20Rng) {
 }
 
 // Init tests:
-#[test]
-fn cannot_init_twice() {
-	new_test_ext().execute_with(|| {
-		assert_ok!(MantaPayPallet::init_asset(
-			Origin::signed(1),
-			TEST_ASSET,
-			100
-		));
-		assert_noop!(
-			MantaPayPallet::init_asset(Origin::signed(1), TEST_ASSET, 100),
-			Error::<Test>::AlreadyInitialized
-		);
-	});
-}
-
 fn initialize_test(asset_id: &AssetId, amount: &AssetBalance) {
-	assert_ok!(MantaPayPallet::init_asset(
-		Origin::signed(1),
+	MantaPayPallet::init_asset(
+		1,
 		*asset_id,
 		*amount
-	));
+	);
 	assert_eq!(MantaPayPallet::balance(1, *asset_id), *amount);
 	assert_eq!(PoolBalance::<Test>::get(*asset_id), 0);
 }
