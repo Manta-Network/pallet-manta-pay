@@ -59,7 +59,7 @@ ark-relations = { version = "0.3.0", default-features = false }
 ark-serialize = { version = "0.3.0", default-features = false, features = [ "derive" ] }
 
 rand_chacha = { version = "0.3.1", default-features = false }
-manta-api = { branch = "manta", git = "https://github.com/Manta-Network/manta-api", default-features = false, features = ["std"]}
+manta-api = { branch = "manta", git = "https://github.com/Manta-Network/manta-api", default-features = false, features = ["zkp-keygen", "std"]}
 
 [features]
 default = [ 
