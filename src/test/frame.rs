@@ -589,7 +589,7 @@ fn double_spend_in_reclaim_should_not_work() {
 		// double spend should fail
 		assert_noop!(
 			MantaPayPallet::reclaim(Origin::signed(1), reclaim_data),
-			Error::<Test>::MantaCoinSpent,
+			Error::<Test>::PoolOverdrawn,
 		);
 	});
 }

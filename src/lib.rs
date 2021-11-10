@@ -115,7 +115,7 @@ pub mod weights;
 
 pub use weights::WeightInfo;
 
-use frame_support::{dispatch::DispatchResult, ensure};
+use frame_support::{dispatch::DispatchResult, ensure, fail};
 use manta_asset::{shard_index, AssetBalance, AssetId, MantaRandomValue, SanityCheck, UTXO};
 use manta_crypto::{
 	merkle_tree::LedgerMerkleTree, try_commitment_parameters, try_default_leaf_hash,
@@ -411,12 +411,14 @@ pub mod pallet {
 			// make sure it is properly signed
 			let origin = ensure_signed(origin)?;
 
-			// make sure the asset_id exists
+			// make sure that the pool balance can be withdrawn from
 			let asset_id = reclaim_data.asset_id;
-			ensure!(
-				TotalSupply::<T>::contains_key(asset_id),
-				Error::<T>::BasecoinNotInit
-			);
+			let reclaim_value = reclaim_data.reclaim_value;
+			match PoolBalance::<T>::try_get(asset_id) {
+				Ok(balance) if balance < reclaim_value => fail!(Error::<T>::PoolOverdrawn),
+				Err(_) => fail!(Error::<T>::BasecoinNotInit),
+				_ => {}
+			}
 
 			// get the params of hashes
 			let leaf_param = try_leaf_parameters()
@@ -470,17 +472,11 @@ pub mod pallet {
 			}
 
 			// mutate balance and update the pool balance
-			Balances::<T>::mutate(&origin, asset_id, |balance| {
-				*balance += reclaim_data.reclaim_value
-			});
-			PoolBalance::<T>::mutate(asset_id, |balance| *balance -= reclaim_data.reclaim_value);
+			PoolBalance::<T>::mutate(asset_id, |balance| *balance -= reclaim_value);
+			Balances::<T>::mutate(&origin, asset_id, |balance| *balance += reclaim_value);
 
 			// register the event
-			Self::deposit_event(Event::Reclaimed(
-				asset_id,
-				origin,
-				reclaim_data.reclaim_value,
-			));
+			Self::deposit_event(Event::Reclaimed(asset_id, origin, reclaim_value));
 			Ok(().into())
 		}
 	}
