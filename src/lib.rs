@@ -57,7 +57,6 @@
 //!
 //! ### Dispatchable Functions
 //!
-//! * `init_asset` - Issues the total supply of a new fungible asset to the account of the caller of the function.
 //! * `transfer_asset` - Transfers an `amount` of units of fungible asset `id` from the balance of
 //! the function caller's account (`origin`) to a `target` account.
 //! * `mint_private_asset` - Converting an `amount` of units of fungible asset `id` from the caller to a private UTXO.
@@ -222,8 +221,8 @@ pub mod pallet {
 	#[pallet::genesis_build]
 	impl<T: Config> GenesisBuild<T> for GenesisConfig<T> {
 		fn build(&self) {
-			for (asset, supply) in self.assets.clone() {
-				Pallet::<T>::init_asset(self.owner.clone(), asset, supply);
+			for (asset, supply) in &self.assets {
+				Pallet::<T>::init_asset(&self.owner, *asset, *supply);
 			}
 		}
 	}
@@ -561,13 +560,13 @@ impl<T: Config> Pallet<T> {
 
 	/// Init testnet asset
 	#[inline]
-	fn init_asset(owner: T::AccountId, asset_id: AssetId, total: AssetBalance) {
+	fn init_asset(owner: &T::AccountId, asset_id: AssetId, total: AssetBalance) {
 		// initialize the asset with `total` number of supplies
 		// the total number of private asset (pool balance) remain 0
 		// the assets is credit to the sender's account
 		PoolBalance::<T>::insert(asset_id, 0);
 		TotalSupply::<T>::insert(asset_id, total);
-		Balances::<T>::insert(&owner, asset_id, total);
+		Balances::<T>::insert(owner, asset_id, total);
 	}
 
 	/// Returns the `commitments` split into the shards they will be inserted into.

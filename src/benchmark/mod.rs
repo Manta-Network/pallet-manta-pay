@@ -44,7 +44,7 @@ benchmarks! {
 		let caller: T::AccountId = whitelisted_caller();
 		let origin: T::Origin = T::Origin::from(RawOrigin::Signed(caller.clone()));
 		Balances::<T>::insert(&caller, TEST_ASSET, 1_000);
-		Pallet::<T>::init_asset(caller.clone(), TEST_ASSET, 1_000);
+		Pallet::<T>::init_asset(&caller, TEST_ASSET, 1_000);
 		let recipient: T::AccountId = account("recipient", 0, SEED);
 		let recipient_lookup: <T::Lookup as StaticLookup>::Source = T::Lookup::unlookup(recipient.clone());
 		let transfer_amount = 10;
@@ -64,7 +64,7 @@ benchmarks! {
 		let caller: T::AccountId = whitelisted_caller();
 		let origin: T::Origin = T::Origin::from(RawOrigin::Signed(caller.clone()));
 		<Balances<T>>::insert(&caller, TEST_ASSET, 1_000_000);
-		Pallet::<T>::init_asset(caller.clone(), TEST_ASSET, 1_000_000);
+		Pallet::<T>::init_asset(&caller, TEST_ASSET, 1_000_000);
 		let mut mint_bytes: Vec<u8> = Vec::new();
 		mint_bytes.extend_from_slice(COIN_1);
 		let mint_data = MintData::deserialize(&mut mint_bytes.as_ref()).unwrap();
@@ -80,7 +80,7 @@ benchmarks! {
 		let caller: T::AccountId = whitelisted_caller();
 		let origin: T::Origin = T::Origin::from(RawOrigin::Signed(caller.clone()));
 		<Balances<T>>::insert(&caller, TEST_ASSET, 1_000_000);
-		Pallet::<T>::init_asset(caller.clone(), TEST_ASSET, 1_000_000);
+		Pallet::<T>::init_asset(&caller, TEST_ASSET, 1_000_000);
 
 		for coin in [COIN_1, COIN_2] {
 			let mut coin_bytes: Vec<u8> = Vec::new();
@@ -106,7 +106,7 @@ benchmarks! {
 		let caller: T::AccountId = whitelisted_caller();
 		let origin: T::Origin = T::Origin::from(RawOrigin::Signed(caller.clone()));
 		<Balances<T>>::insert(&caller, TEST_ASSET, 1_000_000);
-		Pallet::<T>::init_asset(caller.clone(), TEST_ASSET, 1_000_000);
+		Pallet::<T>::init_asset(&caller, TEST_ASSET, 1_000_000);
 
 		for coin in [COIN_1, COIN_2] {
 			let mut coin_bytes: Vec<u8> = Vec::new();
