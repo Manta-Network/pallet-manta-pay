@@ -57,7 +57,6 @@
 //!
 //! ### Dispatchable Functions
 //!
-//! * `init_asset` - Issues the total supply of a new fungible asset to the account of the caller of the function.
 //! * `transfer_asset` - Transfers an `amount` of units of fungible asset `id` from the balance of
 //! the function caller's account (`origin`) to a `target` account.
 //! * `mint_private_asset` - Converting an `amount` of units of fungible asset `id` from the caller to a private UTXO.
@@ -205,21 +204,27 @@ pub mod pallet {
 
 	#[pallet::genesis_config]
 	pub struct GenesisConfig<T: Config> {
-		_phantom: sp_std::marker::PhantomData<T>,
+		pub owner: T::AccountId,
+		pub assets: Vec<(AssetId, AssetBalance)>,
 	}
 
 	#[cfg(feature = "std")]
 	impl<T: Config> Default for GenesisConfig<T> {
 		fn default() -> Self {
 			GenesisConfig {
-				_phantom: Default::default(),
+				owner: Default::default(),
+				assets: Default::default(),
 			}
 		}
 	}
 
 	#[pallet::genesis_build]
 	impl<T: Config> GenesisBuild<T> for GenesisConfig<T> {
-		fn build(&self) {}
+		fn build(&self) {
+			for (asset, supply) in &self.assets {
+				Pallet::<T>::init_asset(&self.owner, *asset, *supply);
+			}
+		}
 	}
 
 	#[pallet::call]
@@ -227,39 +232,6 @@ pub mod pallet {
 		/// Issue a new class of fungible assets. There are, and will only ever be, `total`
 		/// such assets and they'll all belong to the `origin` initially. It will have an
 		/// identifier `AssetId` instance: this will be specified in the `Issued` event.
-		/// FIXME: consider init a fix amount of tokens in when configuring genesis
-		/// FIXME: this part need to move out of pallet-manta-pay
-		/// # <weight>
-		/// - `O(1)`
-		/// - 1 storage mutation (codec `O(1)`).
-		/// - 2 storage writes (codec `O(1)`).
-		/// - 1 event.
-		/// # </weight>
-		#[pallet::weight(T::WeightInfo::init_asset())]
-		pub fn init_asset(
-			origin: OriginFor<T>,
-			asset_id: AssetId,
-			total: AssetBalance,
-		) -> DispatchResultWithPostInfo {
-			let origin = ensure_signed(origin)?;
-
-			// if the asset_id has a total suply != 0, then this asset is initialized
-			ensure!(
-				!TotalSupply::<T>::contains_key(&asset_id),
-				<Error<T>>::AlreadyInitialized
-			);
-
-			// initialize the asset with `total` number of supplies
-			// the total number of private asset (pool balance) remain 0
-			// the assets is credit to the sender's account
-			PoolBalance::<T>::insert(asset_id, 0);
-			TotalSupply::<T>::insert(asset_id, total);
-			Balances::<T>::insert(&origin, asset_id, total);
-
-			// deposit the event then update the storage
-			Self::deposit_event(Event::Issued(asset_id, origin, total));
-			Ok(().into())
-		}
 
 		/// Move some assets from one holder to another.
 		///
@@ -584,6 +556,17 @@ impl<T: Config> Pallet<T> {
 	#[inline]
 	fn utxo_exists(utxo: UTXO) -> bool {
 		UTXOSet::<T>::contains_key(utxo)
+	}
+
+	/// Init testnet asset
+	#[inline]
+	fn init_asset(owner: &T::AccountId, asset_id: AssetId, total: AssetBalance) {
+		// initialize the asset with `total` number of supplies
+		// the total number of private asset (pool balance) remain 0
+		// the assets is credit to the sender's account
+		PoolBalance::<T>::insert(asset_id, 0);
+		TotalSupply::<T>::insert(asset_id, total);
+		Balances::<T>::insert(owner, asset_id, total);
 	}
 
 	/// Returns the `commitments` split into the shards they will be inserted into.

@@ -1,6 +1,6 @@
 [package]
 name = "pallet-manta-pay"
-version = "0.2.0"
+version = "0.2.1"
 authors = ["Manta Network <contact@manta.network>"]
 edition = "2018"
 license = "GPL 3.0"
