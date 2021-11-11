@@ -23,7 +23,7 @@ use manta_api::{
 	generate_mint_struct, generate_private_transfer_struct, generate_reclaim_struct,
 	zkp::{keys::write_zkp_keys, sample::*},
 };
-use manta_asset::{MantaAsset, MantaAssetProcessedReceiver, Sampling, NUM_BYTE_ZKP};
+use manta_asset::{MantaAsset, MantaAssetProcessedReceiver, NUM_BYTE_ZKP};
 use manta_crypto::{
 	commitment_parameters, leaf_parameters, two_to_one_parameters, CommitmentParam, Groth16Pk,
 	LeafHashParam, MantaSerDes, Parameter, TwoToOneHashParam,
@@ -67,14 +67,14 @@ fn reclaim_pk() -> Groth16Pk {
 }
 
 /// Mint manta assets with specified asset_id and balances to an empty pool
-fn mint_tokens_to_empty_pool(asset_id: &AssetId, balances: &[AssetBalance], rng: &mut ChaCha20Rng) {
+fn mint_tokens_to_empty_pool(asset_id: AssetId, balances: &[AssetBalance], rng: &mut ChaCha20Rng) {
 	// make sure the pool is empty from start
 	let mut pool = 0;
 	assert_eq!(PoolBalance::<Test>::get(asset_id), pool);
 
 	for token_value in balances {
 		// build and mint token
-		let asset = fixed_asset(&COMMIT_PARAMS, asset_id, token_value, rng);
+		let asset = fixed_asset(&COMMIT_PARAMS, asset_id, *token_value, rng);
 		let mint_data = generate_mint_struct(&asset);
 		assert_ok!(MantaPayPallet::mint_private_asset(
 			Origin::signed(1),
@@ -104,20 +104,20 @@ fn sample_fixed_sender_and_receiver(
 	leaf_params: &LeafHashParam,
 	two_to_one_params: &TwoToOneHashParam,
 	commit_params: &CommitmentParam,
-	asset_id: &AssetId,
-	total_sender_balance: &AssetBalance,
-	total_receiver_balance: &AssetBalance,
+	asset_id: AssetId,
+	total_sender_balance: AssetBalance,
+	total_receiver_balance: AssetBalance,
 	commitment_set: &mut HashMap<u8, Vec<[u8; 32]>>,
 	rng: &mut ChaCha20Rng,
 ) -> (Vec<SenderMetaData>, Vec<MantaAssetProcessedReceiver>) {
 	let (sender_values, receiver_values) = (
-		value_distribution(sender_count, *total_sender_balance, rng),
-		value_distribution(receiver_count, *total_receiver_balance, rng),
+		value_distribution(sender_count, total_sender_balance, rng),
+		value_distribution(receiver_count, total_receiver_balance, rng),
 	);
 
 	let senders = IntoIterator::into_iter(sender_values)
 		.map(|value| {
-			let asset = fixed_asset(commit_params, asset_id, &value, rng);
+			let asset = fixed_asset(commit_params, asset_id, value, rng);
 			insert_utxo(&asset.utxo, commitment_set);
 			asset
 				.build(
@@ -130,7 +130,7 @@ fn sample_fixed_sender_and_receiver(
 		.collect::<Vec<_>>();
 
 	let receivers = IntoIterator::into_iter(receiver_values)
-		.map(|value| fixed_receiver(commit_params, asset_id, &value, rng))
+		.map(|value| fixed_receiver(commit_params, asset_id, value, rng))
 		.collect::<Vec<_>>();
 	(senders, receivers)
 }
@@ -169,7 +169,7 @@ fn transfer_test(transfer_count: usize, rng: &mut ChaCha20Rng) {
 	let asset_id = rng.gen();
 	let total_balance: AssetBalance = rng.gen();
 	let balances: Vec<AssetBalance> = value_distribution(transfer_count, total_balance, rng);
-	initialize_test(&asset_id, &total_balance);
+	initialize_test(asset_id, total_balance);
 
 	let mut utxo_set = HashMap::new();
 	let mut current_pool_balance = 0;
@@ -181,9 +181,9 @@ fn transfer_test(transfer_count: usize, rng: &mut ChaCha20Rng) {
 			&LEAF_PARAMS,
 			&TWO_TO_ONE_PARAMS,
 			&COMMIT_PARAMS,
-			&asset_id,
-			&balance,
-			&balance,
+			asset_id,
+			balance,
+			balance,
 			&mut utxo_set,
 			rng,
 		);
@@ -254,7 +254,7 @@ fn reclaim_test(reclaim_count: usize, rng: &mut ChaCha20Rng) {
 	let asset_id = rng.gen();
 	let total_balance = rng.gen();
 	let balances: Vec<AssetBalance> = value_distribution(reclaim_count, total_balance, rng);
-	initialize_test(&asset_id, &total_balance);
+	initialize_test(asset_id, total_balance);
 
 	let mut utxo_set = HashMap::new();
 	let mut current_pool_balance = 0;
@@ -269,9 +269,9 @@ fn reclaim_test(reclaim_count: usize, rng: &mut ChaCha20Rng) {
 			&LEAF_PARAMS,
 			&TWO_TO_ONE_PARAMS,
 			&COMMIT_PARAMS,
-			&asset_id,
-			&balance,
-			&receiver_value,
+			asset_id,
+			balance,
+			receiver_value,
 			&mut utxo_set,
 			rng,
 		);
@@ -317,10 +317,10 @@ fn reclaim_test(reclaim_count: usize, rng: &mut ChaCha20Rng) {
 }
 
 // Init tests:
-fn initialize_test(asset_id: &AssetId, amount: &AssetBalance) {
-	MantaPayPallet::init_asset(&1, *asset_id, *amount);
-	assert_eq!(MantaPayPallet::balance(1, *asset_id), *amount);
-	assert_eq!(PoolBalance::<Test>::get(*asset_id), 0);
+fn initialize_test(asset_id: AssetId, amount: AssetBalance) {
+	MantaPayPallet::init_asset(&1, asset_id, amount);
+	assert_eq!(MantaPayPallet::balance(1, asset_id), amount);
+	assert_eq!(PoolBalance::<Test>::get(asset_id), 0);
 }
 
 // Mint tests:
@@ -331,9 +331,9 @@ fn test_mint_should_work() {
 		let mut rng = ChaCha20Rng::from_seed([42u8; 32]);
 		let asset_id = rng.gen();
 		let total_supply = 1000;
-		initialize_test(&asset_id, &total_supply);
+		initialize_test(asset_id, total_supply);
 		let balances = value_distribution(5, total_supply, &mut rng);
-		mint_tokens_to_empty_pool(&asset_id, &balances, &mut rng);
+		mint_tokens_to_empty_pool(asset_id, &balances, &mut rng);
 	});
 }
 
@@ -343,8 +343,8 @@ fn over_mint_should_not_work() {
 		let mut rng = ChaCha20Rng::from_seed([42u8; 32]);
 		let asset_id = rng.gen();
 		let total_supply = 32579;
-		initialize_test(&asset_id, &total_supply);
-		let asset = fixed_asset(&COMMIT_PARAMS, &asset_id, &32580, &mut rng);
+		initialize_test(asset_id, total_supply);
+		let asset = fixed_asset(&COMMIT_PARAMS, asset_id, 32580, &mut rng);
 		let mint_data = generate_mint_struct(&asset);
 		assert_noop!(
 			MantaPayPallet::mint_private_asset(Origin::signed(1), mint_data),
@@ -372,8 +372,8 @@ fn mint_existing_coin_should_not_work() {
 		let mut rng = ChaCha20Rng::from_seed([41u8; 32]);
 		let asset_id = rng.gen();
 		let total_supply = 32579;
-		initialize_test(&asset_id, &total_supply);
-		let asset = fixed_asset(&COMMIT_PARAMS, &asset_id, &100, &mut rng);
+		initialize_test(asset_id, total_supply);
+		let asset = fixed_asset(&COMMIT_PARAMS, asset_id, 100, &mut rng);
 		let mint_data = generate_mint_struct(&asset);
 		assert_ok!(MantaPayPallet::mint_private_asset(
 			Origin::signed(1),
@@ -391,14 +391,14 @@ fn mint_with_invalid_commitment_should_not_work() {
 	new_test_ext().execute_with(|| {
 		let mut rng = ChaCha20Rng::from_seed([3u8; 32]);
 		let asset_id = rng.gen();
-		initialize_test(&asset_id, &100);
+		initialize_test(asset_id, 100);
 
 		let data: &[u8; 81664] = &[5u8; 81664];
 		let mut raw_param = Parameter { data };
 		let commit_param = CommitmentParam::deserialize(&mut raw_param.data).unwrap();
 		let mut sk = [0u8; 32];
 		rng.fill_bytes(&mut sk);
-		let asset = MantaAsset::sample(&commit_param, &sk, &asset_id, &50).unwrap();
+		let asset = MantaAsset::new(sk, &commit_param, asset_id, 50).unwrap();
 		let payload = generate_mint_struct(&asset);
 
 		assert_noop!(
@@ -425,7 +425,7 @@ fn double_spend_in_transfer_shoud_not_work() {
 	let mut rng = ChaCha20Rng::from_seed([37u8; 32]);
 	new_test_ext().execute_with(|| {
 		let asset_id = rng.gen();
-		initialize_test(&asset_id, &800000);
+		initialize_test(asset_id, 800000);
 
 		let transfer_pk = transfer_pk();
 		let mut utxo_set = HashMap::new();
@@ -435,9 +435,9 @@ fn double_spend_in_transfer_shoud_not_work() {
 			&LEAF_PARAMS,
 			&TWO_TO_ONE_PARAMS,
 			&COMMIT_PARAMS,
-			&asset_id,
-			&5000,
-			&5000,
+			asset_id,
+			5000,
+			5000,
 			&mut utxo_set,
 			&mut rng,
 		);
@@ -479,7 +479,7 @@ fn transfer_with_invalid_zkp_should_not_work() {
 	let mut rng = ChaCha20Rng::from_seed([37u8; 32]);
 	new_test_ext().execute_with(|| {
 		let asset_id = rng.gen();
-		initialize_test(&asset_id, &800000);
+		initialize_test(asset_id, 800000);
 
 		let transfer_pk = transfer_pk();
 		let mut utxo_set = HashMap::new();
@@ -489,9 +489,9 @@ fn transfer_with_invalid_zkp_should_not_work() {
 			&LEAF_PARAMS,
 			&TWO_TO_ONE_PARAMS,
 			&COMMIT_PARAMS,
-			&asset_id,
-			&5000,
-			&5000,
+			asset_id,
+			5000,
+			5000,
 			&mut utxo_set,
 			&mut rng,
 		);
@@ -544,7 +544,7 @@ fn double_spend_in_reclaim_should_not_work() {
 		let total_balance = 3289172;
 		let receiver_value = 12590;
 		let reclaim_value = total_balance - receiver_value;
-		initialize_test(&asset_id, &total_balance);
+		initialize_test(asset_id, total_balance);
 
 		let mut utxo_set = HashMap::new();
 		let reclaim_pk = reclaim_pk();
@@ -554,9 +554,9 @@ fn double_spend_in_reclaim_should_not_work() {
 			&LEAF_PARAMS,
 			&TWO_TO_ONE_PARAMS,
 			&COMMIT_PARAMS,
-			&asset_id,
-			&total_balance,
-			&receiver_value,
+			asset_id,
+			total_balance,
+			receiver_value,
 			&mut utxo_set,
 			&mut rng,
 		);
@@ -602,7 +602,7 @@ fn reclaim_with_invalid_zkp_should_not_work() {
 		let total_balance = 3289172;
 		let receiver_value = 12590;
 		let reclaim_value = total_balance - receiver_value;
-		initialize_test(&asset_id, &total_balance);
+		initialize_test(asset_id, total_balance);
 
 		let mut utxo_set = HashMap::new();
 		let reclaim_pk = reclaim_pk();
@@ -612,9 +612,9 @@ fn reclaim_with_invalid_zkp_should_not_work() {
 			&LEAF_PARAMS,
 			&TWO_TO_ONE_PARAMS,
 			&COMMIT_PARAMS,
-			&asset_id,
-			&total_balance,
-			&receiver_value,
+			asset_id,
+			total_balance,
+			receiver_value,
 			&mut utxo_set,
 			&mut rng,
 		);

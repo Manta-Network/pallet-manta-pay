@@ -12,6 +12,6 @@
 # The cache for chain data in container
 .local
 
-# pre-computed proving key 
-# files exceeding 100 mb LOL
+# pre-computed proving key files exceeding 100 mb LOL
 *.bin
+circuit_sizes.toml
