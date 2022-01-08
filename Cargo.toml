@@ -1,6 +1,6 @@
 [package]
 name = "pallet-manta-pay"
-version = "0.2.1"
+version = "0.3.0"
 authors = ["Manta Network <contact@manta.network>"]
 edition = "2018"
 license = "GPL 3.0"
@@ -25,18 +25,12 @@ data-encoding = { version = "2.3.2", default-features = false, features = [ "all
 log = { version = "0.4.14", default-features = false }
 rand_chacha = { version = "0.3.1", default-features = false, optional = true }
 indoc = { version = "1.0.3", default-features = false, optional = true}
+serde = { version = "1.0.133", default-features = false, features = ["derive"] }
 
-# Arkworks dependencies
-# Attention! This needs to be included before the manta dependencies.
-ark-std = { version = "0.3.0", default-features = false }
-ark-serialize = { version = "0.3.0", default-features = false, features = [ "derive" ] }
-
-# Manta Dependencies
-manta-asset = { branch = "manta", git = "https://github.com/Manta-Network/manta-types", default-features = false }
-manta-crypto = { branch = "manta", git = "https://github.com/Manta-Network/manta-crypto", default-features = false }
-manta-data = { branch = "manta", git = "https://github.com/Manta-Network/manta-types", default-features = false }
-manta-error = { branch = "manta", git = "https://github.com/Manta-Network/manta-error", default-features = false }
-manta-api = { branch = "manta", git = "https://github.com/Manta-Network/manta-api", default-features = false, optional = true}
+# manta = { branch = "setup-manta-rs", git = "https://github.com/manta-network/manta-rs" }
+manta-accounting = { path = "../manta-rs/manta-accounting", features = ["serde"] }
+manta-crypto = { path = "../manta-rs/manta-crypto" }
+manta-pay = { path = "../manta-rs/manta-pay", features = ["arkworks", "groth16"] }
 
 [dev-dependencies]
 # benchmarking 
@@ -59,7 +53,6 @@ ark-relations = { version = "0.3.0", default-features = false }
 ark-serialize = { version = "0.3.0", default-features = false, features = [ "derive" ] }
 
 rand_chacha = { version = "0.3.1", default-features = false }
-manta-api = { branch = "manta", git = "https://github.com/Manta-Network/manta-api", default-features = false, features = ["zkp-keygen", "std"]}
 
 [features]
 default = [ 
@@ -78,11 +71,11 @@ std = [
 ]
 
 precompute-coins = [
-	"manta-api",
 	"rand_chacha",
 	"indoc",
 ]
 
-[[bin]]
-name = "precompute_coins"
-required-features = ["precompute-coins"]
+# TODO:
+# [[bin]]
+# name = "precompute_coins"
+# required-features = ["precompute-coins"]

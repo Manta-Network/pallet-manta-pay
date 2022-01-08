@@ -17,7 +17,8 @@
 //! # MantaPay Module
 //!
 //! MantaPay is a Multi-Asset Shielded Payment protocol.
-//! The design is similar though not the same with MASP (Multi-Asset Shielded Pool).
+//!
+//! _NB_: The design is similar though not the same with MASP (Multi-Asset Shielded Pool).
 //!
 //! ## Overview
 //!
@@ -39,12 +40,12 @@
 //! * **Asset issuance:** The creation of the asset (note: this asset can only be created once)
 //! * **Asset transfer:** The action of transferring assets from one account to another.
 //! * **Private asset mint:** The action of converting certain number of `Asset`s into an UTXO
-//! that holds same number of private assets.
+//!		that holds same number of private assets.
 //! * **Private asset transfer:** The action of transferring certain number of private assets from
-//! two UTXOs to another two UTXOs.
+//!		two UTXOs to another two UTXOs.
 //! * **Private asset reclaim:** The action of transferring certain number of private assets from
-//! two UTXOs to another UTXO, and converting the remaining private assets back to public
-//! assets.
+//!		two UTXOs to another UTXO, and converting the remaining private assets back to public
+//!		assets.
 //!
 //! The assets system in Manta is designed to make the following possible:
 //!
@@ -58,31 +59,32 @@
 //! ### Dispatchable Functions
 //!
 //! * `transfer_asset` - Transfers an `amount` of units of fungible asset `id` from the balance of
-//! the function caller's account (`origin`) to a `target` account.
-//! * `mint_private_asset` - Converting an `amount` of units of fungible asset `id` from the caller to a private UTXO.
-//! (The caller does not need to be the owner of this UTXO)
-//! * `private_transfer` - Transfer two input UTXOs into two output UTXOs. Require that 1) the input UTXOs are
-//! already in the ledger and are not spend before 2) the sum of private assets in input UTXOs matches that
-//! of the output UTXOs. The requirements are guaranteed via ZK proof.
-//! * `reclaim` - Transfer two input UTXOs into one output UTXOs, and convert the remaining assets to the
-//! public assets. Require that 1) the input UTXOs are already in the ledger and are not spend before; 2) the
-//! sum of private assets in input UTXOs matches that of the output UTXO + the reclaimed amount. The
-//! requirements are guaranteed via ZK proof.
+//!		the function caller's account (`origin`) to a `target` account.
+//! * `mint_private_asset` - Converting an `amount` of units of fungible asset `id` from the caller
+//!		to a private UTXO. (The caller does not need to be the owner of this UTXO)
+//! * `private_transfer` - Transfer two input UTXOs into two output UTXOs. Require that 1) the input
+//!		UTXOs are already in the ledger and are not spend before 2) the sum of private assets in
+//!		input UTXOs matches that of the output UTXOs. The requirements are guaranteed via ZK proof.
+//! * `reclaim` - Transfer two input UTXOs into one output UTXOs, and convert the remaining assets
+//!		to the public assets. Require that 1) the input UTXOs are already in the ledger and are not
+//!		spend before; 2) the sum of private assets in input UTXOs matches that of the output UTXO +
+//!		the reclaimed amount. The requirements are guaranteed via ZK proof.
 //!
-//! Please refer to the [`Call`](./enum.Call.html) enum and its associated variants for documentation on each
-//! function.
+//! Please refer to the [`Call`](./enum.Call.html) enum and its associated variants for
+//! documentation on each function.
 //!
 //! ### Public Functions
 //!
 //! * `balance` - Get the asset balance of `who`.
 //! * `total_supply` - Get the total supply of an asset `id`.
-//! * `pool_balance` - Get the total number of private asset.
 //!
-//! Please refer to the [`Module`](./struct.Module.html) struct for details on publicly available functions.
+//! Please refer to the [`Module`](./struct.Module.html) struct for details on publicly available
+//! functions.
 //!
 //! ## Usage
 //!
-//! The following example shows how to use the Assets module in your runtime by exposing public functions to:
+//! The following example shows how to use the Assets module in your runtime by exposing public
+//! functions to:
 //!
 //! * Initiate the fungible asset for a token distribution event (airdrop).
 //! * Query the fungible asset holding balance of an account.
@@ -91,16 +93,33 @@
 //!
 //! ### Prerequisites
 //!
-//! Import the Assets module and types and derive your runtime's configuration traits from the Assets module trait.
+//! Import the Assets module and types and derive your runtime's configuration traits from the
+//! Assets module trait.
 //!
 //! ## Related Modules
 //!
 //! * [`System`](../frame_system/index.html)
 //! * [`Support`](../frame_support/index.html)
 
-// Ensure we're `no_std` when compiling for Wasm.
 #![cfg_attr(not(feature = "std"), no_std)]
 
+use codec::{Decode, Encode};
+use core::marker::PhantomData;
+use frame_support::{dispatch::DispatchResult, ensure, Deserialize, Serialize};
+use manta_accounting::{
+	asset,
+	transfer::{
+		self, canonical::TransferShape, AccountBalance, InvalidSinkAccounts, InvalidSourceAccounts,
+		Proof, ReceiverLedger, ReceiverPostError, ReceiverPostingKey, SenderLedger,
+		SenderPostError, SenderPostingKey, SinkPostingKey, SourcePostingKey, TransferLedger,
+		TransferLedgerSuperPostingKey, TransferPostError,
+	},
+};
+use manta_pay::config;
+use sp_runtime::DispatchError;
+use sp_std::prelude::*;
+
+/* TODO:
 #[cfg(test)]
 mod mock;
 
@@ -109,35 +128,91 @@ mod test;
 
 #[cfg(feature = "runtime-benchmarks")]
 pub mod benchmark;
+*/
 
 #[allow(clippy::unnecessary_cast)] // NOTE: This file is auto-generated.
 pub mod weights;
 
+pub use pallet::*;
 pub use weights::WeightInfo;
 
-use frame_support::{dispatch::DispatchResult, ensure};
-use manta_asset::{shard_index, AssetBalance, AssetId, MantaRandomValue, SanityCheck, UTXO};
-use manta_crypto::{
-	merkle_tree::LedgerMerkleTree, try_commitment_parameters, try_default_leaf_hash,
-	try_leaf_parameters, try_two_to_one_parameters, LeafHashParam, MantaCrypto,
-	MantaEciesCiphertext, MantaZKPVerifier, TwoToOneHashParam,
-};
-use manta_data::{MintData, PrivateTransferData, ReclaimData, ShardMetaData};
-use sp_runtime::DispatchError;
-use sp_std::prelude::*;
+///
+pub type AssetId = asset::AssetIdType;
 
+///
+pub type AssetValue = asset::AssetValueType;
+
+///
+#[derive(Clone, Debug, Decode, Default, Deserialize, Encode, Eq, Hash, PartialEq, Serialize)]
+pub struct Asset {
+	///
+	pub id: AssetId,
+
+	///
+	pub value: AssetValue,
+}
+
+///
+pub type Utxo = [u8; 32];
+
+///
+pub type UtxoSetOutput = [u8; 32];
+
+///
+pub type VoidNumber = [u8; 32];
+
+///
+pub type EncryptedNote = [u8; 32];
+
+///
+#[derive(Clone, Debug, Decode, Default, Encode, Eq, Hash, PartialEq)]
+pub struct SenderPost {
+	/// UTXO Set Output
+	pub utxo_set_output: UtxoSetOutput,
+
+	/// Void Number
+	pub void_number: VoidNumber,
+}
+
+///
+#[derive(Clone, Debug, Decode, Default, Encode, Eq, Hash, PartialEq)]
+pub struct ReceiverPost {
+	/// Unspent Transaction Output
+	pub utxo: Utxo,
+
+	/// Encrypted Note
+	pub note: EncryptedNote,
+}
+
+///
+#[derive(Clone, Debug, Decode, Default, Encode, Eq, Hash, PartialEq)]
+pub struct TransferPost {
+	///
+	pub asset_id: Option<AssetId>,
+
+	///
+	pub sources: Vec<AssetValue>,
+
+	///
+	pub senders: Vec<SenderPost>,
+
+	///
+	pub receivers: Vec<ReceiverPost>,
+
+	///
+	pub sinks: Vec<AssetValue>,
+}
+
+/// MantaPay Pallet
 #[frame_support::pallet]
 pub mod pallet {
 	use super::*;
 	use frame_support::pallet_prelude::*;
 	use frame_system::pallet_prelude::*;
-	use manta_crypto::{RECLAIM_VK, TRANSFER_VK};
 	use sp_runtime::traits::StaticLookup;
 
 	#[pallet::pallet]
 	#[pallet::generate_store(pub(super) trait Store)]
-	// NOTE: if the visibility of trait store is private but you want to make it available
-	// in super, then use `pub(super)` or `pub(crate)` to make it available in crate.
 	pub struct Pallet<T>(_);
 
 	/// The module configuration trait.
@@ -150,11 +225,10 @@ pub mod pallet {
 		type WeightInfo: WeightInfo;
 	}
 
-	// BlockNumberFor imported from frame_system::pallet_prelude::*
 	#[pallet::hooks]
 	impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {}
 
-	/// The number of units of assets held by any given account.
+	///
 	#[pallet::storage]
 	pub(super) type Balances<T: Config> = StorageDoubleMap<
 		_,
@@ -162,50 +236,45 @@ pub mod pallet {
 		T::AccountId,
 		Blake2_128Concat,
 		AssetId,
-		AssetBalance,
+		AssetValue,
 		ValueQuery,
 	>;
 
-	/// The total unit supply of the asset.
-	/// If 0, then this asset is not initialized.
+	///
 	#[pallet::storage]
 	pub(super) type TotalSupply<T: Config> =
-		StorageMap<_, Blake2_128Concat, AssetId, AssetBalance, ValueQuery>;
+		StorageMap<_, Blake2_128Concat, AssetId, AssetValue, ValueQuery>;
 
-	/// (shard_index, index_within_shard) -> payload
+	///
 	#[pallet::storage]
 	pub(super) type LedgerShards<T: Config> =
-		StorageDoubleMap<_, Identity, u8, Identity, u64, (UTXO, MantaEciesCiphertext), ValueQuery>;
+		StorageDoubleMap<_, Identity, u8, Identity, u64, (Utxo, EncryptedNote), ValueQuery>;
 
-	/// store of ShardMetaData
-	/// i.e. LedgerShardMetaData.get(0) is the 1st shard's next available index and serialized_path
+	/* TODO:
+	///
 	#[pallet::storage]
 	pub(super) type LedgerShardMetaData<T: Config> =
 		StorageMap<_, Identity, u8, ShardMetaData, ValueQuery>;
 
-	/// store of shard roots
+	///
 	#[pallet::storage]
 	pub(super) type LedgerShardRoots<T: Config> =
 		StorageMap<_, Identity, u8, MantaRandomValue, ValueQuery>;
+	*/
 
-	/// The set of UTXOs
+	///
 	#[pallet::storage]
-	pub(super) type UTXOSet<T: Config> = StorageMap<_, Twox64Concat, UTXO, bool, ValueQuery>;
+	pub(super) type UtxoSet<T: Config> = StorageMap<_, Twox64Concat, Utxo, bool, ValueQuery>;
 
-	/// The set of void numbers (similar to the nullifiers in ZCash)
+	///
 	#[pallet::storage]
-	pub(super) type VoidNumbers<T: Config> =
-		StorageMap<_, Twox64Concat, MantaRandomValue, bool, ValueQuery>;
-
-	/// The balance of all minted private coins for this asset_id.
-	#[pallet::storage]
-	pub(super) type PoolBalance<T: Config> =
-		StorageMap<_, Twox64Concat, AssetId, AssetBalance, ValueQuery>;
+	pub(super) type VoidNumberSet<T: Config> =
+		StorageMap<_, Twox64Concat, VoidNumber, bool, ValueQuery>;
 
 	#[pallet::genesis_config]
 	pub struct GenesisConfig<T: Config> {
 		pub owner: T::AccountId,
-		pub assets: Vec<(AssetId, AssetBalance)>,
+		pub assets: Vec<Asset>,
 	}
 
 	#[cfg(feature = "std")]
@@ -220,19 +289,16 @@ pub mod pallet {
 
 	#[pallet::genesis_build]
 	impl<T: Config> GenesisBuild<T> for GenesisConfig<T> {
+		#[inline]
 		fn build(&self) {
-			for (asset, supply) in &self.assets {
-				Pallet::<T>::init_asset(&self.owner, *asset, *supply);
+			for asset in &self.assets {
+				Pallet::<T>::init_asset(&self.owner, asset.id, asset.value);
 			}
 		}
 	}
 
 	#[pallet::call]
 	impl<T: Config> Pallet<T> {
-		/// Issue a new class of fungible assets. There are, and will only ever be, `total`
-		/// such assets and they'll all belong to the `origin` initially. It will have an
-		/// identifier `AssetId` instance: this will be specified in the `Issued` event.
-
 		/// Move some assets from one holder to another.
 		///
 		/// # <weight>
@@ -245,507 +311,574 @@ pub mod pallet {
 		pub fn transfer_asset(
 			origin: OriginFor<T>,
 			target: <T::Lookup as StaticLookup>::Source,
-			asset_id: AssetId,
-			amount: AssetBalance,
+			asset: Asset,
 		) -> DispatchResultWithPostInfo {
+			// TODO: move this to ledger abstraction.
 			let origin = ensure_signed(origin)?;
-			// Make sure the base coin is initialized
-			ensure!(
-				TotalSupply::<T>::contains_key(&asset_id),
-				Error::<T>::BasecoinNotInit
-			);
-
-			let origin_balance = Balances::<T>::get(&origin, asset_id);
 			let target = T::Lookup::lookup(target)?;
-			ensure!(amount > 0, Error::<T>::AmountZero);
-			ensure!(origin_balance >= amount, Error::<T>::BalanceLow);
-			Balances::<T>::mutate(&origin, asset_id, |balance| *balance -= amount);
-			Balances::<T>::mutate(&target, asset_id, |balance| *balance += amount);
-
-			Self::deposit_event(Event::Transferred(asset_id, origin, target, amount));
+			ensure!(
+				TotalSupply::<T>::contains_key(&asset.id),
+				Error::<T>::UninitializedSupply
+			);
+			let origin_balance = Balances::<T>::get(&origin, asset.id);
+			ensure!(asset.value > 0, Error::<T>::ZeroTransfer);
+			ensure!(origin_balance >= asset.value, Error::<T>::BalanceLow);
+			Balances::<T>::mutate(&origin, asset.id, |balance| *balance -= asset.value);
+			Balances::<T>::mutate(&target, asset.id, |balance| *balance += asset.value);
+			Self::deposit_event(Event::Transfer {
+				asset,
+				source: origin,
+				sink: target,
+			});
 			Ok(().into())
 		}
 
-		/// Mint private asset
+		///
 		#[pallet::weight(T::WeightInfo::mint_private_asset())]
 		pub fn mint_private_asset(
 			origin: OriginFor<T>,
-			mint_data: MintData,
+			post: TransferPost,
 		) -> DispatchResultWithPostInfo {
 			let origin = ensure_signed(origin)?;
-
-			// asset id must exist
-			let asset_id = mint_data.asset_id;
-			ensure!(
-				TotalSupply::<T>::contains_key(&mint_data.asset_id),
-				<Error<T>>::BasecoinNotInit
+			/*
+			let mut ledger = Self::ledger();
+			Self::deposit_event(
+				post.validate(vec![origin], vec![], &ledger)
+					.map_err(Error::<T>::from)?
+					.post(&(), &mut ledger),
 			);
-
-			// get the original balance
-			let origin_balance = Balances::<T>::get(&origin, asset_id);
-			ensure!(origin_balance >= mint_data.value, Error::<T>::BalanceLow);
-
-			// get paramters for merkle tree, commitment
-			let leaf_param = try_leaf_parameters()
-				.map_err::<DispatchError, _>(|_| Error::<T>::ParamFail.into())?;
-
-			let two_to_one_param = try_two_to_one_parameters()
-				.map_err::<DispatchError, _>(|_| Error::<T>::ParamFail.into())?;
-
-			let commit_param = try_commitment_parameters()
-				.map_err::<DispatchError, _>(|_| Error::<T>::ParamFail.into())?;
-
-			// check the validity of the commitment
-			// i.e. check that `cm = COMM(asset_id || v || k, s)`.
-			let res = mint_data
-				.sanity(&commit_param)
-				.map_err::<DispatchError, _>(|_| Error::<T>::MintFail.into())?;
-
-			ensure!(res, Error::<T>::MintFail);
-
-			// add commitment and encrypted note
-			// update merkle root
-			Pallet::<T>::insert_commitments(
-				&leaf_param,
-				&two_to_one_param,
-				vec![(mint_data.cm, mint_data.encrypted_note)],
-			)
-			.map_err::<DispatchError, _>(|_| Error::<T>::LedgerUpdateFail.into())?;
-
-			// update public balance and pool balance
-			Balances::<T>::mutate(&origin, asset_id, |balance| *balance -= mint_data.value);
-			PoolBalance::<T>::mutate(asset_id, |balance| *balance += mint_data.value);
-			Self::deposit_event(Event::<T>::Minted(asset_id, origin, mint_data.value));
+			*/
 			Ok(().into())
 		}
 
-		/// Manta's private transfer function that moves values from two
-		/// sender's private tokens into two receiver tokens. A proof is required to
-		/// make sure that this transaction is valid.
-		/// Neither the values nor the identities is leaked during this process.
+		///
 		#[pallet::weight(T::WeightInfo::private_transfer())]
 		pub fn private_transfer(
 			origin: OriginFor<T>,
-			private_transfer_data: PrivateTransferData,
+			post: TransferPost,
 		) -> DispatchResultWithPostInfo {
 			let origin = ensure_signed(origin)?;
-
-			// get paramters for merkle tree, commitment
-			let leaf_param = try_leaf_parameters()
-				.map_err::<DispatchError, _>(|_| Error::<T>::ParamFail.into())?;
-
-			let two_to_one_param = try_two_to_one_parameters()
-				.map_err::<DispatchError, _>(|_| Error::<T>::ParamFail.into())?;
-
-			let senders = [
-				private_transfer_data.sender_0,
-				private_transfer_data.sender_1,
-			];
-
-			// Check that both void numbers are unique.
-			ensure!(
-				senders[0].void_number != senders[1].void_number,
-				Error::<T>::MantaCoinSpent
+			/*
+			let mut ledger = Self::ledger();
+			Self::deposit_event(
+				post.validate(vec![], vec![], &ledger)
+					.map_err(Error::<T>::from)?
+					.post(&(), &mut ledger),
 			);
-
-			// Check if void numbers are already spent and verfiy sender's merkle root.
-			for sender in senders {
-				ensure!(
-					!VoidNumbers::<T>::contains_key(sender.void_number),
-					Error::<T>::MantaCoinSpent
-				);
-				ensure!(
-					LedgerShardRoots::<T>::get(sender.shard_index) == sender.root,
-					Error::<T>::InvalidLedgerState
-				);
-			}
-
-			// verify ZKP
-			let transfer_vk = TRANSFER_VK;
-			ensure!(
-				private_transfer_data.verify(&transfer_vk),
-				Error::<T>::ZkpVerificationFail
-			);
-
-			// add commitment and encrypted note
-			// update merkle root
-			let coins = vec![
-				(
-					private_transfer_data.receiver_0.cm,
-					private_transfer_data.receiver_0.encrypted_note,
-				),
-				(
-					private_transfer_data.receiver_1.cm,
-					private_transfer_data.receiver_1.encrypted_note,
-				),
-			];
-
-			// Check that both utxos are unique.
-			ensure!(coins[0].0 != coins[1].0, Error::<T>::MantaCoinExist);
-
-			Pallet::<T>::insert_commitments(&leaf_param, &two_to_one_param, coins)
-				.map_err::<DispatchError, _>(|_| Error::<T>::LedgerUpdateFail.into())?;
-
-			// insert void numbers
-			for sender in senders {
-				VoidNumbers::<T>::insert(sender.void_number, true);
-			}
-
-			// deposit the event then update the storage
-			Self::deposit_event(Event::PrivateTransferred(origin));
-
+			*/
 			Ok(().into())
 		}
 
-		/// Manta's reclaim function that moves values from two
-		/// sender's private tokens into a receiver public account, and a private token.
-		/// A proof is required to
-		/// make sure that this transaction is valid.
-		/// Neither the values nor the identities is leaked during this process;
-		/// except for the reclaimed amount.
+		///
 		#[pallet::weight(T::WeightInfo::reclaim())]
-		pub fn reclaim(
-			origin: OriginFor<T>,
-			reclaim_data: ReclaimData,
-		) -> DispatchResultWithPostInfo {
-			// make sure it is properly signed
+		pub fn reclaim(origin: OriginFor<T>, post: TransferPost) -> DispatchResultWithPostInfo {
 			let origin = ensure_signed(origin)?;
-
-			// make sure the asset_id exists
-			let asset_id = reclaim_data.asset_id;
-			ensure!(
-				TotalSupply::<T>::contains_key(asset_id),
-				Error::<T>::BasecoinNotInit
+			/*
+			let mut ledger = Self::ledger();
+			Self::deposit_event(
+				post.validate(vec![], vec![origin], &ledger)
+					.map_err(Error::<T>::from)?
+					.post(&(), &mut ledger),
 			);
-
-			// get the params of hashes
-			let leaf_param = try_leaf_parameters()
-				.map_err::<DispatchError, _>(|_| Error::<T>::ParamFail.into())?;
-
-			let two_to_one_param = try_two_to_one_parameters()
-				.map_err::<DispatchError, _>(|_| Error::<T>::ParamFail.into())?;
-
-			let senders = [reclaim_data.sender_0, reclaim_data.sender_1];
-
-			// Check that both void numbers are unique.
-			ensure!(
-				senders[0].void_number != senders[1].void_number,
-				Error::<T>::MantaCoinSpent
-			);
-
-			// Check if void numbers are already spent and verfiy sender's merkle root.
-			for sender in senders {
-				ensure!(
-					!VoidNumbers::<T>::contains_key(sender.void_number),
-					Error::<T>::MantaCoinSpent
-				);
-				ensure!(
-					LedgerShardRoots::<T>::get(sender.shard_index) == sender.root,
-					Error::<T>::InvalidLedgerState
-				)
-			}
-
-			// verify zkp
-			let reclaim_vk = RECLAIM_VK;
-			ensure!(
-				reclaim_data.verify(&reclaim_vk),
-				Error::<T>::ZkpVerificationFail
-			);
-
-			// add commitment and encrypted note
-			// update merkle root
-			Pallet::<T>::insert_commitments(
-				&leaf_param,
-				&two_to_one_param,
-				vec![(
-					reclaim_data.receiver.cm,
-					reclaim_data.receiver.encrypted_note,
-				)],
-			)
-			.map_err::<DispatchError, _>(|_| Error::<T>::LedgerUpdateFail.into())?;
-
-			// insert void numbers
-			for sender in senders {
-				VoidNumbers::<T>::insert(sender.void_number, true);
-			}
-
-			// mutate balance and update the pool balance
-			Balances::<T>::mutate(&origin, asset_id, |balance| {
-				*balance += reclaim_data.reclaim_value
-			});
-			PoolBalance::<T>::mutate(asset_id, |balance| *balance -= reclaim_data.reclaim_value);
-
-			// register the event
-			Self::deposit_event(Event::Reclaimed(
-				asset_id,
-				origin,
-				reclaim_data.reclaim_value,
-			));
+			*/
 			Ok(().into())
 		}
 	}
 
+	/// MantaPay Event
 	#[pallet::event]
 	#[pallet::generate_deposit(fn deposit_event)]
-	#[pallet::metadata(T::AccountId = "AccountId")] // This is how you overwrite metadata of fields. This string value is the metadata you want to have.
+	#[pallet::metadata(T::AccountId = "AccountId")]
 	pub enum Event<T: Config> {
-		/// The asset was issued. \[asset_id, owner, total_supply\]
-		Issued(AssetId, T::AccountId, AssetBalance),
-		/// The asset was transferred. \[from, to, amount\]
-		Transferred(AssetId, T::AccountId, T::AccountId, AssetBalance),
-		/// The asset was minted to private
-		Minted(AssetId, T::AccountId, AssetBalance),
-		/// Private transfer
-		PrivateTransferred(T::AccountId),
-		/// The assets was reclaimed
-		Reclaimed(AssetId, T::AccountId, AssetBalance),
+		/// Transfer Event
+		Transfer {
+			/// Asset Transfered
+			asset: Asset,
+
+			/// Source Account
+			source: T::AccountId,
+
+			/// Sink Account
+			sink: T::AccountId,
+		},
+
+		/// Mint Event
+		Mint {
+			/// Asset Minted
+			asset: Asset,
+
+			/// Source Account
+			source: T::AccountId,
+		},
+
+		/// Private Transfer Event
+		PrivateTransfer {
+			/// Origin Account
+			origin: T::AccountId,
+		},
+
+		/// Reclaim Event
+		Reclaim {
+			/// Asset Reclaimed
+			asset: Asset,
+
+			/// Sink Account
+			sink: T::AccountId,
+		},
 	}
 
-	/// Error messages.
+	/// MantaPay Error
 	#[pallet::error]
 	pub enum Error<T> {
-		/// This token has already been initiated
-		AlreadyInitialized,
-		/// Transfer when not initialized
-		BasecoinNotInit,
-		/// Transfer amount should be non-zero
-		AmountZero,
-		/// Account balance must be greater than or equal to the transfer amount
+		/// Uninitialized Supply
+		///
+		/// Supply of the given Asset Id has not yet been initialized.
+		UninitializedSupply,
+
+		/// Zero Transfer
+		///
+		/// Public transfers cannot include amounts equal to zero.
+		ZeroTransfer,
+
+		/// Balance Low
+		///
+		/// Attempted to withdraw from balance which was smaller than the withdrawl amount.
 		BalanceLow,
-		/// Balance should be non-zero
-		BalanceZero,
-		/// Mint failure
-		MintFail,
-		/// Mint failure
-		LedgerUpdateFail,
-		/// MantaCoin exist
-		MantaCoinExist,
-		/// MantaCoin does not exist
-		MantaNotCoinExist,
-		/// MantaCoin already spend
-		MantaCoinSpent,
-		/// ZKP verification failed
-		ZkpVerificationFail,
-		/// invalid ledger state
-		InvalidLedgerState,
-		/// Pool overdrawn
-		PoolOverdrawn,
-		/// Invalid parameters
-		ParamFail,
-		/// Payload deserialization fail
-		PayloadDesFail,
+
+		/// Invalid Shape
+		///
+		/// The transfer had an invalid shape.
+		InvalidShape,
+
+		/// Asset Spent
+		///
+		/// An asset present in this transfer has already been spent.
+		AssetSpent,
+
+		/// Invalid UTXO Set Output
+		///
+		/// The sender was constructed on an invalid version of the ledger state.
+		InvalidUtxoSetOutput,
+
+		/// Asset Registered
+		///
+		/// An asset present in this transfer has already been registered to the ledger.
+		AssetRegistered,
+
+		/// Duplicate Spend
+		///
+		/// There were multiple spend entries for the same underlying asset in this transfer.
+		DuplicateSpend,
+
+		/// Duplicate Register
+		///
+		/// There were multiple register entries for the same underlying asset in this transfer.
+		DuplicateRegister,
+
+		/// Invalid Proof
+		///
+		/// The submitted proof did not pass validation, or errored during validation.
+		InvalidProof,
+	}
+
+	impl<T> From<InvalidSourceAccounts<T::AccountId>> for Error<T>
+	where
+		T: Config,
+	{
+		#[inline]
+		fn from(err: InvalidSourceAccounts<T::AccountId>) -> Self {
+			match err {
+				InvalidSourceAccounts::InvalidShape => Self::InvalidShape,
+				InvalidSourceAccounts::BadAccount {
+					account_id,
+					balance,
+					withdraw,
+				} => match balance {
+					AccountBalance::Known(balance) => {
+						// TODO: Maybe we can give a more informative error.
+						let _ = (account_id, balance, withdraw);
+						Self::BalanceLow
+					}
+					AccountBalance::UnknownAccount => {
+						unreachable!("Accounts are checked before reaching this point.")
+					}
+				},
+			}
+		}
+	}
+
+	impl<T> From<InvalidSinkAccounts<T::AccountId>> for Error<T>
+	where
+		T: Config,
+	{
+		#[inline]
+		fn from(err: InvalidSinkAccounts<T::AccountId>) -> Self {
+			match err {
+				InvalidSinkAccounts::InvalidShape => Self::InvalidShape,
+				InvalidSinkAccounts::BadAccount { .. } => {
+					unreachable!("Accounts are checked before reaching this point.")
+				}
+			}
+		}
+	}
+
+	impl<T> From<SenderPostError> for Error<T> {
+		#[inline]
+		fn from(err: SenderPostError) -> Self {
+			match err {
+				SenderPostError::AssetSpent => Self::AssetSpent,
+				SenderPostError::InvalidUtxoSetOutput => Self::InvalidUtxoSetOutput,
+			}
+		}
+	}
+
+	impl<T> From<ReceiverPostError> for Error<T> {
+		#[inline]
+		fn from(err: ReceiverPostError) -> Self {
+			match err {
+				ReceiverPostError::AssetRegistered => Self::AssetRegistered,
+			}
+		}
+	}
+
+	impl<T> From<TransferPostError<T::AccountId>> for Error<T>
+	where
+		T: Config,
+	{
+		#[inline]
+		fn from(err: TransferPostError<T::AccountId>) -> Self {
+			match err {
+				TransferPostError::InvalidSourceAccounts(err) => err.into(),
+				TransferPostError::InvalidSinkAccounts(err) => err.into(),
+				TransferPostError::Sender(err) => err.into(),
+				TransferPostError::Receiver(err) => err.into(),
+				TransferPostError::DuplicateSpend => Self::DuplicateSpend,
+				TransferPostError::DuplicateRegister => Self::DuplicateRegister,
+				TransferPostError::InvalidProof => Self::InvalidProof,
+			}
+		}
 	}
 }
 
-pub use pallet::*;
+impl<T> Pallet<T>
+where
+	T: Config,
+{
+	/// Initialize `asset_id` with a supply of `total`, giving control to `owner`.
+	#[inline]
+	fn init_asset(owner: &T::AccountId, asset_id: AssetId, total: AssetValue) {
+		TotalSupply::<T>::insert(asset_id, total);
+		Balances::<T>::insert(owner, asset_id, total);
+	}
 
-impl<T: Config> Pallet<T> {
 	/// Returns the balance of `account` for the asset with the given `id`.
 	#[inline]
-	pub fn balance(account: T::AccountId, id: AssetId) -> AssetBalance {
+	pub fn balance(account: T::AccountId, id: AssetId) -> AssetValue {
 		Balances::<T>::get(account, id)
 	}
 
 	/// Returns the total supply of the asset with the given `id`.
 	#[inline]
-	pub fn total_supply(id: AssetId) -> AssetBalance {
+	pub fn total_supply(id: AssetId) -> AssetValue {
 		TotalSupply::<T>::get(id)
 	}
 
-	/// Returns `true` if `utxo` is stored in the ledger.
+	/// Returns the ledger implementation for this pallet.
 	#[inline]
-	fn utxo_exists(utxo: UTXO) -> bool {
-		UTXOSet::<T>::contains_key(utxo)
+	fn ledger() -> Ledger<T> {
+		Ledger(PhantomData)
 	}
+}
 
-	/// Init testnet asset
+/// Preprocessed Event
+pub enum PreprocessedEvent<T>
+where
+	T: Config,
+{
+	/// Mint Event
+	Mint {
+		/// Asset Minted
+		asset: Asset,
+
+		/// Source Account
+		source: T::AccountId,
+	},
+
+	/// Private Transfer Event
+	PrivateTransfer,
+
+	/// Reclaim Event
+	Reclaim {
+		/// Asset Reclaimed
+		asset: Asset,
+
+		/// Sink Account
+		sink: T::AccountId,
+	},
+}
+
+/// Ledger
+pub struct Ledger<T>(PhantomData<T>)
+where
+	T: Config;
+
+/// Wrap Type
+#[derive(Clone, Copy)]
+pub struct Wrap<T>(T);
+
+impl<T> AsRef<T> for Wrap<T> {
 	#[inline]
-	fn init_asset(owner: &T::AccountId, asset_id: AssetId, total: AssetBalance) {
-		// initialize the asset with `total` number of supplies
-		// the total number of private asset (pool balance) remain 0
-		// the assets is credit to the sender's account
-		PoolBalance::<T>::insert(asset_id, 0);
-		TotalSupply::<T>::insert(asset_id, total);
-		Balances::<T>::insert(owner, asset_id, total);
+	fn as_ref(&self) -> &T {
+		&self.0
 	}
+}
 
-	/// Returns the `commitments` split into the shards they will be inserted into.
+/// Wrap Pair Type
+#[derive(Clone, Copy)]
+pub struct WrapPair<L, R>(L, R);
+
+impl<L, R> AsRef<R> for WrapPair<L, R> {
 	#[inline]
-	fn split_commitments_by_shard(
-		commitments: Vec<(UTXO, MantaEciesCiphertext)>,
-	) -> Result<Vec<ShardCommitments>, Error<T>> {
-		let mut shards = Vec::<ShardCommitments>::new();
-		for cm in commitments {
-			ensure!(!Self::utxo_exists(cm.0), Error::<T>::LedgerUpdateFail);
-			let index = shard_index(cm.0);
-			match shards.iter_mut().find(move |s| s.index == index) {
-				Some(shard) => shard.commitments.push(cm),
-				_ => shards.push(ShardCommitments {
-					index,
-					commitments: vec![cm],
-				}),
-			}
-		}
-		// TODO: Loop over each shard and emit error if shard would overflow.
-		Ok(shards)
+	fn as_ref(&self) -> &R {
+		&self.1
 	}
+}
 
-	/// Loads the `ShardUpdatingData` from the ledger for the shard at `shard_index`, returning
-	/// a default value if the shard is empty.
-	#[inline]
-	fn load_shard_updating_data(shard_index: u8) -> Result<ShardUpdatingData, Error<T>> {
-		Ok(match LedgerShardMetaData::<T>::try_get(shard_index) {
-			Ok(metadata) => ShardUpdatingData {
-				is_empty: false,
-				current_utxo: LedgerShards::<T>::get(shard_index, metadata.current_index).0,
-				leaf_sibling: Self::get_sibling_utxo(metadata.current_index, || {
-					LedgerShards::<T>::get(shard_index, metadata.current_index - 1).0
-				})?,
-				metadata,
-			},
-			_ => Default::default(),
-		})
-	}
+impl<T> SenderLedger<config::Config> for Ledger<T>
+where
+	T: Config,
+{
+	type ValidVoidNumber = Wrap<config::VoidNumber>;
+	type ValidUtxoSetOutput = Wrap<transfer::UtxoSetOutput<config::Config>>;
+	type SuperPostingKey = (Wrap<()>, ());
 
-	/// Generates the data required on updating the ledger for the given `shard`.
 	#[inline]
-	fn generate_shard_update(
-		leaf_param: &LeafHashParam,
-		two_to_one_param: &TwoToOneHashParam,
-		shard: ShardCommitments,
-	) -> Result<ShardUpdate, Error<T>> {
-		let ShardUpdatingData {
-			mut is_empty,
-			mut current_utxo,
-			mut leaf_sibling,
-			metadata: ShardMetaData {
-				mut current_index,
-				mut current_auth_path,
-			},
-		} = Self::load_shard_updating_data(shard.index)?;
-		let mut update = ShardUpdate {
-			shard,
-			root: Default::default(),
-			metadata: ShardMetaData {
-				current_index: current_index.wrapping_sub(is_empty as u64),
-				current_auth_path,
-			},
-		};
-		for (cm, _) in &update.shard.commitments {
-			let (path, root) = <MantaCrypto as LedgerMerkleTree>::next_path_and_root(
-				leaf_param,
-				two_to_one_param,
-				current_index as usize,
-				is_empty,
-				&current_utxo,
-				&leaf_sibling,
-				&current_auth_path,
-				cm,
-			)
-			.map_err(move |_| Error::<T>::LedgerUpdateFail)?;
-			if !is_empty {
-				current_index += 1;
-			}
-			is_empty = false;
-			leaf_sibling = Self::get_sibling_utxo(current_index, move || current_utxo)?;
-			current_utxo = *cm;
-			current_auth_path = path;
-			update.root = root;
-		}
-		update.metadata.current_auth_path = current_auth_path;
-		Ok(update)
-	}
-
-	/// Inserts the new UTXOs and encrypted notes into the map, updating the merkle root and path.
-	#[inline]
-	fn insert_commitments(
-		leaf_param: &LeafHashParam,
-		two_to_one_param: &TwoToOneHashParam,
-		commitments: Vec<(UTXO, MantaEciesCiphertext)>,
-	) -> DispatchResult {
-		if commitments.is_empty() {
-			return Ok(());
-		}
-		let updates = Self::split_commitments_by_shard(commitments)?
-			.into_iter()
-			.map(|shard| Self::generate_shard_update(leaf_param, two_to_one_param, shard))
-			.collect::<Result<Vec<_>, Error<T>>>()?;
-		for ShardUpdate {
-			shard,
-			root,
-			mut metadata,
-		} in updates
-		{
-			for cm in shard.commitments {
-				metadata.current_index = metadata.current_index.wrapping_add(1);
-				LedgerShards::<T>::insert(shard.index, metadata.current_index, cm);
-				UTXOSet::<T>::insert(cm.0, true);
-			}
-			LedgerShardMetaData::<T>::insert(shard.index, metadata);
-			LedgerShardRoots::<T>::insert(shard.index, root);
-		}
-		Ok(())
-	}
-
-	/// Returns the sibling of the node at the given `index`, using `previous` to get the node to
-	/// the left of `index` if it is the sibling.
-	#[inline]
-	fn get_sibling_utxo<F>(index: u64, previous: F) -> Result<UTXO, Error<T>>
-	where
-		F: FnOnce() -> UTXO,
-	{
-		if index % 2 == 0 {
-			try_default_leaf_hash().map_err(move |_| Error::<T>::LedgerUpdateFail)
+	fn is_unspent(&self, void_number: config::VoidNumber) -> Option<Self::ValidVoidNumber> {
+		/* TODO:
+		if VoidNumberSet::<T>::contains_key(&void_number) {
+			None
 		} else {
-			Ok(previous())
+			Some(Wrap(void_number))
 		}
+		*/
+		todo!()
 	}
-}
 
-/// Shard Commitments
-struct ShardCommitments {
-	/// Index of the target shard
-	index: u8,
-
-	/// Commitments to insert
-	commitments: Vec<(UTXO, MantaEciesCiphertext)>,
-}
-
-/// Shard Updating Data
-struct ShardUpdatingData {
-	/// Empty Shard Flag
-	is_empty: bool,
-
-	/// Current UTXO
-	current_utxo: UTXO,
-
-	/// Sibling to the Current UTXO
-	leaf_sibling: UTXO,
-
-	/// Shard Metadata
-	metadata: ShardMetaData,
-}
-
-impl Default for ShardUpdatingData {
 	#[inline]
-	fn default() -> Self {
-		Self {
-			is_empty: true,
-			current_utxo: Default::default(),
-			leaf_sibling: Default::default(),
-			metadata: Default::default(),
+	fn has_matching_utxo_set_output(
+		&self,
+		output: transfer::UtxoSetOutput<config::Config>,
+	) -> Option<Self::ValidUtxoSetOutput> {
+		/* TODO:
+		for tree in self.utxo_forest.forest.as_ref() {
+			if tree.root() == &output {
+				return Some(Wrap(output));
+			}
 		}
+		None
+		*/
+		todo!()
+	}
+
+	#[inline]
+	fn spend(
+		&mut self,
+		utxo_set_output: Self::ValidUtxoSetOutput,
+		void_number: Self::ValidVoidNumber,
+		super_key: &Self::SuperPostingKey,
+	) {
+		/* TODO:
+		let _ = (utxo_set_output, super_key);
+		VoidNumberSet::<T>::insert(void_number.0, true);
+		*/
+		todo!()
 	}
 }
 
-/// Shard Update
-struct ShardUpdate {
-	/// Shard Index and Commitments to Insert
-	shard: ShardCommitments,
+impl<T> ReceiverLedger<config::Config> for Ledger<T>
+where
+	T: Config,
+{
+	type ValidUtxo = Wrap<config::Utxo>;
+	type SuperPostingKey = (Wrap<()>, ());
 
-	/// New Root
-	root: MantaRandomValue,
+	#[inline]
+	fn is_not_registered(&self, utxo: config::Utxo) -> Option<Self::ValidUtxo> {
+		/* TODO:
+		if UtxoSet::<T>::contains_key(&utxo) {
+			None
+		} else {
+			Some(Wrap(utxo))
+		}
+		*/
+		todo!()
+	}
 
-	/// New Metadata
-	metadata: ShardMetaData,
+	#[inline]
+	fn register(
+		&mut self,
+		utxo: Self::ValidUtxo,
+		note: config::EncryptedNote,
+		super_key: &Self::SuperPostingKey,
+	) {
+		/* TODO:
+		use manta_crypto::merkle_tree::forest::Configuration;
+		let _ = super_key;
+		let shard_index = config::MerkleTreeConfiguration::tree_index(&utxo.0);
+		let metadata = LedgerShardMetaData::<T>::get(shard_index);
+		LedgerShards::<T>::insert(shard_index, metadata.next_index, (utxo.0, note));
+		// TODO: update metadata, path, etc.
+		*/
+		todo!()
+	}
+}
+
+impl<T> TransferLedger<config::Config> for Ledger<T>
+where
+	T: Config,
+{
+	type AccountId = T::AccountId;
+	type Event = PreprocessedEvent<T>;
+	type ValidSourceAccount = WrapPair<Self::AccountId, asset::AssetValue>;
+	type ValidSinkAccount = WrapPair<Self::AccountId, asset::AssetValue>;
+	type ValidProof = Wrap<()>;
+	type SuperPostingKey = ();
+
+	#[inline]
+	fn check_source_accounts(
+		&self,
+		asset_id: Option<asset::AssetId>,
+		accounts: Vec<Self::AccountId>,
+		sources: Vec<asset::AssetValue>,
+	) -> Result<Vec<Self::ValidSourceAccount>, InvalidSourceAccounts<Self::AccountId>> {
+		// NOTE: Existence of accounts is type-checked so we only need check account balances and
+		//		 check the shape of the input.
+		if let Some(asset_id) = asset_id {
+			let mut valid_source_accounts = Vec::new();
+			for (account_id, withdraw) in accounts.into_iter().zip(sources) {
+				match Balances::<T>::try_get(&account_id, asset_id.0) {
+					Ok(balance) => {
+						if balance >= withdraw.0 {
+							valid_source_accounts.push(WrapPair(account_id, withdraw));
+						} else {
+							return Err(InvalidSourceAccounts::BadAccount {
+								account_id,
+								balance: AccountBalance::Known(asset::AssetValue(balance)),
+								withdraw,
+							});
+						}
+					}
+					_ => {
+						return Err(InvalidSourceAccounts::BadAccount {
+							account_id,
+							balance: AccountBalance::Known(asset::AssetValue(0)),
+							withdraw,
+						});
+					}
+				}
+			}
+			Ok(valid_source_accounts)
+		} else if accounts.is_empty() && sources.is_empty() {
+			Ok(Vec::new())
+		} else {
+			Err(InvalidSourceAccounts::InvalidShape)
+		}
+	}
+
+	#[inline]
+	fn check_sink_accounts(
+		&self,
+		asset_id: Option<asset::AssetId>,
+		accounts: Vec<Self::AccountId>,
+		sinks: Vec<asset::AssetValue>,
+	) -> Result<Vec<Self::ValidSinkAccount>, InvalidSinkAccounts<Self::AccountId>> {
+		// NOTE: Existence of accounts is type-checked so we don't need to do anything here except
+		//		 check the shape of the input.
+		if asset_id.is_some() {
+			Ok(accounts
+				.into_iter()
+				.zip(sinks)
+				.map(move |(account, deposit)| WrapPair(account, deposit))
+				.collect())
+		} else if accounts.is_empty() && sinks.is_empty() {
+			Ok(Vec::new())
+		} else {
+			Err(InvalidSinkAccounts::InvalidShape)
+		}
+	}
+
+	#[inline]
+	fn is_valid(
+		&self,
+		asset_id: Option<asset::AssetId>,
+		sources: &[SourcePostingKey<config::Config, Self>],
+		senders: &[SenderPostingKey<config::Config, Self>],
+		receivers: &[ReceiverPostingKey<config::Config, Self>],
+		sinks: &[SinkPostingKey<config::Config, Self>],
+		proof: Proof<config::Config>,
+	) -> Option<(Self::ValidProof, Self::Event)> {
+		/*
+		let (verifying_context, event) = match TransferShape::select(
+			asset_id.is_some(),
+			sources.len(),
+			senders.len(),
+			receivers.len(),
+			sinks.len(),
+		)? {
+			TransferShape::Mint => {
+				let event = PreprocessedEvent::Mint {
+					asset: Asset {
+						id: asset_id.unwrap().0,
+						value: (sources[0].1).0,
+					},
+					source: sources[0].0,
+				};
+				todo!()
+			}
+			TransferShape::PrivateTransfer => {
+				let event = PreprocessedEvent::PrivateTransfer;
+				todo!()
+			}
+			TransferShape::Reclaim => {
+				let event = PreprocessedEvent::Reclaim {
+					asset: Asset {
+						id: asset_id.unwrap().0,
+						value: (sinks[0].1).0,
+					},
+					sink: sinks[0].0,
+				};
+				todo!()
+			}
+		};
+		*/
+
+		/* TODO:
+		ProofSystem::verify(
+			&TransferPostingKey::generate_proof_input(asset_id, sources, senders, receivers, sinks),
+			&proof,
+			verifying_context,
+		)
+		.ok()?
+		.then(move || (Wrap(()), event))
+		*/
+		todo!()
+	}
+
+	#[inline]
+	fn update_public_balances(
+		&mut self,
+		asset_id: asset::AssetId,
+		sources: Vec<SourcePostingKey<config::Config, Self>>,
+		sinks: Vec<SinkPostingKey<config::Config, Self>>,
+		proof: Self::ValidProof,
+		super_key: &TransferLedgerSuperPostingKey<config::Config, Self>,
+	) {
+		let _ = (proof, super_key);
+		for WrapPair(account_id, withdraw) in sources {
+			Balances::<T>::mutate(&account_id, asset_id.0, |balance| *balance -= withdraw.0);
+		}
+		for WrapPair(account_id, deposit) in sinks {
+			Balances::<T>::mutate(&account_id, asset_id.0, |balance| *balance += deposit.0);
+		}
+	}
 }

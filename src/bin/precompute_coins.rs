@@ -14,6 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with pallet-manta-pay.  If not, see <http://www.gnu.org/licenses/>.
 
+/* TODO:
 use indoc::indoc;
 use manta_api::{
 	generate_mint_struct, generate_private_transfer_struct, generate_reclaim_struct,
@@ -164,3 +165,4 @@ fn main() {
 	print_const!(TRANSFER_DATA);
 	print_const!(RECLAIM_DATA);
 }
+*/

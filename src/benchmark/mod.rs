@@ -60,7 +60,7 @@ benchmarks! {
 		assert_eq!(Balances::<T>::get(&recipient, TEST_ASSET), transfer_amount);
 	}
 
-	mint_private_asset {
+	mint {
 		let caller: T::AccountId = whitelisted_caller();
 		let origin: T::Origin = T::Origin::from(RawOrigin::Signed(caller.clone()));
 		<Balances<T>>::insert(&caller, TEST_ASSET, 1_000_000);
@@ -68,7 +68,7 @@ benchmarks! {
 		let mut mint_bytes: Vec<u8> = Vec::new();
 		mint_bytes.extend_from_slice(COIN_1);
 		let mint_data = MintData::deserialize(&mut mint_bytes.as_ref()).unwrap();
-	}: mint_private_asset (
+	}: mint (
 		RawOrigin::Signed(caller),
 		mint_data)
 	verify {
@@ -86,7 +86,7 @@ benchmarks! {
 			let mut coin_bytes: Vec<u8> = Vec::new();
 			coin_bytes.extend_from_slice(coin);
 			let mint_data = MintData::deserialize(&mut coin_bytes.as_ref()).unwrap();
-			Pallet::<T>::mint_private_asset(origin.clone(), mint_data).unwrap();
+			Pallet::<T>::mint(origin.clone(), mint_data).unwrap();
 		}
 
 		let mut test_transfer_bytes: Vec<u8> = Vec::new();
@@ -112,7 +112,7 @@ benchmarks! {
 			let mut coin_bytes: Vec<u8> = Vec::new();
 			coin_bytes.extend_from_slice(coin);
 			let mint_data = MintData::deserialize(&mut coin_bytes.as_ref()).unwrap();
-			Pallet::<T>::mint_private_asset(origin.clone(), mint_data).unwrap();
+			Pallet::<T>::mint(origin.clone(), mint_data).unwrap();
 		}
 
 		let mut reclaim_bytes: Vec<u8> = Vec::new();
