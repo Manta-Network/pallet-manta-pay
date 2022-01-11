@@ -40,12 +40,12 @@
 //! * **Asset issuance:** The creation of the asset (note: this asset can only be created once)
 //! * **Asset transfer:** The action of transferring assets from one account to another.
 //! * **Private asset mint:** The action of converting certain number of `Asset`s into an UTXO
-//!		that holds same number of private assets.
+//!     that holds same number of private assets.
 //! * **Private asset transfer:** The action of transferring certain number of private assets from
-//!		two UTXOs to another two UTXOs.
+//!     two UTXOs to another two UTXOs.
 //! * **Private asset reclaim:** The action of transferring certain number of private assets from
-//!		two UTXOs to another UTXO, and converting the remaining private assets back to public
-//!		assets.
+//!     two UTXOs to another UTXO, and converting the remaining private assets back to public
+//!     assets.
 //!
 //! The assets system in Manta is designed to make the following possible:
 //!
@@ -59,16 +59,16 @@
 //! ### Dispatchable Functions
 //!
 //! * `transfer_asset` - Transfers an `amount` of units of fungible asset `id` from the balance of
-//!		the function caller's account (`origin`) to a `target` account.
+//!     the function caller's account (`origin`) to a `target` account.
 //! * `mint_private_asset` - Converting an `amount` of units of fungible asset `id` from the caller
-//!		to a private UTXO. (The caller does not need to be the owner of this UTXO)
+//!     to a private UTXO. (The caller does not need to be the owner of this UTXO)
 //! * `private_transfer` - Transfer two input UTXOs into two output UTXOs. Require that 1) the input
-//!		UTXOs are already in the ledger and are not spend before 2) the sum of private assets in
-//!		input UTXOs matches that of the output UTXOs. The requirements are guaranteed via ZK proof.
+//!     UTXOs are already in the ledger and are not spend before 2) the sum of private assets in
+//!     input UTXOs matches that of the output UTXOs. The requirements are guaranteed via ZK proof.
 //! * `reclaim` - Transfer two input UTXOs into one output UTXOs, and convert the remaining assets
-//!		to the public assets. Require that 1) the input UTXOs are already in the ledger and are not
-//!		spend before; 2) the sum of private assets in input UTXOs matches that of the output UTXO +
-//!		the reclaimed amount. The requirements are guaranteed via ZK proof.
+//!     to the public assets. Require that 1) the input UTXOs are already in the ledger and are not
+//!     spend before; 2) the sum of private assets in input UTXOs matches that of the output UTXO +
+//!     the reclaimed amount. The requirements are guaranteed via ZK proof.
 //!
 //! Please refer to the [`Call`](./enum.Call.html) enum and its associated variants for
 //! documentation on each function.
@@ -105,7 +105,7 @@
 
 use codec::{Decode, Encode};
 use core::marker::PhantomData;
-use frame_support::{dispatch::DispatchResult, ensure, Deserialize, Serialize};
+use frame_support::{ensure, Deserialize, Serialize};
 use manta_accounting::{
 	asset,
 	transfer::{
@@ -116,8 +116,8 @@ use manta_accounting::{
 	},
 };
 use manta_pay::config;
-use sp_runtime::DispatchError;
 use sp_std::prelude::*;
+use types::*;
 
 /* TODO:
 #[cfg(test)]
@@ -137,70 +137,95 @@ pub use pallet::*;
 pub use weights::WeightInfo;
 
 ///
-pub type AssetId = asset::AssetIdType;
-
-///
-pub type AssetValue = asset::AssetValueType;
-
-///
-#[derive(Clone, Debug, Decode, Default, Deserialize, Encode, Eq, Hash, PartialEq, Serialize)]
-pub struct Asset {
-	///
-	pub id: AssetId,
+pub mod types {
+	use super::*;
 
 	///
-	pub value: AssetValue,
-}
-
-///
-pub type Utxo = [u8; 32];
-
-///
-pub type UtxoSetOutput = [u8; 32];
-
-///
-pub type VoidNumber = [u8; 32];
-
-///
-pub type EncryptedNote = [u8; 32];
-
-///
-#[derive(Clone, Debug, Decode, Default, Encode, Eq, Hash, PartialEq)]
-pub struct SenderPost {
-	/// UTXO Set Output
-	pub utxo_set_output: UtxoSetOutput,
-
-	/// Void Number
-	pub void_number: VoidNumber,
-}
-
-///
-#[derive(Clone, Debug, Decode, Default, Encode, Eq, Hash, PartialEq)]
-pub struct ReceiverPost {
-	/// Unspent Transaction Output
-	pub utxo: Utxo,
-
-	/// Encrypted Note
-	pub note: EncryptedNote,
-}
-
-///
-#[derive(Clone, Debug, Decode, Default, Encode, Eq, Hash, PartialEq)]
-pub struct TransferPost {
-	///
-	pub asset_id: Option<AssetId>,
+	pub type AssetId = asset::AssetIdType;
 
 	///
-	pub sources: Vec<AssetValue>,
+	pub type AssetValue = asset::AssetValueType;
 
 	///
-	pub senders: Vec<SenderPost>,
+	#[derive(
+		Clone,
+		Debug,
+		Decode,
+		Default,
+		Deserialize,
+		Encode,
+		Eq,
+		Hash,
+		Ord,
+		PartialEq,
+		PartialOrd,
+		Serialize,
+	)]
+	pub struct Asset {
+		///
+		pub id: AssetId,
+
+		///
+		pub value: AssetValue,
+	}
 
 	///
-	pub receivers: Vec<ReceiverPost>,
+	pub type Utxo = [u8; 32];
 
 	///
-	pub sinks: Vec<AssetValue>,
+	pub type UtxoSetOutput = [u8; 32];
+
+	///
+	pub type VoidNumber = [u8; 32];
+
+	///
+	#[derive(Clone, Debug, Decode, Default, Encode, Eq, Hash, PartialEq)]
+	pub struct EncryptedNote {
+		///
+		pub ciphertext: [u8; 32],
+
+		///
+		pub ephemeral_public_key: [u8; 32],
+	}
+
+	///
+	#[derive(Clone, Debug, Decode, Default, Encode, Eq, Hash, PartialEq)]
+	pub struct SenderPost {
+		/// UTXO Set Output
+		pub utxo_set_output: UtxoSetOutput,
+
+		/// Void Number
+		pub void_number: VoidNumber,
+	}
+
+	///
+	#[derive(Clone, Debug, Decode, Default, Encode, Eq, Hash, PartialEq)]
+	pub struct ReceiverPost {
+		/// Unspent Transaction Output
+		pub utxo: Utxo,
+
+		/// Encrypted Note
+		pub note: EncryptedNote,
+	}
+
+	///
+	#[derive(Clone, Debug, Decode, Default, Encode, Eq, Hash, PartialEq)]
+	pub struct TransferPost {
+		///
+		pub asset_id: Option<AssetId>,
+
+		///
+		pub sources: Vec<AssetValue>,
+
+		///
+		pub senders: Vec<SenderPost>,
+
+		///
+		pub receivers: Vec<ReceiverPost>,
+
+		///
+		pub sinks: Vec<AssetValue>,
+	}
 }
 
 /// MantaPay Pallet
@@ -210,7 +235,9 @@ pub mod pallet {
 	use frame_support::pallet_prelude::*;
 	use frame_system::pallet_prelude::*;
 	use sp_runtime::traits::StaticLookup;
+	use sp_std::collections::btree_set::BTreeSet;
 
+	///
 	#[pallet::pallet]
 	#[pallet::generate_store(pub(super) trait Store)]
 	pub struct Pallet<T>(_);
@@ -247,7 +274,7 @@ pub mod pallet {
 
 	///
 	#[pallet::storage]
-	pub(super) type LedgerShards<T: Config> =
+	pub(super) type Shards<T: Config> =
 		StorageDoubleMap<_, Identity, u8, Identity, u64, (Utxo, EncryptedNote), ValueQuery>;
 
 	/* TODO:
@@ -255,26 +282,35 @@ pub mod pallet {
 	#[pallet::storage]
 	pub(super) type LedgerShardMetaData<T: Config> =
 		StorageMap<_, Identity, u8, ShardMetaData, ValueQuery>;
-
-	///
-	#[pallet::storage]
-	pub(super) type LedgerShardRoots<T: Config> =
-		StorageMap<_, Identity, u8, MantaRandomValue, ValueQuery>;
 	*/
 
 	///
 	#[pallet::storage]
-	pub(super) type UtxoSet<T: Config> = StorageMap<_, Twox64Concat, Utxo, bool, ValueQuery>;
+	pub(super) type ShardOutputs<T: Config> =
+		StorageMap<_, Identity, u8, UtxoSetOutput, ValueQuery>;
 
 	///
 	#[pallet::storage]
-	pub(super) type VoidNumberSet<T: Config> =
-		StorageMap<_, Twox64Concat, VoidNumber, bool, ValueQuery>;
+	pub(super) type UtxoSet<T: Config> = StorageMap<_, Identity, Utxo, (), ValueQuery>;
 
+	///
+	#[pallet::storage]
+	pub(super) type VoidNumberSet<T: Config> = StorageMap<_, Identity, VoidNumber, (), ValueQuery>;
+
+	///
+	#[pallet::storage]
+	pub(super) type VoidNumberSetInsertionOrder<T: Config> =
+		StorageMap<_, Identity, u64, VoidNumber, ValueQuery>;
+
+	///
+	#[pallet::storage]
+	pub(super) type VoidNumberSetSize<T: Config> = StorageValue<_, u64, ValueQuery>;
+
+	///
 	#[pallet::genesis_config]
 	pub struct GenesisConfig<T: Config> {
 		pub owner: T::AccountId,
-		pub assets: Vec<Asset>,
+		pub assets: BTreeSet<Asset>,
 	}
 
 	#[cfg(feature = "std")]
@@ -689,7 +725,10 @@ where
 	) {
 		/* TODO:
 		let _ = (utxo_set_output, super_key);
-		VoidNumberSet::<T>::insert(void_number.0, true);
+		let index = VoidNumberSetSize::<T>::get();
+		VoidNumberSet::<T>::insert(void_number.0, ());
+		VoidNumberSetInsertionOrder::<T>::insert(index, void_number.0);
+		VoidNumberSetSize::<T>::set(index + 1);
 		*/
 		todo!()
 	}
