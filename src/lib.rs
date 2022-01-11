@@ -109,10 +109,10 @@ use frame_support::{ensure, Deserialize, Serialize};
 use manta_accounting::{
 	asset,
 	transfer::{
-		self, canonical::TransferShape, AccountBalance, InvalidSinkAccounts, InvalidSourceAccounts,
-		Proof, ReceiverLedger, ReceiverPostError, ReceiverPostingKey, SenderLedger,
-		SenderPostError, SenderPostingKey, SinkPostingKey, SourcePostingKey, TransferLedger,
-		TransferLedgerSuperPostingKey, TransferPostError,
+		self, AccountBalance, InvalidSinkAccount, InvalidSourceAccount, Proof, ReceiverLedger,
+		ReceiverPostError, ReceiverPostingKey, SenderLedger, SenderPostError, SenderPostingKey,
+		SinkPostingKey, SourcePostingKey, TransferLedger, TransferLedgerSuperPostingKey,
+		TransferPostError,
 	},
 };
 use manta_pay::config;
@@ -517,44 +517,32 @@ pub mod pallet {
 		InvalidProof,
 	}
 
-	impl<T> From<InvalidSourceAccounts<T::AccountId>> for Error<T>
+	impl<T> From<InvalidSourceAccount<T::AccountId>> for Error<T>
 	where
 		T: Config,
 	{
 		#[inline]
-		fn from(err: InvalidSourceAccounts<T::AccountId>) -> Self {
-			match err {
-				InvalidSourceAccounts::InvalidShape => Self::InvalidShape,
-				InvalidSourceAccounts::BadAccount {
-					account_id,
-					balance,
-					withdraw,
-				} => match balance {
-					AccountBalance::Known(balance) => {
-						// TODO: Maybe we can give a more informative error.
-						let _ = (account_id, balance, withdraw);
-						Self::BalanceLow
-					}
-					AccountBalance::UnknownAccount => {
-						unreachable!("Accounts are checked before reaching this point.")
-					}
-				},
+		fn from(err: InvalidSourceAccount<T::AccountId>) -> Self {
+			match err.balance {
+				AccountBalance::Known(_) => {
+					// TODO: Maybe we can give a more informative error.
+					Self::BalanceLow
+				}
+				AccountBalance::UnknownAccount => {
+					unreachable!("Accounts are checked before reaching this point.")
+				}
 			}
 		}
 	}
 
-	impl<T> From<InvalidSinkAccounts<T::AccountId>> for Error<T>
+	impl<T> From<InvalidSinkAccount<T::AccountId>> for Error<T>
 	where
 		T: Config,
 	{
 		#[inline]
-		fn from(err: InvalidSinkAccounts<T::AccountId>) -> Self {
-			match err {
-				InvalidSinkAccounts::InvalidShape => Self::InvalidShape,
-				InvalidSinkAccounts::BadAccount { .. } => {
-					unreachable!("Accounts are checked before reaching this point.")
-				}
-			}
+		fn from(err: InvalidSinkAccount<T::AccountId>) -> Self {
+			let _ = err;
+			unimplemented!("Accounts are checked before reaching this point.")
 		}
 	}
 
@@ -584,8 +572,9 @@ pub mod pallet {
 		#[inline]
 		fn from(err: TransferPostError<T::AccountId>) -> Self {
 			match err {
-				TransferPostError::InvalidSourceAccounts(err) => err.into(),
-				TransferPostError::InvalidSinkAccounts(err) => err.into(),
+				TransferPostError::InvalidShape => Self::InvalidShape,
+				TransferPostError::InvalidSourceAccount(err) => err.into(),
+				TransferPostError::InvalidSinkAccount(err) => err.into(),
 				TransferPostError::Sender(err) => err.into(),
 				TransferPostError::Receiver(err) => err.into(),
 				TransferPostError::DuplicateSpend => Self::DuplicateSpend,
@@ -784,66 +773,52 @@ where
 	type SuperPostingKey = ();
 
 	#[inline]
-	fn check_source_accounts(
+	fn check_source_accounts<I>(
 		&self,
-		asset_id: Option<asset::AssetId>,
-		accounts: Vec<Self::AccountId>,
-		sources: Vec<asset::AssetValue>,
-	) -> Result<Vec<Self::ValidSourceAccount>, InvalidSourceAccounts<Self::AccountId>> {
-		// NOTE: Existence of accounts is type-checked so we only need check account balances and
-		//		 check the shape of the input.
-		if let Some(asset_id) = asset_id {
-			let mut valid_source_accounts = Vec::new();
-			for (account_id, withdraw) in accounts.into_iter().zip(sources) {
+		asset_id: asset::AssetId,
+		sources: I,
+	) -> Result<Vec<Self::ValidSourceAccount>, InvalidSourceAccount<Self::AccountId>>
+	where
+		I: Iterator<Item = (Self::AccountId, asset::AssetValue)>,
+	{
+		// NOTE: Existence of accounts is type-checked so we only need check account balances.
+		sources
+			.map(move |(account_id, withdraw)| {
 				match Balances::<T>::try_get(&account_id, asset_id.0) {
 					Ok(balance) => {
 						if balance >= withdraw.0 {
-							valid_source_accounts.push(WrapPair(account_id, withdraw));
+							Ok(WrapPair(account_id, withdraw))
 						} else {
-							return Err(InvalidSourceAccounts::BadAccount {
+							Err(InvalidSourceAccount {
 								account_id,
 								balance: AccountBalance::Known(asset::AssetValue(balance)),
 								withdraw,
-							});
+							})
 						}
 					}
-					_ => {
-						return Err(InvalidSourceAccounts::BadAccount {
-							account_id,
-							balance: AccountBalance::Known(asset::AssetValue(0)),
-							withdraw,
-						});
-					}
+					_ => Err(InvalidSourceAccount {
+						account_id,
+						balance: AccountBalance::Known(asset::AssetValue(0)),
+						withdraw,
+					}),
 				}
-			}
-			Ok(valid_source_accounts)
-		} else if accounts.is_empty() && sources.is_empty() {
-			Ok(Vec::new())
-		} else {
-			Err(InvalidSourceAccounts::InvalidShape)
-		}
+			})
+			.collect()
 	}
 
 	#[inline]
-	fn check_sink_accounts(
+	fn check_sink_accounts<I>(
 		&self,
-		asset_id: Option<asset::AssetId>,
-		accounts: Vec<Self::AccountId>,
-		sinks: Vec<asset::AssetValue>,
-	) -> Result<Vec<Self::ValidSinkAccount>, InvalidSinkAccounts<Self::AccountId>> {
-		// NOTE: Existence of accounts is type-checked so we don't need to do anything here except
-		//		 check the shape of the input.
-		if asset_id.is_some() {
-			Ok(accounts
-				.into_iter()
-				.zip(sinks)
-				.map(move |(account, deposit)| WrapPair(account, deposit))
-				.collect())
-		} else if accounts.is_empty() && sinks.is_empty() {
-			Ok(Vec::new())
-		} else {
-			Err(InvalidSinkAccounts::InvalidShape)
-		}
+		sinks: I,
+	) -> Result<Vec<Self::ValidSinkAccount>, InvalidSinkAccount<Self::AccountId>>
+	where
+		I: Iterator<Item = (Self::AccountId, asset::AssetValue)>,
+	{
+		// NOTE: Existence of accounts is type-checked so we don't need to do anything here, just
+		//		 pass the data forward.
+		Ok(sinks
+			.map(move |(account_id, deposit)| WrapPair(account_id, deposit))
+			.collect())
 	}
 
 	#[inline]
