@@ -109,7 +109,7 @@ use frame_support::{ensure, Deserialize, Serialize};
 use manta_accounting::{
 	asset,
 	transfer::{
-		self, AccountBalance, InvalidSinkAccount, InvalidSourceAccount, Proof, ReceiverLedger,
+		AccountBalance, InvalidSinkAccount, InvalidSourceAccount, Proof, ReceiverLedger,
 		ReceiverPostError, ReceiverPostingKey, SenderLedger, SenderPostError, SenderPostingKey,
 		SinkPostingKey, SourcePostingKey, TransferLedger, TransferLedgerSuperPostingKey,
 		TransferPostError,
@@ -136,17 +136,17 @@ pub mod weights;
 pub use pallet::*;
 pub use weights::WeightInfo;
 
-///
+/// Type Definitions for Protocol Structures
 pub mod types {
 	use super::*;
 
-	///
+	/// Asset Id Type
 	pub type AssetId = asset::AssetIdType;
 
-	///
+	/// Asset Value Type
 	pub type AssetValue = asset::AssetValueType;
 
-	///
+	/// Asset
 	#[derive(
 		Clone,
 		Debug,
@@ -162,69 +162,117 @@ pub mod types {
 		Serialize,
 	)]
 	pub struct Asset {
-		///
+		/// Asset Id
 		pub id: AssetId,
 
-		///
+		/// Asset Value
 		pub value: AssetValue,
 	}
 
-	///
-	pub type Utxo = [u8; 32];
-
-	///
-	pub type UtxoSetOutput = [u8; 32];
-
-	///
-	pub type VoidNumber = [u8; 32];
-
-	///
-	#[derive(Clone, Debug, Decode, Default, Encode, Eq, Hash, PartialEq)]
+	/// Encrypted Note
+	#[derive(Clone, Debug, Decode, Encode, Eq, Hash, PartialEq)]
 	pub struct EncryptedNote {
-		///
-		pub ciphertext: [u8; 32],
+		/// Ciphertext
+		pub ciphertext: config::Ciphertext,
 
-		///
-		pub ephemeral_public_key: [u8; 32],
+		/// Ephemeral Public Key
+		pub ephemeral_public_key: config::PublicKey,
 	}
 
-	///
-	#[derive(Clone, Debug, Decode, Default, Encode, Eq, Hash, PartialEq)]
+	impl Default for EncryptedNote {
+		#[inline]
+		fn default() -> Self {
+			Self {
+				ciphertext: [0; 36],
+				ephemeral_public_key: Default::default(),
+			}
+		}
+	}
+
+	impl From<EncryptedNote> for config::EncryptedNote {
+		#[inline]
+		fn from(note: EncryptedNote) -> Self {
+			Self {
+				ciphertext: note.ciphertext,
+				ephemeral_public_key: note.ephemeral_public_key,
+			}
+		}
+	}
+
+	/// Sender Post
+	#[derive(Clone, Debug, Decode, Encode, Eq, Hash, PartialEq)]
 	pub struct SenderPost {
 		/// UTXO Set Output
-		pub utxo_set_output: UtxoSetOutput,
+		pub utxo_set_output: config::UtxoSetOutput,
 
 		/// Void Number
-		pub void_number: VoidNumber,
+		pub void_number: config::VoidNumber,
 	}
 
-	///
-	#[derive(Clone, Debug, Decode, Default, Encode, Eq, Hash, PartialEq)]
+	impl From<SenderPost> for config::SenderPost {
+		#[inline]
+		fn from(post: SenderPost) -> Self {
+			Self {
+				utxo_set_output: post.utxo_set_output,
+				void_number: post.void_number,
+			}
+		}
+	}
+
+	/// Receiver Post
+	#[derive(Clone, Debug, Decode, Encode, Eq, Hash, PartialEq)]
 	pub struct ReceiverPost {
 		/// Unspent Transaction Output
-		pub utxo: Utxo,
+		pub utxo: config::Utxo,
 
 		/// Encrypted Note
 		pub note: EncryptedNote,
 	}
 
-	///
-	#[derive(Clone, Debug, Decode, Default, Encode, Eq, Hash, PartialEq)]
+	impl From<ReceiverPost> for config::ReceiverPost {
+		#[inline]
+		fn from(post: ReceiverPost) -> Self {
+			Self {
+				utxo: post.utxo,
+				note: post.note.into(),
+			}
+		}
+	}
+
+	/// Transfer Post
+	#[derive(Clone, Debug, Decode, Encode, Eq, PartialEq)]
 	pub struct TransferPost {
-		///
+		/// Asset Id
 		pub asset_id: Option<AssetId>,
 
-		///
+		/// Sources
 		pub sources: Vec<AssetValue>,
 
-		///
-		pub senders: Vec<SenderPost>,
+		/// Sender Posts
+		pub sender_posts: Vec<SenderPost>,
 
-		///
-		pub receivers: Vec<ReceiverPost>,
+		/// Receiver Posts
+		pub receiver_posts: Vec<ReceiverPost>,
 
-		///
+		/// Sinks
 		pub sinks: Vec<AssetValue>,
+
+		/// Validity Proof
+		pub validity_proof: config::Proof,
+	}
+
+	impl From<TransferPost> for config::TransferPost {
+		#[inline]
+		fn from(post: TransferPost) -> Self {
+			Self {
+				asset_id: post.asset_id.map(asset::AssetId),
+				sources: post.sources.into_iter().map(asset::AssetValue).collect(),
+				sender_posts: post.sender_posts.into_iter().map(Into::into).collect(),
+				receiver_posts: post.receiver_posts.into_iter().map(Into::into).collect(),
+				sinks: post.sinks.into_iter().map(asset::AssetValue).collect(),
+				validity_proof: post.validity_proof,
+			}
+		}
 	}
 }
 
@@ -275,7 +323,7 @@ pub mod pallet {
 	///
 	#[pallet::storage]
 	pub(super) type Shards<T: Config> =
-		StorageDoubleMap<_, Identity, u8, Identity, u64, (Utxo, EncryptedNote), ValueQuery>;
+		StorageDoubleMap<_, Identity, u8, Identity, u64, (config::Utxo, EncryptedNote), ValueQuery>;
 
 	/* TODO:
 	///
@@ -287,20 +335,21 @@ pub mod pallet {
 	///
 	#[pallet::storage]
 	pub(super) type ShardOutputs<T: Config> =
-		StorageMap<_, Identity, u8, UtxoSetOutput, ValueQuery>;
+		StorageMap<_, Identity, u8, config::UtxoSetOutput, ValueQuery>;
 
 	///
 	#[pallet::storage]
-	pub(super) type UtxoSet<T: Config> = StorageMap<_, Identity, Utxo, (), ValueQuery>;
+	pub(super) type UtxoSet<T: Config> = StorageMap<_, Identity, config::Utxo, (), ValueQuery>;
 
 	///
 	#[pallet::storage]
-	pub(super) type VoidNumberSet<T: Config> = StorageMap<_, Identity, VoidNumber, (), ValueQuery>;
+	pub(super) type VoidNumberSet<T: Config> =
+		StorageMap<_, Identity, config::VoidNumber, (), ValueQuery>;
 
 	///
 	#[pallet::storage]
 	pub(super) type VoidNumberSetInsertionOrder<T: Config> =
-		StorageMap<_, Identity, u64, VoidNumber, ValueQuery>;
+		StorageMap<_, Identity, u64, config::VoidNumber, ValueQuery>;
 
 	///
 	#[pallet::storage]
@@ -349,7 +398,6 @@ pub mod pallet {
 			target: <T::Lookup as StaticLookup>::Source,
 			asset: Asset,
 		) -> DispatchResultWithPostInfo {
-			// TODO: move this to ledger abstraction.
 			let origin = ensure_signed(origin)?;
 			let target = T::Lookup::lookup(target)?;
 			ensure!(
@@ -376,14 +424,14 @@ pub mod pallet {
 			post: TransferPost,
 		) -> DispatchResultWithPostInfo {
 			let origin = ensure_signed(origin)?;
-			/*
 			let mut ledger = Self::ledger();
 			Self::deposit_event(
-				post.validate(vec![origin], vec![], &ledger)
+				config::TransferPost::from(post)
+					.validate(vec![origin], vec![], &ledger)
 					.map_err(Error::<T>::from)?
-					.post(&(), &mut ledger),
+					.post(&(), &mut ledger)
+					.convert(None),
 			);
-			*/
 			Ok(().into())
 		}
 
@@ -394,14 +442,14 @@ pub mod pallet {
 			post: TransferPost,
 		) -> DispatchResultWithPostInfo {
 			let origin = ensure_signed(origin)?;
-			/*
 			let mut ledger = Self::ledger();
 			Self::deposit_event(
-				post.validate(vec![], vec![], &ledger)
+				config::TransferPost::from(post)
+					.validate(vec![], vec![], &ledger)
 					.map_err(Error::<T>::from)?
-					.post(&(), &mut ledger),
+					.post(&(), &mut ledger)
+					.convert(Some(origin)),
 			);
-			*/
 			Ok(().into())
 		}
 
@@ -409,14 +457,14 @@ pub mod pallet {
 		#[pallet::weight(T::WeightInfo::reclaim())]
 		pub fn reclaim(origin: OriginFor<T>, post: TransferPost) -> DispatchResultWithPostInfo {
 			let origin = ensure_signed(origin)?;
-			/*
 			let mut ledger = Self::ledger();
 			Self::deposit_event(
-				post.validate(vec![], vec![origin], &ledger)
+				config::TransferPost::from(post)
+					.validate(vec![], vec![origin], &ledger)
 					.map_err(Error::<T>::from)?
-					.post(&(), &mut ledger),
+					.post(&(), &mut ledger)
+					.convert(None),
 			);
-			*/
 			Ok(().into())
 		}
 	}
@@ -642,6 +690,23 @@ where
 	},
 }
 
+impl<T> PreprocessedEvent<T>
+where
+	T: Config,
+{
+	///
+	#[inline]
+	pub fn convert(self, origin: Option<T::AccountId>) -> Event<T> {
+		match self {
+			Self::Mint { asset, source } => Event::Mint { asset, source },
+			Self::PrivateTransfer => Event::PrivateTransfer {
+				origin: origin.unwrap(),
+			},
+			Self::Reclaim { asset, sink } => Event::Reclaim { asset, sink },
+		}
+	}
+}
+
 /// Ledger
 pub struct Ledger<T>(PhantomData<T>)
 where
@@ -674,25 +739,22 @@ where
 	T: Config,
 {
 	type ValidVoidNumber = Wrap<config::VoidNumber>;
-	type ValidUtxoSetOutput = Wrap<transfer::UtxoSetOutput<config::Config>>;
+	type ValidUtxoSetOutput = Wrap<config::UtxoSetOutput>;
 	type SuperPostingKey = (Wrap<()>, ());
 
 	#[inline]
 	fn is_unspent(&self, void_number: config::VoidNumber) -> Option<Self::ValidVoidNumber> {
-		/* TODO:
 		if VoidNumberSet::<T>::contains_key(&void_number) {
 			None
 		} else {
 			Some(Wrap(void_number))
 		}
-		*/
-		todo!()
 	}
 
 	#[inline]
 	fn has_matching_utxo_set_output(
 		&self,
-		output: transfer::UtxoSetOutput<config::Config>,
+		output: config::UtxoSetOutput,
 	) -> Option<Self::ValidUtxoSetOutput> {
 		/* TODO:
 		for tree in self.utxo_forest.forest.as_ref() {
@@ -712,14 +774,11 @@ where
 		void_number: Self::ValidVoidNumber,
 		super_key: &Self::SuperPostingKey,
 	) {
-		/* TODO:
 		let _ = (utxo_set_output, super_key);
 		let index = VoidNumberSetSize::<T>::get();
 		VoidNumberSet::<T>::insert(void_number.0, ());
 		VoidNumberSetInsertionOrder::<T>::insert(index, void_number.0);
 		VoidNumberSetSize::<T>::set(index + 1);
-		*/
-		todo!()
 	}
 }
 
@@ -732,14 +791,11 @@ where
 
 	#[inline]
 	fn is_not_registered(&self, utxo: config::Utxo) -> Option<Self::ValidUtxo> {
-		/* TODO:
 		if UtxoSet::<T>::contains_key(&utxo) {
 			None
 		} else {
 			Some(Wrap(utxo))
 		}
-		*/
-		todo!()
 	}
 
 	#[inline]
@@ -786,6 +842,7 @@ where
 			.map(move |(account_id, withdraw)| {
 				match Balances::<T>::try_get(&account_id, asset_id.0) {
 					Ok(balance) => {
+						// FIXME: Check if balance would withdraw more than existential deposit.
 						if balance >= withdraw.0 {
 							Ok(WrapPair(account_id, withdraw))
 						} else {
