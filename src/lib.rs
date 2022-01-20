@@ -109,13 +109,14 @@ use frame_support::{ensure, Deserialize, Serialize};
 use manta_accounting::{
 	asset,
 	transfer::{
-		AccountBalance, InvalidSinkAccount, InvalidSourceAccount, Proof, ReceiverLedger,
-		ReceiverPostError, ReceiverPostingKey, SenderLedger, SenderPostError, SenderPostingKey,
-		SinkPostingKey, SourcePostingKey, TransferLedger, TransferLedgerSuperPostingKey,
-		TransferPostError,
+		canonical::TransferShape, AccountBalance, InvalidSinkAccount, InvalidSourceAccount, Proof,
+		ReceiverLedger, ReceiverPostError, ReceiverPostingKey, SenderLedger, SenderPostError,
+		SenderPostingKey, SinkPostingKey, SourcePostingKey, TransferLedger,
+		TransferLedgerSuperPostingKey, TransferPostError,
 	},
 };
-use manta_pay::config;
+use manta_crypto::{constraint::ProofSystem, merkle_tree::forest::Configuration as _};
+use manta_pay::{config, crypto::constraint::arkworks::codec::CanonicalDeserialize};
 use sp_std::prelude::*;
 use types::*;
 
@@ -139,6 +140,7 @@ pub use weights::WeightInfo;
 /// Type Definitions for Protocol Structures
 pub mod types {
 	use super::*;
+	use manta_crypto::merkle_tree;
 
 	/// Asset Id Type
 	pub type AssetId = asset::AssetIdType;
@@ -274,6 +276,28 @@ pub mod types {
 			}
 		}
 	}
+
+	/// Leaf Digest Type
+	pub type LeafDigest = merkle_tree::LeafDigest<config::MerkleTreeConfiguration>;
+
+	/// Inner Digest Type
+	pub type InnerDigest = merkle_tree::InnerDigest<config::MerkleTreeConfiguration>;
+
+	///
+	#[derive(Clone, Debug, Decode, Default, Encode, Eq, PartialEq)]
+	pub struct UtxoSetPath {
+		///
+		pub leaf_digest: Option<LeafDigest>,
+
+		///
+		pub sibling_digest: LeafDigest,
+
+		///
+		pub leaf_index: u32,
+
+		///
+		pub path: Vec<InnerDigest>,
+	}
 }
 
 /// MantaPay Pallet
@@ -325,17 +349,15 @@ pub mod pallet {
 	pub(super) type Shards<T: Config> =
 		StorageDoubleMap<_, Identity, u8, Identity, u64, (config::Utxo, EncryptedNote), ValueQuery>;
 
-	/* TODO:
 	///
 	#[pallet::storage]
-	pub(super) type LedgerShardMetaData<T: Config> =
-		StorageMap<_, Identity, u8, ShardMetaData, ValueQuery>;
-	*/
+	pub(super) type ShardMetaData<T: Config> =
+		StorageMap<_, Identity, u8, (config::UtxoSetOutput, UtxoSetPath), ValueQuery>;
 
 	///
 	#[pallet::storage]
-	pub(super) type ShardOutputs<T: Config> =
-		StorageMap<_, Identity, u8, config::UtxoSetOutput, ValueQuery>;
+	pub(super) type UtxoSetOutputs<T: Config> =
+		StorageMap<_, Identity, config::UtxoSetOutput, (), ValueQuery>;
 
 	///
 	#[pallet::storage]
@@ -572,10 +594,7 @@ pub mod pallet {
 		#[inline]
 		fn from(err: InvalidSourceAccount<T::AccountId>) -> Self {
 			match err.balance {
-				AccountBalance::Known(_) => {
-					// TODO: Maybe we can give a more informative error.
-					Self::BalanceLow
-				}
+				AccountBalance::Known(_) => Self::BalanceLow,
 				AccountBalance::UnknownAccount => {
 					unreachable!("Accounts are checked before reaching this point.")
 				}
@@ -694,7 +713,8 @@ impl<T> PreprocessedEvent<T>
 where
 	T: Config,
 {
-	///
+	/// Converts a [`PreprocessedEvent`] with into an [`Event`] using the given `origin` for
+	/// [`PreprocessedEvent::PrivateTransfer`].
 	#[inline]
 	pub fn convert(self, origin: Option<T::AccountId>) -> Event<T> {
 		match self {
@@ -756,15 +776,10 @@ where
 		&self,
 		output: config::UtxoSetOutput,
 	) -> Option<Self::ValidUtxoSetOutput> {
-		/* TODO:
-		for tree in self.utxo_forest.forest.as_ref() {
-			if tree.root() == &output {
-				return Some(Wrap(output));
-			}
+		if UtxoSetOutputs::<T>::contains_key(output) {
+			return Some(Wrap(output));
 		}
 		None
-		*/
-		todo!()
 	}
 
 	#[inline]
@@ -805,14 +820,16 @@ where
 		note: config::EncryptedNote,
 		super_key: &Self::SuperPostingKey,
 	) {
-		/* TODO:
-		use manta_crypto::merkle_tree::forest::Configuration;
 		let _ = super_key;
 		let shard_index = config::MerkleTreeConfiguration::tree_index(&utxo.0);
-		let metadata = LedgerShardMetaData::<T>::get(shard_index);
+		let (root, path) = ShardMetaData::<T>::get(shard_index);
+
+		let _ = path.leaf_index;
+
+		/*
 		LedgerShards::<T>::insert(shard_index, metadata.next_index, (utxo.0, note));
-		// TODO: update metadata, path, etc.
 		*/
+
 		todo!()
 	}
 }
@@ -888,51 +905,49 @@ where
 		sinks: &[SinkPostingKey<config::Config, Self>],
 		proof: Proof<config::Config>,
 	) -> Option<(Self::ValidProof, Self::Event)> {
-		/*
-		let (verifying_context, event) = match TransferShape::select(
+		let (mut verifying_context, event) = match TransferShape::select(
 			asset_id.is_some(),
 			sources.len(),
 			senders.len(),
 			receivers.len(),
 			sinks.len(),
 		)? {
-			TransferShape::Mint => {
-				let event = PreprocessedEvent::Mint {
+			TransferShape::Mint => (
+				manta_sdk::pay::testnet::verifying::MINT,
+				PreprocessedEvent::Mint::<T> {
 					asset: Asset {
 						id: asset_id.unwrap().0,
 						value: (sources[0].1).0,
 					},
-					source: sources[0].0,
-				};
-				todo!()
-			}
-			TransferShape::PrivateTransfer => {
-				let event = PreprocessedEvent::PrivateTransfer;
-				todo!()
-			}
-			TransferShape::Reclaim => {
-				let event = PreprocessedEvent::Reclaim {
+					source: sources[0].0.clone(),
+				},
+			),
+			TransferShape::PrivateTransfer => (
+				manta_sdk::pay::testnet::verifying::PRIVATE_TRANSFER,
+				PreprocessedEvent::PrivateTransfer::<T>,
+			),
+			TransferShape::Reclaim => (
+				manta_sdk::pay::testnet::verifying::RECLAIM,
+				PreprocessedEvent::Reclaim::<T> {
 					asset: Asset {
 						id: asset_id.unwrap().0,
 						value: (sinks[0].1).0,
 					},
-					sink: sinks[0].0,
-				};
-				todo!()
-			}
+					sink: sinks[0].0.clone(),
+				},
+			),
 		};
-		*/
 
-		/* TODO:
-		ProofSystem::verify(
-			&TransferPostingKey::generate_proof_input(asset_id, sources, senders, receivers, sinks),
+		config::ProofSystem::verify(
+			&manta_accounting::transfer::TransferPostingKey::generate_proof_input(
+				asset_id, sources, senders, receivers, sinks,
+			),
 			&proof,
-			verifying_context,
+			&config::VerifyingContext::deserialize(&mut verifying_context)
+				.expect("Unable to deserialize the verifying context."),
 		)
 		.ok()?
 		.then(move || (Wrap(()), event))
-		*/
-		todo!()
 	}
 
 	#[inline]

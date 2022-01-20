@@ -31,6 +31,7 @@ serde = { version = "1.0.133", default-features = false, features = ["derive"] }
 manta-accounting = { path = "../manta-rs/manta-accounting", features = ["serde"] }
 manta-crypto = { path = "../manta-rs/manta-crypto" }
 manta-pay = { path = "../manta-rs/manta-pay", features = ["arkworks", "groth16"] }
+manta-sdk = { path = "../sdk" }
 
 [dev-dependencies]
 # benchmarking 
