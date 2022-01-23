@@ -115,8 +115,12 @@ use manta_accounting::{
 		TransferLedgerSuperPostingKey, TransferPostError,
 	},
 };
-use manta_crypto::{constraint::ProofSystem, merkle_tree::forest::Configuration as _};
-use manta_pay::{config, crypto::constraint::arkworks::codec::CanonicalDeserialize};
+use manta_crypto::{
+	constraint::ProofSystem,
+	merkle_tree::{self, forest::Configuration as _},
+};
+use manta_pay::config;
+use manta_util::codec::Decode as _;
 use sp_std::prelude::*;
 use types::*;
 
@@ -140,7 +144,6 @@ pub use weights::WeightInfo;
 /// Type Definitions for Protocol Structures
 pub mod types {
 	use super::*;
-	use manta_crypto::merkle_tree;
 
 	/// Asset Id Type
 	pub type AssetId = asset::AssetIdType;
@@ -171,6 +174,14 @@ pub mod types {
 		pub value: AssetValue,
 	}
 
+	impl Asset {
+		/// Builds a new [`Asset`] from `id` and `value`.
+		#[inline]
+		pub fn new(id: AssetId, value: AssetValue) -> Self {
+			Self { id, value }
+		}
+	}
+
 	/// Encrypted Note
 	#[derive(Clone, Debug, Decode, Encode, Eq, Hash, PartialEq)]
 	pub struct EncryptedNote {
@@ -194,6 +205,16 @@ pub mod types {
 	impl From<EncryptedNote> for config::EncryptedNote {
 		#[inline]
 		fn from(note: EncryptedNote) -> Self {
+			Self {
+				ciphertext: note.ciphertext,
+				ephemeral_public_key: note.ephemeral_public_key,
+			}
+		}
+	}
+
+	impl From<config::EncryptedNote> for EncryptedNote {
+		#[inline]
+		fn from(note: config::EncryptedNote) -> Self {
 			Self {
 				ciphertext: note.ciphertext,
 				ephemeral_public_key: note.ephemeral_public_key,
@@ -285,10 +306,7 @@ pub mod types {
 
 	///
 	#[derive(Clone, Debug, Decode, Default, Encode, Eq, PartialEq)]
-	pub struct UtxoSetPath {
-		///
-		pub leaf_digest: Option<LeafDigest>,
-
+	pub struct CurrentPath {
 		///
 		pub sibling_digest: LeafDigest,
 
@@ -296,7 +314,39 @@ pub mod types {
 		pub leaf_index: u32,
 
 		///
-		pub path: Vec<InnerDigest>,
+		pub inner_path: Vec<InnerDigest>,
+	}
+
+	impl From<merkle_tree::CurrentPath<config::MerkleTreeConfiguration>> for CurrentPath {
+		#[inline]
+		fn from(path: merkle_tree::CurrentPath<config::MerkleTreeConfiguration>) -> Self {
+			Self {
+				sibling_digest: path.sibling_digest,
+				leaf_index: path.inner_path.leaf_index.0 as u32,
+				inner_path: path.inner_path.path,
+			}
+		}
+	}
+
+	impl From<CurrentPath> for merkle_tree::CurrentPath<config::MerkleTreeConfiguration> {
+		#[inline]
+		fn from(path: CurrentPath) -> Self {
+			Self::new(
+				path.sibling_digest,
+				(path.leaf_index as usize).into(),
+				path.inner_path,
+			)
+		}
+	}
+
+	///
+	#[derive(Clone, Debug, Decode, Default, Encode, Eq, PartialEq)]
+	pub struct UtxoMerkleTree {
+		///
+		pub leaf_digest: Option<LeafDigest>,
+
+		///
+		pub current_path: CurrentPath,
 	}
 }
 
@@ -351,8 +401,7 @@ pub mod pallet {
 
 	///
 	#[pallet::storage]
-	pub(super) type ShardMetaData<T: Config> =
-		StorageMap<_, Identity, u8, (config::UtxoSetOutput, UtxoSetPath), ValueQuery>;
+	pub(super) type ShardTrees<T: Config> = StorageMap<_, Identity, u8, UtxoMerkleTree, ValueQuery>;
 
 	///
 	#[pallet::storage]
@@ -820,17 +869,39 @@ where
 		note: config::EncryptedNote,
 		super_key: &Self::SuperPostingKey,
 	) {
+		// TODO: Add `register_all` command to amortize cost of getting and setting `ShardTrees``.
+
 		let _ = super_key;
+
+		let parameters = manta_crypto::merkle_tree::Parameters::decode(
+			manta_sdk::pay::testnet::parameters::UTXO_SET_PARAMETERS,
+		)
+		.expect("Unable to decode the Merkle Tree Parameters.");
+
 		let shard_index = config::MerkleTreeConfiguration::tree_index(&utxo.0);
-		let (root, path) = ShardMetaData::<T>::get(shard_index);
 
-		let _ = path.leaf_index;
+		let mut tree = ShardTrees::<T>::get(shard_index);
 
-		/*
-		LedgerShards::<T>::insert(shard_index, metadata.next_index, (utxo.0, note));
-		*/
+		let next_root = {
+			let mut current_path = core::mem::take(&mut tree.current_path).into();
+			let next_root = manta_crypto::merkle_tree::single_path::raw::insert(
+				&parameters,
+				&mut tree.leaf_digest,
+				&mut current_path,
+				utxo.0,
+			)
+			.expect("If this errors, then we have run out of Merkle Tree capacity.");
+			tree.current_path = current_path.into();
+			next_root
+		};
 
-		todo!()
+		let next_index = tree.current_path.leaf_index as u64;
+
+		ShardTrees::<T>::insert(shard_index, tree);
+
+		UtxoSet::<T>::insert(utxo.0, ());
+		UtxoSetOutputs::<T>::insert(next_root, ());
+		Shards::<T>::insert(shard_index, next_index, (utxo.0, EncryptedNote::from(note)));
 	}
 }
 
@@ -915,10 +986,7 @@ where
 			TransferShape::Mint => (
 				manta_sdk::pay::testnet::verifying::MINT,
 				PreprocessedEvent::Mint::<T> {
-					asset: Asset {
-						id: asset_id.unwrap().0,
-						value: (sources[0].1).0,
-					},
+					asset: Asset::new(asset_id.unwrap().0, (sources[0].1).0),
 					source: sources[0].0.clone(),
 				},
 			),
@@ -929,22 +997,18 @@ where
 			TransferShape::Reclaim => (
 				manta_sdk::pay::testnet::verifying::RECLAIM,
 				PreprocessedEvent::Reclaim::<T> {
-					asset: Asset {
-						id: asset_id.unwrap().0,
-						value: (sinks[0].1).0,
-					},
+					asset: Asset::new(asset_id.unwrap().0, (sinks[0].1).0),
 					sink: sinks[0].0.clone(),
 				},
 			),
 		};
-
 		config::ProofSystem::verify(
 			&manta_accounting::transfer::TransferPostingKey::generate_proof_input(
 				asset_id, sources, senders, receivers, sinks,
 			),
 			&proof,
-			&config::VerifyingContext::deserialize(&mut verifying_context)
-				.expect("Unable to deserialize the verifying context."),
+			&config::VerifyingContext::decode(&mut verifying_context)
+				.expect("Unable to decode the verifying context."),
 		)
 		.ok()?
 		.then(move || (Wrap(()), event))

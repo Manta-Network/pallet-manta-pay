@@ -27,11 +27,11 @@ rand_chacha = { version = "0.3.1", default-features = false, optional = true }
 indoc = { version = "1.0.3", default-features = false, optional = true}
 serde = { version = "1.0.133", default-features = false, features = ["derive"] }
 
-# manta = { branch = "setup-manta-rs", git = "https://github.com/manta-network/manta-rs" }
-manta-accounting = { path = "../manta-rs/manta-accounting", features = ["serde"] }
+manta-accounting = { path = "../manta-rs/manta-accounting" }
 manta-crypto = { path = "../manta-rs/manta-crypto" }
 manta-pay = { path = "../manta-rs/manta-pay", features = ["arkworks", "groth16"] }
-manta-sdk = { path = "../sdk" }
+manta-sdk = { git = "https://github.com/manta-network/sdk", branch = "add-sdk-library" }
+manta-util = { path = "../manta-rs/manta-util" }
 
 [dev-dependencies]
 # benchmarking 
