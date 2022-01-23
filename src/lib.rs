@@ -1,4 +1,4 @@
-// Copyright 2019-2021 Manta Network.
+// Copyright 2019-2022 Manta Network.
 // This file is part of pallet-manta-pay.
 //
 // pallet-manta-pay is free software: you can redistribute it and/or modify
@@ -304,16 +304,16 @@ pub mod types {
 	/// Inner Digest Type
 	pub type InnerDigest = merkle_tree::InnerDigest<config::MerkleTreeConfiguration>;
 
-	///
+	/// Merkle Tree Current Path
 	#[derive(Clone, Debug, Decode, Default, Encode, Eq, PartialEq)]
 	pub struct CurrentPath {
-		///
+		/// Sibling Digest
 		pub sibling_digest: LeafDigest,
 
-		///
+		/// Leaf Index
 		pub leaf_index: u32,
 
-		///
+		/// Inner Path
 		pub inner_path: Vec<InnerDigest>,
 	}
 
@@ -339,13 +339,13 @@ pub mod types {
 		}
 	}
 
-	///
+	/// UTXO Merkle Tree
 	#[derive(Clone, Debug, Decode, Default, Encode, Eq, PartialEq)]
 	pub struct UtxoMerkleTree {
-		///
+		/// Current Leaf Digest
 		pub leaf_digest: Option<LeafDigest>,
 
-		///
+		/// Current Path
 		pub current_path: CurrentPath,
 	}
 }
@@ -873,7 +873,7 @@ where
 
 		let _ = super_key;
 
-		let parameters = manta_crypto::merkle_tree::Parameters::decode(
+		let parameters = merkle_tree::Parameters::decode(
 			manta_sdk::pay::testnet::parameters::UTXO_SET_PARAMETERS,
 		)
 		.expect("Unable to decode the Merkle Tree Parameters.");
@@ -884,7 +884,7 @@ where
 
 		let next_root = {
 			let mut current_path = core::mem::take(&mut tree.current_path).into();
-			let next_root = manta_crypto::merkle_tree::single_path::raw::insert(
+			let next_root = merkle_tree::single_path::raw::insert(
 				&parameters,
 				&mut tree.leaf_digest,
 				&mut current_path,
