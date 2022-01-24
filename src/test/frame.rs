@@ -14,24 +14,13 @@
 // You should have received a copy of the GNU General Public License
 // along with pallet-manta-pay.  If not, see <http://www.gnu.org/licenses/>.
 
-use crate::{mock::*, Error, LedgerShardMetaData, LedgerShards, PoolBalance, VoidNumbers, *};
-use ark_serialize::CanonicalDeserialize;
-use ark_std::rand::{Rng, RngCore};
+use crate::Error;
 use core::convert::TryInto;
 use frame_support::{assert_noop, assert_ok};
-use manta_api::{
-	generate_mint_struct, generate_private_transfer_struct, generate_reclaim_struct,
-	zkp::{keys::write_zkp_keys, sample::*},
-};
-use manta_asset::{MantaAsset, MantaAssetProcessedReceiver, NUM_BYTE_ZKP};
-use manta_crypto::{
-	commitment_parameters, leaf_parameters, two_to_one_parameters, CommitmentParam, Groth16Pk,
-	LeafHashParam, MantaSerDes, Parameter, TwoToOneHashParam,
-};
-use manta_data::{BuildMetadata, SenderMetaData};
 use rand_chacha::{rand_core::SeedableRng, ChaCha20Rng};
 use std::{collections::HashMap, fs::File, io::Read, sync::Once};
 
+/* TODO:
 lazy_static::lazy_static! {
 	static ref COMMIT_PARAMS: CommitmentParam = commitment_parameters();
 	static ref LEAF_PARAMS: LeafHashParam = leaf_parameters();
@@ -651,3 +640,5 @@ fn reclaim_with_invalid_zkp_should_not_work() {
 		);
 	});
 }
+
+*/

@@ -20,60 +20,55 @@ mod precomputed_coins;
 
 use super::*;
 
-use crate::benchmark::precomputed_coins::{COIN_1, COIN_2, RECLAIM_DATA, TRANSFER_DATA};
-#[allow(unused)]
-use crate::Pallet as PalletMantaPay;
+use crate::Pallet;
 use frame_benchmarking::{account, benchmarks, impl_benchmark_test_suite, whitelisted_caller};
-use frame_system::{EventRecord, RawOrigin};
-use manta_asset::TEST_ASSET;
-use manta_crypto::MantaSerDes;
+use frame_system::RawOrigin;
 use sp_runtime::traits::StaticLookup;
 
+///
 const SEED: u32 = 0;
 
-pub fn assert_last_event<T: Config>(generic_event: <T as Config>::Event) {
+///
+#[inline]
+pub fn assert_last_event<T, E>(event: E)
+where
+	T: Config,
+	E: Into<<T as Config>::Event>,
+{
 	let events = frame_system::Pallet::<T>::events();
-	let system_event: <T as frame_system::Config>::Event = generic_event.into();
-	let EventRecord { event, .. } = &events[events.len() - 1];
-	assert_eq!(event, &system_event);
+	assert_eq!(events[events.len() - 1].event, event.into().into());
 }
 
 benchmarks! {
-
 	transfer_asset {
 		let caller: T::AccountId = whitelisted_caller();
-		let origin: T::Origin = T::Origin::from(RawOrigin::Signed(caller.clone()));
-		Balances::<T>::insert(&caller, TEST_ASSET, 1_000);
-		Pallet::<T>::init_asset(&caller, TEST_ASSET, 1_000);
+		let origin = T::Origin::from(RawOrigin::Signed(caller.clone()));
+		Pallet::<T>::init_asset(&caller, 0, 1_000);
 		let recipient: T::AccountId = account("recipient", 0, SEED);
-		let recipient_lookup: <T::Lookup as StaticLookup>::Source = T::Lookup::unlookup(recipient.clone());
-		let transfer_amount = 10;
-	}: transfer_asset(
+		let recipient_lookup = T::Lookup::unlookup(recipient.clone());
+		let asset = Asset::new(0, 10);
+	}: transfer_asset (
 		RawOrigin::Signed(caller.clone()),
 		recipient_lookup,
-		TEST_ASSET,
-		transfer_amount)
-	verify {
-		assert_last_event::<T>(
-			Event::Transferred(TEST_ASSET, caller, recipient.clone(), transfer_amount).into()
-		);
-		assert_eq!(Balances::<T>::get(&recipient, TEST_ASSET), transfer_amount);
+		asset
+	) verify {
+		assert_last_event::<T, _>(Event::Transfer { asset, source: caller, sink: recipient.clone() });
+		assert_eq!(Balances::<T>::get(recipient, asset.id), asset.value);
 	}
 
+	/*
 	mint {
 		let caller: T::AccountId = whitelisted_caller();
-		let origin: T::Origin = T::Origin::from(RawOrigin::Signed(caller.clone()));
-		<Balances<T>>::insert(&caller, TEST_ASSET, 1_000_000);
-		Pallet::<T>::init_asset(&caller, TEST_ASSET, 1_000_000);
-		let mut mint_bytes: Vec<u8> = Vec::new();
-		mint_bytes.extend_from_slice(COIN_1);
-		let mint_data = MintData::deserialize(&mut mint_bytes.as_ref()).unwrap();
+		let origin = T::Origin::from(RawOrigin::Signed(caller.clone()));
+		Pallet::<T>::init_asset(&caller, 0, 1_000_000);
+		let mint_post = TransferPost::decode(MINT_0).unwrap();
+		let asset = Asset::new(mint_post.asset_id.unwrap(), mint_post.sources[0]);
 	}: mint (
 		RawOrigin::Signed(caller),
-		mint_data)
-	verify {
-		assert_eq!(TotalSupply::<T>::get(TEST_ASSET), 1_000_000);
-		assert_eq!(PoolBalance::<T>::get(TEST_ASSET), 89_757);
+		mint_post
+	) verify {
+		assert_last_event::<T, _>(Event::Mint { asset, source: caller.clone() });
+		assert_eq!(Balances::<T>::get(caller, asset.id), 1_000_000 - asset.value);
 	}
 
 	private_transfer {
@@ -97,7 +92,7 @@ benchmarks! {
 		RawOrigin::Signed(caller.clone()),
 		transfer_data)
 	verify {
-		assert_last_event::<T>(Event::PrivateTransferred(caller).into());
+		assert_last_event::<T>(Event::PrivateTransfer(caller).into());
 		assert_eq!(TotalSupply::<T>::get(TEST_ASSET), 1_000_000);
 		assert_eq!(PoolBalance::<T>::get(TEST_ASSET), 179_515);
 	}
@@ -123,14 +118,11 @@ benchmarks! {
 		reclaim_data
 	)
 	verify {
-		assert_last_event::<T>(Event::Reclaimed(TEST_ASSET, caller, 79_515).into());
+		assert_last_event::<T>(Event::Reclaim(TEST_ASSET, caller, 79_515).into());
 		assert_eq!(TotalSupply::<T>::get(TEST_ASSET), 1_000_000);
 		assert_eq!(PoolBalance::<T>::get(TEST_ASSET), 100_000);
 	}
+	*/
 }
 
-impl_benchmark_test_suite!(
-	PalletMantaPay,
-	crate::mock::new_test_ext(),
-	crate::mock::Test,
-);
+impl_benchmark_test_suite!(Pallet, crate::mock::new_test_ext(), crate::mock::Test);

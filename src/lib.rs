@@ -60,7 +60,7 @@
 //!
 //! * `transfer_asset` - Transfers an `amount` of units of fungible asset `id` from the balance of
 //!     the function caller's account (`origin`) to a `target` account.
-//! * `mint_private_asset` - Converting an `amount` of units of fungible asset `id` from the caller
+//! * `mint` - Converting an `amount` of units of fungible asset `id` from the caller
 //!     to a private UTXO. (The caller does not need to be the owner of this UTXO)
 //! * `private_transfer` - Transfer two input UTXOs into two output UTXOs. Require that 1) the input
 //!     UTXOs are already in the ledger and are not spend before 2) the sum of private assets in
@@ -103,7 +103,6 @@
 
 #![cfg_attr(not(feature = "std"), no_std)]
 
-use codec::{Decode, Encode};
 use core::marker::PhantomData;
 use frame_support::{ensure, Deserialize, Serialize};
 use manta_accounting::{
@@ -121,10 +120,10 @@ use manta_crypto::{
 };
 use manta_pay::config;
 use manta_util::codec::Decode as _;
+use scale_codec::{Decode, Encode};
 use sp_std::prelude::*;
 use types::*;
 
-/* TODO:
 #[cfg(test)]
 mod mock;
 
@@ -133,7 +132,6 @@ mod test;
 
 #[cfg(feature = "runtime-benchmarks")]
 pub mod benchmark;
-*/
 
 #[allow(clippy::unnecessary_cast)] // NOTE: This file is auto-generated.
 pub mod weights;
@@ -154,6 +152,7 @@ pub mod types {
 	/// Asset
 	#[derive(
 		Clone,
+		Copy,
 		Debug,
 		Decode,
 		Default,
@@ -202,9 +201,9 @@ pub mod types {
 		}
 	}
 
-	impl From<EncryptedNote> for config::EncryptedNote {
+	impl From<config::EncryptedNote> for EncryptedNote {
 		#[inline]
-		fn from(note: EncryptedNote) -> Self {
+		fn from(note: config::EncryptedNote) -> Self {
 			Self {
 				ciphertext: note.ciphertext,
 				ephemeral_public_key: note.ephemeral_public_key,
@@ -212,9 +211,9 @@ pub mod types {
 		}
 	}
 
-	impl From<config::EncryptedNote> for EncryptedNote {
+	impl From<EncryptedNote> for config::EncryptedNote {
 		#[inline]
-		fn from(note: config::EncryptedNote) -> Self {
+		fn from(note: EncryptedNote) -> Self {
 			Self {
 				ciphertext: note.ciphertext,
 				ephemeral_public_key: note.ephemeral_public_key,
@@ -230,6 +229,16 @@ pub mod types {
 
 		/// Void Number
 		pub void_number: config::VoidNumber,
+	}
+
+	impl From<config::SenderPost> for SenderPost {
+		#[inline]
+		fn from(post: config::SenderPost) -> Self {
+			Self {
+				utxo_set_output: post.utxo_set_output,
+				void_number: post.void_number,
+			}
+		}
 	}
 
 	impl From<SenderPost> for config::SenderPost {
@@ -250,6 +259,16 @@ pub mod types {
 
 		/// Encrypted Note
 		pub note: EncryptedNote,
+	}
+
+	impl From<config::ReceiverPost> for ReceiverPost {
+		#[inline]
+		fn from(post: config::ReceiverPost) -> Self {
+			Self {
+				utxo: post.utxo,
+				note: post.note.into(),
+			}
+		}
 	}
 
 	impl From<ReceiverPost> for config::ReceiverPost {
@@ -282,6 +301,20 @@ pub mod types {
 
 		/// Validity Proof
 		pub validity_proof: config::Proof,
+	}
+
+	impl From<config::TransferPost> for TransferPost {
+		#[inline]
+		fn from(post: config::TransferPost) -> Self {
+			Self {
+				asset_id: post.asset_id.map(|id| id.0),
+				sources: post.sources.into_iter().map(|s| s.0).collect(),
+				sender_posts: post.sender_posts.into_iter().map(Into::into).collect(),
+				receiver_posts: post.receiver_posts.into_iter().map(Into::into).collect(),
+				sinks: post.sinks.into_iter().map(|s| s.0).collect(),
+				validity_proof: post.validity_proof,
+			}
+		}
 	}
 
 	impl From<TransferPost> for config::TransferPost {
@@ -490,10 +523,7 @@ pub mod pallet {
 
 		///
 		#[pallet::weight(T::WeightInfo::mint_private_asset())]
-		pub fn mint_private_asset(
-			origin: OriginFor<T>,
-			post: TransferPost,
-		) -> DispatchResultWithPostInfo {
+		pub fn mint(origin: OriginFor<T>, post: TransferPost) -> DispatchResultWithPostInfo {
 			let origin = ensure_signed(origin)?;
 			let mut ledger = Self::ledger();
 			Self::deposit_event(

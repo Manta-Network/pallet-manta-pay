@@ -14,8 +14,6 @@
 // You should have received a copy of the GNU General Public License
 // along with pallet-manta-pay.  If not, see <http://www.gnu.org/licenses/>.
 
-use crate as pallet_manta_pay;
-
 use frame_support::parameter_types;
 
 use frame_system as system;
@@ -36,7 +34,7 @@ frame_support::construct_runtime!(
 		UncheckedExtrinsic = UncheckedExtrinsic,
 	{
 		System: frame_system::{Pallet, Call, Config, Storage, Event<T>},
-		MantaPayPallet: pallet_manta_pay::{Pallet, Call, Storage, Event<T>},
+		MantaPayPallet: crate::{Pallet, Call, Storage, Event<T>},
 	}
 );
 
@@ -73,7 +71,7 @@ impl system::Config for Test {
 	type OnSetCode = ();
 }
 
-impl pallet_manta_pay::Config for Test {
+impl crate::Config for Test {
 	type Event = Event;
 	type WeightInfo = ();
 }
