@@ -254,24 +254,6 @@ macro_rules! write_const_array {
 	};
 }
 
-/*
-/// Writes a new `const` definition to `$writer`.
-macro_rules! write_const_nested_array {
-	($writer:ident, $name:ident, $value:expr) => {{
-		let data = $value
-			.iter()
-			.map(|v| format!("{:?}", v.encode().as_slice()))
-			.collect::<Vec<_>>();
-		writeln!(
-			$writer,
-			"pub(crate) const {}: &[&[u8]] = &{};\n",
-			stringify!($name),
-			data,
-		)
-	}};
-}
-*/
-
 /// Writes a new `const` definition to `$writer`.
 macro_rules! write_const_nested_array {
 	($writer:ident, $name:ident, $value:expr) => {

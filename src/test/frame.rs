@@ -14,11 +14,72 @@
 // You should have received a copy of the GNU General Public License
 // along with pallet-manta-pay.  If not, see <http://www.gnu.org/licenses/>.
 
-use crate::Error;
+use crate::{mock::MantaPayPallet, AssetId, AssetValue, Error};
 use core::convert::TryInto;
 use frame_support::{assert_noop, assert_ok};
-use rand_chacha::{rand_core::SeedableRng, ChaCha20Rng};
+use manta_crypto::rand::{CryptoRng, RngCore};
+use manta_pay::config::{
+	KeyAgreementScheme, MultiProvingContext, Parameters, ProvingContext, UtxoCommitmentScheme,
+	VoidNumberHashFunction,
+};
+use manta_util::codec::{Decode, IoReader};
+use rand::{thread_rng, Rng};
 use std::{collections::HashMap, fs::File, io::Read, sync::Once};
+
+lazy_static::lazy_static! {
+	static ref MULTI_PROVING_CONTEXT: MultiProvingContext = load_proving_context();
+	static ref PARAMETERS: Parameters = load_parameters();
+}
+
+/// Loads the [`MultiProvingContext`] from the SDK.
+#[inline]
+fn load_proving_context() -> MultiProvingContext {
+	let directory = tempfile::tempdir().expect("Unable to create temporary directory.");
+	let path = directory.path();
+	let mint_path = path.join("mint.dat");
+	manta_sdk::pay::testnet::proving::mint(&mint_path)
+		.expect("Unable to download MINT proving context.");
+	let private_transfer_path = path.join("private-transfer.dat");
+	manta_sdk::pay::testnet::proving::private_transfer(&private_transfer_path)
+		.expect("Unable to download PRIVATE_TRANSFER proving context.");
+	let reclaim_path = path.join("reclaim.dat");
+	manta_sdk::pay::testnet::proving::reclaim(&reclaim_path)
+		.expect("Unable to download RECLAIM proving context.");
+	MultiProvingContext {
+		mint: ProvingContext::decode(IoReader(
+			File::open(mint_path).expect("Unable to open MINT proving context file."),
+		))
+		.expect("Unable to decode MINT proving context."),
+		private_transfer: ProvingContext::decode(IoReader(
+			File::open(private_transfer_path)
+				.expect("Unable to open PRIVATE_TRANSFER proving context file."),
+		))
+		.expect("Unable to decode PRIVATE_TRANSFER proving context."),
+		reclaim: ProvingContext::decode(IoReader(
+			File::open(reclaim_path).expect("Unable to open RECLAIM proving context file."),
+		))
+		.expect("Unable to decode RECLAIM proving context."),
+	}
+}
+
+/// Loads the [`Parameters`] from the SDK.
+#[inline]
+fn load_parameters() -> Parameters {
+	Parameters {
+		key_agreement: KeyAgreementScheme::decode(
+			manta_sdk::pay::testnet::parameters::KEY_AGREEMENT,
+		)
+		.expect("Unable to decode KEY_AGREEMENT parameters."),
+		utxo_commitment: UtxoCommitmentScheme::decode(
+			manta_sdk::pay::testnet::parameters::UTXO_COMMITMENT_SCHEME,
+		)
+		.expect("Unable to decode UTXO_COMMITMENT_SCHEME parameters."),
+		void_number_hash: VoidNumberHashFunction::decode(
+			manta_sdk::pay::testnet::parameters::VOID_NUMBER_HASH_FUNCTION,
+		)
+		.expect("Unable to decode VOID_NUMBER_HASH_FUNCTION parameters."),
+	}
+}
 
 /* TODO:
 lazy_static::lazy_static! {
@@ -54,9 +115,15 @@ fn transfer_pk() -> Groth16Pk {
 fn reclaim_pk() -> Groth16Pk {
 	load_zkp_key("reclaim_pk.bin")
 }
+*/
 
-/// Mint manta assets with specified asset_id and balances to an empty pool
-fn mint_tokens_to_empty_pool(asset_id: AssetId, balances: &[AssetBalance], rng: &mut ChaCha20Rng) {
+///
+#[inline]
+fn mint_tokens_to_empty_pool<R>(id: AssetId, values: &[AssetValue], rng: &mut R)
+where
+	R: CryptoRng + RngCore + ?Sized,
+{
+	/*
 	// make sure the pool is empty from start
 	let mut pool = 0;
 	assert_eq!(PoolBalance::<Test>::get(asset_id), pool);
@@ -76,8 +143,10 @@ fn mint_tokens_to_empty_pool(asset_id: AssetId, balances: &[AssetBalance], rng: 
 		assert!(MantaPayPallet::utxo_exists(asset.utxo));
 		assert_eq!(VoidNumbers::<Test>::iter_values().count(), 0);
 	}
+	*/
 }
 
+/*
 /// Insert utxo to the commitment set
 fn insert_utxo(utxo: &UTXO, commitment_set: &mut HashMap<u8, Vec<[u8; 32]>>) {
 	let shard_index = shard_index(*utxo);
@@ -134,26 +203,27 @@ where
 		_ => unreachable!(),
 	}
 }
+*/
 
-/// flip a random bit in the proof
-fn random_bit_flip_in_zkp(proof: &mut [u8; NUM_BYTE_ZKP], rng: &mut ChaCha20Rng) {
-	let byte_to_flip = rng.gen_range(0..NUM_BYTE_ZKP);
-	let masks = [
-		0b1000_0000,
-		0b0100_0000,
-		0b0010_0000,
-		0b0001_0000,
-		0b0000_1000,
-		0b0000_0100,
-		0b0000_0010,
-		0b0000_0001,
+///
+#[inline]
+fn random_bit_flip<R, const N: usize>(data: &mut [u8; N], rng: &mut R)
+where
+	R: CryptoRng + RngCore + ?Sized,
+{
+	const MASKS: [u8; 8] = [
+		0b10000000, 0b01000000, 0b00100000, 0b00010000, 0b00001000, 0b00000100, 0b00000010,
+		0b00000001,
 	];
-	let bit_to_flip = rng.gen_range(0..8);
-	proof[byte_to_flip] ^= masks[bit_to_flip];
+	data[rng.gen_range(0..N)] ^= MASKS[rng.gen_range(0..8)];
 }
 
-/// Perform `transfer_count` times random private transfer
-fn transfer_test(transfer_count: usize, rng: &mut ChaCha20Rng) {
+///
+fn transfer_test<R>(count: usize, rng: &mut R)
+where
+	R: CryptoRng + RngCore + ?Sized,
+{
+	/*
 	// generate asset_id and transfer balances
 	let asset_id = rng.gen();
 	let total_balance: AssetBalance = rng.gen();
@@ -236,10 +306,15 @@ fn transfer_test(transfer_count: usize, rng: &mut ChaCha20Rng) {
 			assert!(MantaPayPallet::utxo_exists(receiver.utxo));
 		}
 	}
+	*/
 }
 
-/// Perform `reclaim_count` times reclaim
-fn reclaim_test(reclaim_count: usize, rng: &mut ChaCha20Rng) {
+///
+fn reclaim_test<R>(count: usize, rng: &mut R)
+where
+	R: CryptoRng + RngCore + ?Sized,
+{
+	/*
 	let asset_id = rng.gen();
 	let total_balance = rng.gen();
 	let balances: Vec<AssetBalance> = value_distribution(reclaim_count, total_balance, rng);
@@ -303,19 +378,20 @@ fn reclaim_test(reclaim_count: usize, rng: &mut ChaCha20Rng) {
 		assert_eq!(ledger_entry.1, receiver.encrypted_note);
 		assert!(MantaPayPallet::utxo_exists(receiver.utxo));
 	}
+	*/
 }
 
-// Init tests:
-fn initialize_test(asset_id: AssetId, amount: AssetBalance) {
-	MantaPayPallet::init_asset(&1, asset_id, amount);
-	assert_eq!(MantaPayPallet::balance(1, asset_id), amount);
-	assert_eq!(PoolBalance::<Test>::get(asset_id), 0);
+///
+#[inline]
+fn initialize_test(id: AssetId, value: AssetValue) {
+	MantaPayPallet::init_asset(&1, id, value);
+	assert_eq!(MantaPayPallet::balance(1, id), value);
 }
 
-// Mint tests:
-
+///
 #[test]
 fn test_mint_should_work() {
+	/*
 	new_test_ext().execute_with(|| {
 		let mut rng = ChaCha20Rng::from_seed([42u8; 32]);
 		let asset_id = rng.gen();
@@ -324,10 +400,13 @@ fn test_mint_should_work() {
 		let balances = value_distribution(5, total_supply, &mut rng);
 		mint_tokens_to_empty_pool(asset_id, &balances, &mut rng);
 	});
+	*/
 }
 
+///
 #[test]
 fn over_mint_should_not_work() {
+	/*
 	new_test_ext().execute_with(|| {
 		let mut rng = ChaCha20Rng::from_seed([42u8; 32]);
 		let asset_id = rng.gen();
@@ -340,10 +419,13 @@ fn over_mint_should_not_work() {
 			Error::<Test>::BalanceLow
 		);
 	});
+	*/
 }
 
+///
 #[test]
 fn mint_without_init_should_not_work() {
+	/*
 	new_test_ext().execute_with(|| {
 		let mut rng = ChaCha20Rng::from_seed([42u8; 32]);
 		let asset = asset(&COMMIT_PARAMS, &mut rng);
@@ -353,10 +435,13 @@ fn mint_without_init_should_not_work() {
 			Error::<Test>::BasecoinNotInit
 		);
 	});
+	*/
 }
 
+///
 #[test]
 fn mint_existing_coin_should_not_work() {
+	/*
 	new_test_ext().execute_with(|| {
 		let mut rng = ChaCha20Rng::from_seed([41u8; 32]);
 		let asset_id = rng.gen();
@@ -373,10 +458,13 @@ fn mint_existing_coin_should_not_work() {
 			Error::<Test>::LedgerUpdateFail
 		);
 	});
+	*/
 }
 
+///
 #[test]
 fn mint_with_invalid_commitment_should_not_work() {
+	/*
 	new_test_ext().execute_with(|| {
 		let mut rng = ChaCha20Rng::from_seed([3u8; 32]);
 		let asset_id = rng.gen();
@@ -395,22 +483,31 @@ fn mint_with_invalid_commitment_should_not_work() {
 			Error::<Test>::MintFail
 		);
 	});
+	*/
 }
 
+///
 #[test]
 fn test_transfer_should_work() {
+	/*
 	let mut rng = ChaCha20Rng::from_seed([42u8; 32]);
 	new_test_ext().execute_with(|| transfer_test(1, &mut rng));
+	*/
 }
 
+///
 #[test]
 fn test_transfer_5_times_should_work() {
+	/*
 	let mut rng = ChaCha20Rng::from_seed([41u8; 32]);
 	new_test_ext().execute_with(|| transfer_test(5, &mut rng));
+	*/
 }
 
+///
 #[test]
 fn double_spend_in_transfer_shoud_not_work() {
+	/*
 	let mut rng = ChaCha20Rng::from_seed([37u8; 32]);
 	new_test_ext().execute_with(|| {
 		let asset_id = rng.gen();
@@ -461,10 +558,13 @@ fn double_spend_in_transfer_shoud_not_work() {
 			Error::<Test>::MantaCoinSpent
 		);
 	});
+	*/
 }
 
+///
 #[test]
 fn transfer_with_invalid_zkp_should_not_work() {
+	/*
 	let mut rng = ChaCha20Rng::from_seed([37u8; 32]);
 	new_test_ext().execute_with(|| {
 		let asset_id = rng.gen();
@@ -511,22 +611,31 @@ fn transfer_with_invalid_zkp_should_not_work() {
 			Error::<Test>::ZkpVerificationFail
 		);
 	});
+	*/
 }
 
+///
 #[test]
 fn test_reclaim_should_work() {
+	/*
 	let mut rng = ChaCha20Rng::from_seed([42u8; 32]);
 	new_test_ext().execute_with(|| reclaim_test(1, &mut rng));
+	*/
 }
 
+///
 #[test]
 fn test_reclaim_5_times_should_work() {
+	/*
 	let mut rng = ChaCha20Rng::from_seed([41u8; 32]);
 	new_test_ext().execute_with(|| reclaim_test(5, &mut rng));
+	*/
 }
 
+///
 #[test]
 fn double_spend_in_reclaim_should_not_work() {
+	/*
 	let mut rng = ChaCha20Rng::from_seed([41u8; 32]);
 	new_test_ext().execute_with(|| {
 		let asset_id = rng.gen();
@@ -581,10 +690,13 @@ fn double_spend_in_reclaim_should_not_work() {
 			Error::<Test>::MantaCoinSpent,
 		);
 	});
+	*/
 }
 
+///
 #[test]
 fn reclaim_with_invalid_zkp_should_not_work() {
+	/*
 	let mut rng = ChaCha20Rng::from_seed([55u8; 32]);
 	new_test_ext().execute_with(|| {
 		let asset_id = rng.gen();
@@ -639,6 +751,5 @@ fn reclaim_with_invalid_zkp_should_not_work() {
 			Error::<Test>::ZkpVerificationFail,
 		);
 	});
+	*/
 }
-
-*/

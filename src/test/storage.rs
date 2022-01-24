@@ -19,27 +19,31 @@ use frame_support::{
 };
 use sp_io::TestExternalities;
 
+///
 struct Prefix;
+
 impl StorageInstance for Prefix {
+	const STORAGE_PREFIX: &'static str = "foo";
+
+	#[inline]
 	fn pallet_prefix() -> &'static str {
 		"test"
 	}
-	const STORAGE_PREFIX: &'static str = "foo";
 }
 
+///
+type DoubleMap = StorageDoubleMap<Prefix, Identity, u16, Identity, u32, u64, ValueQuery>;
+
+///
 #[test]
 fn double_map_iterator_test() {
-	type DoubleMap = StorageDoubleMap<Prefix, Identity, u16, Identity, u32, u64, ValueQuery>;
 	TestExternalities::default().execute_with(|| {
-		// shard 0
 		for i in 0..4 {
 			DoubleMap::insert(0_u16, i as u32, i as u64);
 		}
-		// shard 1
 		for i in 0..5 {
 			DoubleMap::insert(1_u16, i as u32, i as u64)
 		}
-
 		assert_eq!(
 			DoubleMap::iter().collect::<Vec<_>>(),
 			vec![
@@ -54,19 +58,16 @@ fn double_map_iterator_test() {
 				(1, 4, 4)
 			]
 		);
-
 		assert_eq!(
 			DoubleMap::iter_prefix(0_u16).collect::<Vec<_>>(),
 			vec![(0, 0), (1, 1), (2, 2), (3, 3)]
 		);
-
 		assert_eq!(
 			DoubleMap::iter_prefix_values(1_u16).collect::<Vec<_>>(),
 			vec![0, 1, 2, 3, 4]
 		);
-		let starting_raw_key = DoubleMap::hashed_key_for(1, 2);
 		assert_eq!(
-			DoubleMap::iter_prefix_from(1, starting_raw_key).collect::<Vec<_>>(),
+			DoubleMap::iter_prefix_from(1, DoubleMap::hashed_key_for(1, 2)).collect::<Vec<_>>(),
 			vec![(3, 3), (4, 4)]
 		);
 	})
