@@ -31,13 +31,13 @@ use manta_pay::config::{
 	Parameters, PrivateTransfer, ProvingContext, Receiver, Reclaim, UtxoCommitmentScheme,
 	UtxoSetModel, VoidNumberHashFunction,
 };
-use manta_util::codec::Decode;
+use manta_util::codec::{Decode, IoReader};
 use pallet_manta_pay::types::TransferPost;
 use rand::thread_rng;
 use scale_codec::Encode;
 use std::{
 	env,
-	fs::{self, OpenOptions},
+	fs::{self, File, OpenOptions},
 	io::Write,
 	path::{Path, PathBuf},
 };
@@ -59,11 +59,11 @@ fn load_parameters(directory: &Path) -> Result<(MultiProvingContext, Parameters,
 	manta_sdk::pay::testnet::proving::reclaim(&reclaim_path)?;
 	println!("[INFO]     downloaded reclaim proving context");
 	let proving_context = MultiProvingContext {
-		mint: ProvingContext::decode(fs::read(mint_path)?)
+		mint: ProvingContext::decode(IoReader(File::open(mint_path)?))
 			.expect("Unable to decode MINT proving context."),
-		private_transfer: ProvingContext::decode(fs::read(private_transfer_path)?)
+		private_transfer: ProvingContext::decode(IoReader(File::open(private_transfer_path)?))
 			.expect("Unable to decode PRIVATE_TRANSFER proving context."),
-		reclaim: ProvingContext::decode(fs::read(reclaim_path)?)
+		reclaim: ProvingContext::decode(IoReader(File::open(reclaim_path)?))
 			.expect("Unable to decode RECLAIM proving context."),
 	};
 	println!("[INFO]     loaded multi-proving context");
@@ -260,9 +260,9 @@ fn main() -> Result<()> {
 	let target_file = env::args()
 		.nth(1)
 		.map(PathBuf::from)
-		.unwrap_or(env::current_dir()?.join("precomputed_coins.rs").into());
+		.unwrap_or(env::current_dir()?.join("precomputed_coins.rs"));
 	assert!(
-		target_file.is_file() || !target_file.exists(),
+		!target_file.exists(),
 		"Specify a file to place the generated files: {:?}.",
 		target_file,
 	);
@@ -276,7 +276,7 @@ fn main() -> Result<()> {
 	println!("[INFO] Temporary Directory: {:?}", directory);
 
 	let mut rng = thread_rng();
-	let (proving_context, parameters, utxo_set_model) = load_parameters(directory.path().into())?;
+	let (proving_context, parameters, utxo_set_model) = load_parameters(directory.path())?;
 
 	let mint = sample_mint(
 		&proving_context.mint,

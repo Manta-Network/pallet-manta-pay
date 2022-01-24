@@ -35,16 +35,15 @@ std = [
 # Precompute Benchmark Transactions
 precompute-coins = [
 	"anyhow",
-	"async-std",
 	"indoc",
 	"manta-sdk/download",
+	"manta-util/std",
 	"rand",
 	"tempfile",
 ]
 
 [dependencies]
 anyhow = { version = "1.0.53", optional = true }
-async-std = { version = "1.10.0", features = ["attributes"], optional = true }
 data-encoding = { version = "2.3.2", default-features = false, features = [ "alloc" ] }
 frame-benchmarking = { git = 'https://github.com/paritytech/substrate.git', default-features = false, branch = "polkadot-v0.9.10", optional = true }
 frame-support = { git = 'https://github.com/paritytech/substrate.git', default-features = false, branch = "polkadot-v0.9.10" }
