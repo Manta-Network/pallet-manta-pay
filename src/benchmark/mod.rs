@@ -16,19 +16,20 @@
 
 #![cfg(feature = "runtime-benchmarks")]
 
-mod precomputed_coins;
-
-use super::*;
-
-use crate::Pallet;
+use crate::{
+	benchmark::precomputed_coins::{
+		MINT, PRIVATE_TRANSFER, PRIVATE_TRANSFER_INPUT, RECLAIM, RECLAIM_INPUT,
+	},
+	Asset, Balances, Call, Config, Event, Pallet, TransferPost,
+};
 use frame_benchmarking::{account, benchmarks, impl_benchmark_test_suite, whitelisted_caller};
 use frame_system::RawOrigin;
+use scale_codec::Decode;
 use sp_runtime::traits::StaticLookup;
 
-///
-const SEED: u32 = 0;
+mod precomputed_coins;
 
-///
+/// Asserts that the last event that has occured is the same as `event`.
 #[inline]
 pub fn assert_last_event<T, E>(event: E)
 where
@@ -44,7 +45,7 @@ benchmarks! {
 		let caller: T::AccountId = whitelisted_caller();
 		let origin = T::Origin::from(RawOrigin::Signed(caller.clone()));
 		Pallet::<T>::init_asset(&caller, 0, 1_000);
-		let recipient: T::AccountId = account("recipient", 0, SEED);
+		let recipient: T::AccountId = account("recipient", 0, 0);
 		let recipient_lookup = T::Lookup::unlookup(recipient.clone());
 		let asset = Asset::new(0, 10);
 	}: transfer_asset (
@@ -56,15 +57,14 @@ benchmarks! {
 		assert_eq!(Balances::<T>::get(recipient, asset.id), asset.value);
 	}
 
-	/*
 	mint {
 		let caller: T::AccountId = whitelisted_caller();
 		let origin = T::Origin::from(RawOrigin::Signed(caller.clone()));
 		Pallet::<T>::init_asset(&caller, 0, 1_000_000);
-		let mint_post = TransferPost::decode(MINT_0).unwrap();
+		let mint_post = TransferPost::decode(&mut &*MINT).unwrap();
 		let asset = Asset::new(mint_post.asset_id.unwrap(), mint_post.sources[0]);
 	}: mint (
-		RawOrigin::Signed(caller),
+		RawOrigin::Signed(caller.clone()),
 		mint_post
 	) verify {
 		assert_last_event::<T, _>(Event::Mint { asset, source: caller.clone() });
@@ -73,56 +73,33 @@ benchmarks! {
 
 	private_transfer {
 		let caller: T::AccountId = whitelisted_caller();
-		let origin: T::Origin = T::Origin::from(RawOrigin::Signed(caller.clone()));
-		<Balances<T>>::insert(&caller, TEST_ASSET, 1_000_000);
-		Pallet::<T>::init_asset(&caller, TEST_ASSET, 1_000_000);
-
-		for coin in [COIN_1, COIN_2] {
-			let mut coin_bytes: Vec<u8> = Vec::new();
-			coin_bytes.extend_from_slice(coin);
-			let mint_data = MintData::deserialize(&mut coin_bytes.as_ref()).unwrap();
-			Pallet::<T>::mint(origin.clone(), mint_data).unwrap();
+		let origin = T::Origin::from(RawOrigin::Signed(caller.clone()));
+		Pallet::<T>::init_asset(&caller, 0, 1_000_000);
+		for coin in PRIVATE_TRANSFER_INPUT {
+			Pallet::<T>::mint(origin.clone(), TransferPost::decode(&mut &**coin).unwrap()).unwrap();
 		}
-
-		let mut test_transfer_bytes: Vec<u8> = Vec::new();
-		test_transfer_bytes.extend_from_slice(TRANSFER_DATA);
-		let transfer_data = PrivateTransferData::deserialize(&mut test_transfer_bytes.as_ref()).unwrap();
-
+		let private_transfer_post = TransferPost::decode(&mut &*PRIVATE_TRANSFER).unwrap();
 	}: private_transfer (
 		RawOrigin::Signed(caller.clone()),
-		transfer_data)
-	verify {
-		assert_last_event::<T>(Event::PrivateTransfer(caller).into());
-		assert_eq!(TotalSupply::<T>::get(TEST_ASSET), 1_000_000);
-		assert_eq!(PoolBalance::<T>::get(TEST_ASSET), 179_515);
+		private_transfer_post
+	) verify {
+		assert_last_event::<T, _>(Event::PrivateTransfer { origin: caller });
 	}
 
 	reclaim {
 		let caller: T::AccountId = whitelisted_caller();
-		let origin: T::Origin = T::Origin::from(RawOrigin::Signed(caller.clone()));
-		<Balances<T>>::insert(&caller, TEST_ASSET, 1_000_000);
-		Pallet::<T>::init_asset(&caller, TEST_ASSET, 1_000_000);
-
-		for coin in [COIN_1, COIN_2] {
-			let mut coin_bytes: Vec<u8> = Vec::new();
-			coin_bytes.extend_from_slice(coin);
-			let mint_data = MintData::deserialize(&mut coin_bytes.as_ref()).unwrap();
-			Pallet::<T>::mint(origin.clone(), mint_data).unwrap();
+		let origin = T::Origin::from(RawOrigin::Signed(caller.clone()));
+		Pallet::<T>::init_asset(&caller, 0, 1_000_000);
+		for coin in RECLAIM_INPUT {
+			Pallet::<T>::mint(origin.clone(), TransferPost::decode(&mut &**coin).unwrap()).unwrap();
 		}
-
-		let mut reclaim_bytes: Vec<u8> = Vec::new();
-		reclaim_bytes.extend_from_slice(RECLAIM_DATA);
-		let reclaim_data = ReclaimData::deserialize(&mut reclaim_bytes.as_ref()).unwrap();
+		let reclaim_post = TransferPost::decode(&mut &*RECLAIM).unwrap();
 	}: reclaim (
 		RawOrigin::Signed(caller.clone()),
-		reclaim_data
-	)
-	verify {
-		assert_last_event::<T>(Event::Reclaim(TEST_ASSET, caller, 79_515).into());
-		assert_eq!(TotalSupply::<T>::get(TEST_ASSET), 1_000_000);
-		assert_eq!(PoolBalance::<T>::get(TEST_ASSET), 100_000);
+		reclaim_post
+	) verify {
+		assert_last_event::<T, _>(Event::Reclaim { asset: Asset::new(0, 79_515), sink: caller });
 	}
-	*/
 }
 
 impl_benchmark_test_suite!(Pallet, crate::mock::new_test_ext(), crate::mock::Test);

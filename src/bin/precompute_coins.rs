@@ -129,7 +129,7 @@ fn sample_private_transfer<R>(
 	asset_0: Asset,
 	asset_1: Asset,
 	rng: &mut R,
-) -> [TransferPost; 3]
+) -> ([TransferPost; 2], TransferPost)
 where
 	R: CryptoRng + RngCore + ?Sized,
 {
@@ -179,7 +179,7 @@ where
 	)
 	.expect("Unable to build PRIVATE_TRANSFER proof.");
 
-	[mint_0.into(), mint_1.into(), private_transfer.into()]
+	([mint_0.into(), mint_1.into()], private_transfer.into())
 }
 
 /// Samples a [`Reclaim`] transaction under two [`Mint`]s.
@@ -191,7 +191,7 @@ fn sample_reclaim<R>(
 	asset_0: Asset,
 	asset_1: Asset,
 	rng: &mut R,
-) -> [TransferPost; 3]
+) -> ([TransferPost; 2], TransferPost)
 where
 	R: CryptoRng + RngCore + ?Sized,
 {
@@ -239,17 +239,54 @@ where
 	)
 	.expect("Unable to build RECLAIM proof.");
 
-	[mint_0.into(), mint_1.into(), reclaim.into()]
+	([mint_0.into(), mint_1.into()], reclaim.into())
 }
 
 /// Writes a new `const` definition to `$writer`.
-macro_rules! write_const {
+macro_rules! write_const_array {
 	($writer:ident, $name:ident, $value:expr) => {
 		writeln!(
 			$writer,
 			"pub(crate) const {}: &[u8] = &{:?};\n",
 			stringify!($name),
 			$value.encode().as_slice()
+		)
+	};
+}
+
+/*
+/// Writes a new `const` definition to `$writer`.
+macro_rules! write_const_nested_array {
+	($writer:ident, $name:ident, $value:expr) => {{
+		let data = $value
+			.iter()
+			.map(|v| format!("{:?}", v.encode().as_slice()))
+			.collect::<Vec<_>>();
+		writeln!(
+			$writer,
+			"pub(crate) const {}: &[&[u8]] = &{};\n",
+			stringify!($name),
+			data,
+		)
+	}};
+}
+*/
+
+/// Writes a new `const` definition to `$writer`.
+macro_rules! write_const_nested_array {
+	($writer:ident, $name:ident, $value:expr) => {
+		writeln!(
+			$writer,
+			"pub(crate) const {}: &[&[u8]] = &[{}];\n",
+			stringify!($name),
+			$value
+				.iter()
+				.flat_map(|v| {
+					format!("&{:?},", v.encode().as_slice())
+						.chars()
+						.collect::<Vec<_>>()
+				})
+				.collect::<String>(),
 		)
 	};
 }
@@ -285,7 +322,7 @@ fn main() -> Result<()> {
 		AssetId(0).value(100_000),
 		&mut rng,
 	);
-	let private_transfer = sample_private_transfer(
+	let (private_transfer_input, private_transfer) = sample_private_transfer(
 		&proving_context,
 		&parameters,
 		&utxo_set_model,
@@ -293,7 +330,7 @@ fn main() -> Result<()> {
 		AssetId(0).value(20_000),
 		&mut rng,
 	);
-	let reclaim = sample_reclaim(
+	let (reclaim_input, reclaim) = sample_reclaim(
 		&proving_context,
 		&parameters,
 		&utxo_set_model,
@@ -332,13 +369,11 @@ fn main() -> Result<()> {
 	"}
 	)?;
 
-	write_const!(target_file, MINT, mint)?;
-	write_const!(target_file, PRIVATE_TRANSFER_INPUT_0, private_transfer[0])?;
-	write_const!(target_file, PRIVATE_TRANSFER_INPUT_1, private_transfer[1])?;
-	write_const!(target_file, PRIVATE_TRANSFER, private_transfer[2])?;
-	write_const!(target_file, RECLAIM_INPUT_0, reclaim[0])?;
-	write_const!(target_file, RECLAIM_INPUT_1, reclaim[1])?;
-	write_const!(target_file, RECLAIM, reclaim[2])?;
+	write_const_array!(target_file, MINT, mint)?;
+	write_const_nested_array!(target_file, PRIVATE_TRANSFER_INPUT, private_transfer_input)?;
+	write_const_array!(target_file, PRIVATE_TRANSFER, private_transfer)?;
+	write_const_nested_array!(target_file, RECLAIM_INPUT, reclaim_input)?;
+	write_const_array!(target_file, RECLAIM, reclaim)?;
 
 	directory
 		.close()
