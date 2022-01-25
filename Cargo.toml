@@ -50,9 +50,9 @@ frame-support = { git = 'https://github.com/paritytech/substrate.git', default-f
 frame-system = { git = 'https://github.com/paritytech/substrate.git', default-features = false, branch = "polkadot-v0.9.10" }
 indoc = { version = "1.0.3", default-features = false, optional = true}
 log = { version = "0.4.14", default-features = false }
-manta-accounting = { path = "../manta-rs/manta-accounting" }
-manta-crypto = { path = "../manta-rs/manta-crypto" }
-manta-pay = { path = "../manta-rs/manta-pay", features = ["arkworks", "groth16"] }
+manta-accounting = { path = "../manta-rs/manta-accounting", default-features = false }
+manta-crypto = { path = "../manta-rs/manta-crypto", default-features = false }
+manta-pay = { path = "../manta-rs/manta-pay", default-features = false, features = ["arkworks", "groth16"] }
 manta-sdk = { path = "../sdk", default-features = false }
 manta-util = { path = "../manta-rs/manta-util", default-features = false }
 rand = { version = "0.8.4", default-features = false, optional = true }
