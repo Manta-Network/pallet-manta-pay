@@ -104,7 +104,7 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
 use core::marker::PhantomData;
-use frame_support::{ensure, Deserialize, Serialize};
+use frame_support::ensure;
 use manta_accounting::{
 	asset,
 	transfer::{
@@ -150,21 +150,7 @@ pub mod types {
 	pub type AssetValue = asset::AssetValueType;
 
 	/// Asset
-	#[derive(
-		Clone,
-		Copy,
-		Debug,
-		Decode,
-		Default,
-		Deserialize,
-		Encode,
-		Eq,
-		Hash,
-		Ord,
-		PartialEq,
-		PartialOrd,
-		Serialize,
-	)]
+	#[derive(Clone, Copy, Debug, Decode, Default, Encode, Eq, Hash, Ord, PartialEq, PartialOrd)]
 	pub struct Asset {
 		/// Asset Id
 		pub id: AssetId,
@@ -390,7 +376,6 @@ pub mod pallet {
 	use frame_support::pallet_prelude::*;
 	use frame_system::pallet_prelude::*;
 	use sp_runtime::traits::StaticLookup;
-	use sp_std::collections::btree_set::BTreeSet;
 
 	///
 	#[pallet::pallet]
@@ -463,11 +448,12 @@ pub mod pallet {
 	#[pallet::genesis_config]
 	pub struct GenesisConfig<T: Config> {
 		pub owner: T::AccountId,
-		pub assets: BTreeSet<Asset>,
+		pub assets: sp_std::collections::btree_set::BTreeSet<(AssetId, AssetValue)>,
 	}
 
 	#[cfg(feature = "std")]
 	impl<T: Config> Default for GenesisConfig<T> {
+		#[inline]
 		fn default() -> Self {
 			GenesisConfig {
 				owner: Default::default(),
@@ -480,8 +466,8 @@ pub mod pallet {
 	impl<T: Config> GenesisBuild<T> for GenesisConfig<T> {
 		#[inline]
 		fn build(&self) {
-			for asset in &self.assets {
-				Pallet::<T>::init_asset(&self.owner, asset.id, asset.value);
+			for (id, value) in &self.assets {
+				Pallet::<T>::init_asset(&self.owner, *id, *value);
 			}
 		}
 	}
