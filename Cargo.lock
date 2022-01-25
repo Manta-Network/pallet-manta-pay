@@ -2079,6 +2079,7 @@ dependencies = [
 [[package]]
 name = "manta-accounting"
 version = "0.4.0"
+source = "git+https://github.com/manta-network/manta-rs?branch=setup-manta-rs#d756ce8d795957bcf2abf2507f46dc5a6831d913"
 dependencies = [
  "derivative",
  "derive_more",
@@ -2089,6 +2090,7 @@ dependencies = [
 [[package]]
 name = "manta-crypto"
 version = "0.4.0"
+source = "git+https://github.com/manta-network/manta-rs?branch=setup-manta-rs#d756ce8d795957bcf2abf2507f46dc5a6831d913"
 dependencies = [
  "derivative",
  "manta-util",
@@ -2098,6 +2100,7 @@ dependencies = [
 [[package]]
 name = "manta-pay"
 version = "0.4.0"
+source = "git+https://github.com/manta-network/manta-rs?branch=setup-manta-rs#d756ce8d795957bcf2abf2507f46dc5a6831d913"
 dependencies = [
  "aes-gcm",
  "ark-bls12-381",
@@ -2126,6 +2129,7 @@ dependencies = [
 [[package]]
 name = "manta-sdk"
 version = "0.4.0"
+source = "git+https://github.com/manta-network/sdk?branch=add-sdk-library#f9d4240227bac5064859927bea80958a75e9e916"
 dependencies = [
  "anyhow",
  "attohttpc",
@@ -2144,6 +2148,7 @@ dependencies = [
 [[package]]
 name = "manta-util"
 version = "0.4.0"
+source = "git+https://github.com/manta-network/manta-rs?branch=setup-manta-rs#d756ce8d795957bcf2abf2507f46dc5a6831d913"
 dependencies = [
  "derivative",
 ]
