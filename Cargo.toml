@@ -53,8 +53,8 @@ log = { version = "0.4.14", default-features = false }
 manta-accounting = { path = "../manta-rs/manta-accounting" }
 manta-crypto = { path = "../manta-rs/manta-crypto" }
 manta-pay = { path = "../manta-rs/manta-pay", features = ["arkworks", "groth16"] }
-manta-sdk = { path = "../sdk" }
-manta-util = { path = "../manta-rs/manta-util" }
+manta-sdk = { path = "../sdk", default-features = false }
+manta-util = { path = "../manta-rs/manta-util", default-features = false }
 rand = { version = "0.8.4", default-features = false, optional = true }
 scale-codec = { package = "parity-scale-codec", version = "2.0.0", default-features = false, features = ["derive"] }
 serde = { version = "1.0.133", default-features = false, features = ["derive"] }
@@ -63,17 +63,17 @@ sp-std = { git = 'https://github.com/paritytech/substrate.git', default-features
 tempfile = { version = "3.3.0", optional = true }
 
 [dev-dependencies]
-ark-bls12-381 = { version = "0.3.0", default-features = false, features = [ "curve" ] }
-ark-crypto-primitives = { version = "0.3.0", default-features = false, features = [ "r1cs" ] }
-ark-ed-on-bls12-381 = { version = "0.3.0", default-features = false, features = [ "r1cs" ] }
+ark-bls12-381 = { version = "0.3.0", default-features = false, features = ["curve"] }
+ark-crypto-primitives = { version = "0.3.0", default-features = false, features = ["r1cs"] }
+ark-ed-on-bls12-381 = { version = "0.3.0", default-features = false, features = ["r1cs"] }
 ark-ff = { version = "0.3.0", default-features = false }
-ark-groth16 = { version = "0.3.0", default-features = false, features = [ "r1cs" ] }
+ark-groth16 = { version = "0.3.0", default-features = false, features = ["r1cs"] }
 ark-relations = { version = "0.3.0", default-features = false }
-ark-serialize = { version = "0.3.0", default-features = false, features = [ "derive" ] }
+ark-serialize = { version = "0.3.0", default-features = false, features = ["derive"] }
 bencher = "0.1.5"
 criterion = "0.3.4"
 lazy_static = "1.4.0"
-rand_chacha = { version = "0.3.1", default-features = false }
-serde = { default-features = false, version = '1' }
+rand = { version = "0.8.4" }
+serde = { version = "1.0.133", default-features = false }
 sp-core = { git = 'https://github.com/paritytech/substrate.git', default-features = false, branch = "polkadot-v0.9.10" }
 sp-io = { git = 'https://github.com/paritytech/substrate.git', default-features = false, branch = "polkadot-v0.9.10" }

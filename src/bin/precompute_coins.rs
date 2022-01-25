@@ -22,14 +22,13 @@ use manta_accounting::{
 };
 use manta_crypto::{
 	accumulator::Accumulator,
-	key::KeyAgreementScheme as _,
 	merkle_tree::full::FullMerkleTree,
-	rand::{CryptoRng, Rand, RngCore},
+	rand::{CryptoRng, Rand, RngCore, Sample},
 };
 use manta_pay::config::{
 	FullParameters, KeyAgreementScheme, MerkleTreeConfiguration, Mint, MultiProvingContext,
-	Parameters, PrivateTransfer, ProvingContext, Receiver, Reclaim, UtxoCommitmentScheme,
-	UtxoSetModel, VoidNumberHashFunction,
+	Parameters, PrivateTransfer, ProvingContext, Reclaim, UtxoCommitmentScheme, UtxoSetModel,
+	VoidNumberHashFunction,
 };
 use manta_util::codec::{Decode, IoReader};
 use pallet_manta_pay::types::TransferPost;
@@ -103,13 +102,7 @@ where
 {
 	Mint::build(
 		asset,
-		Receiver::new(
-			parameters,
-			rng.gen(),
-			parameters.key_agreement.derive_owned(rng.gen()),
-			parameters.key_agreement.derive_owned(rng.gen()),
-			asset,
-		),
+		SpendingKey::gen(rng).receiver(parameters, rng.gen(), asset),
 	)
 	.into_post(
 		FullParameters::new(parameters, utxo_set_model),
@@ -135,7 +128,7 @@ where
 {
 	let mut utxo_set = UtxoSet::new(utxo_set_model.clone());
 
-	let spending_key_0 = SpendingKey::new(rng.gen(), rng.gen());
+	let spending_key_0 = SpendingKey::gen(rng);
 	let (receiver_0, pre_sender_0) = spending_key_0.internal_pair(parameters, rng.gen(), asset_0);
 
 	let mint_0 = Mint::build(asset_0, receiver_0)
@@ -145,12 +138,11 @@ where
 			rng,
 		)
 		.expect("Unable to build MINT proof.");
-	pre_sender_0.insert_utxo(&mut utxo_set);
 	let sender_0 = pre_sender_0
-		.try_upgrade(&utxo_set)
+		.insert_and_upgrade(&mut utxo_set)
 		.expect("Just inserted so this should not fail.");
 
-	let spending_key_1 = SpendingKey::new(rng.gen(), rng.gen());
+	let spending_key_1 = SpendingKey::gen(rng);
 	let (receiver_1, pre_sender_1) = spending_key_1.internal_pair(parameters, rng.gen(), asset_1);
 
 	let mint_1 = Mint::build(asset_1, receiver_1)
@@ -160,9 +152,8 @@ where
 			rng,
 		)
 		.expect("Unable to build MINT proof.");
-	pre_sender_1.insert_utxo(&mut utxo_set);
 	let sender_1 = pre_sender_1
-		.try_upgrade(&utxo_set)
+		.insert_and_upgrade(&mut utxo_set)
 		.expect("Just insterted so this should not fail.");
 
 	let private_transfer = PrivateTransfer::build(
