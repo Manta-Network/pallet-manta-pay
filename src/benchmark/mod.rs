@@ -14,8 +14,6 @@
 // You should have received a copy of the GNU General Public License
 // along with pallet-manta-pay.  If not, see <http://www.gnu.org/licenses/>.
 
-#![cfg(feature = "runtime-benchmarks")]
-
 use crate::{
 	benchmark::precomputed_coins::{
 		MINT, PRIVATE_TRANSFER, PRIVATE_TRANSFER_INPUT, RECLAIM, RECLAIM_INPUT,
@@ -41,14 +39,14 @@ where
 }
 
 benchmarks! {
-	transfer_asset {
+	transfer {
 		let caller: T::AccountId = whitelisted_caller();
 		let origin = T::Origin::from(RawOrigin::Signed(caller.clone()));
 		Pallet::<T>::init_asset(&caller, 0, 1_000);
 		let recipient: T::AccountId = account("recipient", 0, 0);
 		let recipient_lookup = T::Lookup::unlookup(recipient.clone());
 		let asset = Asset::new(0, 10);
-	}: transfer_asset (
+	}: transfer (
 		RawOrigin::Signed(caller.clone()),
 		recipient_lookup,
 		asset
@@ -98,7 +96,7 @@ benchmarks! {
 		RawOrigin::Signed(caller.clone()),
 		reclaim_post
 	) verify {
-		assert_last_event::<T, _>(Event::Reclaim { asset: Asset::new(0, 79_515), sink: caller });
+		assert_last_event::<T, _>(Event::Reclaim { asset: Asset::new(0, 10_000), sink: caller });
 	}
 }
 

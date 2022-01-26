@@ -483,7 +483,7 @@ pub mod pallet {
 		/// - 1 event.
 		/// # </weight>
 		#[pallet::weight(T::WeightInfo::transfer_asset())]
-		pub fn transfer_asset(
+		pub fn transfer(
 			origin: OriginFor<T>,
 			target: <T::Lookup as StaticLookup>::Source,
 			asset: Asset,

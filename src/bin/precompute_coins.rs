@@ -14,6 +14,8 @@
 // You should have received a copy of the GNU General Public License
 // along with pallet-manta-pay.  If not, see <http://www.gnu.org/licenses/>.
 
+//! Precomputed Transactions
+
 use anyhow::Result;
 use indoc::indoc;
 use manta_accounting::{
@@ -22,13 +24,14 @@ use manta_accounting::{
 };
 use manta_crypto::{
 	accumulator::Accumulator,
-	merkle_tree::full::FullMerkleTree,
+	constraint::ProofSystem as _,
+	merkle_tree::{forest::TreeArrayMerkleForest, full::Full},
 	rand::{CryptoRng, Rand, RngCore, Sample},
 };
 use manta_pay::config::{
-	FullParameters, KeyAgreementScheme, MerkleTreeConfiguration, Mint, MultiProvingContext,
-	Parameters, PrivateTransfer, ProvingContext, Reclaim, UtxoCommitmentScheme, UtxoSetModel,
-	VoidNumberHashFunction,
+	self, FullParameters, KeyAgreementScheme, MerkleTreeConfiguration, Mint, MultiProvingContext,
+	MultiVerifyingContext, Parameters, PrivateTransfer, ProofSystem, ProvingContext, Reclaim,
+	UtxoCommitmentScheme, UtxoSetModel, VerifyingContext, VoidNumberHashFunction,
 };
 use manta_util::codec::{Decode, IoReader};
 use pallet_manta_pay::types::TransferPost;
@@ -42,21 +45,24 @@ use std::{
 };
 
 /// UTXO Set for Building Circuits
-type UtxoSet = FullMerkleTree<MerkleTreeConfiguration>;
+type UtxoSet = TreeArrayMerkleForest<MerkleTreeConfiguration, Full<MerkleTreeConfiguration>, 256>;
 
 /// Loads parameters from the SDK, using `directory` as a temporary directory to store files.
 #[inline]
-fn load_parameters(directory: &Path) -> Result<(MultiProvingContext, Parameters, UtxoSetModel)> {
-	println!("[INFO] Loading parameters ...");
+fn load_parameters(
+	directory: &Path,
+) -> Result<(
+	MultiProvingContext,
+	MultiVerifyingContext,
+	Parameters,
+	UtxoSetModel,
+)> {
 	let mint_path = directory.join("mint.dat");
 	manta_sdk::pay::testnet::proving::mint(&mint_path)?;
-	println!("[INFO]     downloaded mint proving context");
 	let private_transfer_path = directory.join("private-transfer.dat");
 	manta_sdk::pay::testnet::proving::private_transfer(&private_transfer_path)?;
-	println!("[INFO]     downloaded private-transfer proving context");
 	let reclaim_path = directory.join("reclaim.dat");
 	manta_sdk::pay::testnet::proving::reclaim(&reclaim_path)?;
-	println!("[INFO]     downloaded reclaim proving context");
 	let proving_context = MultiProvingContext {
 		mint: ProvingContext::decode(IoReader(File::open(mint_path)?))
 			.expect("Unable to decode MINT proving context."),
@@ -65,7 +71,16 @@ fn load_parameters(directory: &Path) -> Result<(MultiProvingContext, Parameters,
 		reclaim: ProvingContext::decode(IoReader(File::open(reclaim_path)?))
 			.expect("Unable to decode RECLAIM proving context."),
 	};
-	println!("[INFO]     loaded multi-proving context");
+	let verifying_context = MultiVerifyingContext {
+		mint: VerifyingContext::decode(manta_sdk::pay::testnet::verifying::MINT)
+			.expect("Unable to decode MINT verifying context."),
+		private_transfer: VerifyingContext::decode(
+			manta_sdk::pay::testnet::verifying::PRIVATE_TRANSFER,
+		)
+		.expect("Unable to decode PRIVATE_TRANSFER verifying context."),
+		reclaim: VerifyingContext::decode(manta_sdk::pay::testnet::verifying::RECLAIM)
+			.expect("Unable to decode RECLAIM verifying context."),
+	};
 	let parameters = Parameters {
 		key_agreement: KeyAgreementScheme::decode(
 			manta_sdk::pay::testnet::parameters::KEY_AGREEMENT,
@@ -82,16 +97,33 @@ fn load_parameters(directory: &Path) -> Result<(MultiProvingContext, Parameters,
 	};
 	Ok((
 		proving_context,
+		verifying_context,
 		parameters,
 		UtxoSetModel::decode(manta_sdk::pay::testnet::parameters::UTXO_SET_PARAMETERS)
 			.expect("Unable to decode UTXO_SET_PARAMETERS."),
 	))
 }
 
+/// Asserts that `post` represents a valid `Transfer` verifying against `verifying_context`.
+#[inline]
+fn assert_valid_proof(verifying_context: &VerifyingContext, post: &config::TransferPost) {
+	assert!(
+		ProofSystem::verify(
+			&post.generate_proof_input(),
+			&post.validity_proof,
+			verifying_context
+		)
+		.expect("Unable to verify proof."),
+		"Invalid proof: {:?}.",
+		post
+	);
+}
+
 /// Samples a [`Mint`] transaction.
 #[inline]
 fn sample_mint<R>(
 	proving_context: &ProvingContext,
+	verifying_context: &VerifyingContext,
 	parameters: &Parameters,
 	utxo_set_model: &UtxoSetModel,
 	asset: Asset,
@@ -100,7 +132,7 @@ fn sample_mint<R>(
 where
 	R: CryptoRng + RngCore + ?Sized,
 {
-	Mint::build(
+	let mint = Mint::build(
 		asset,
 		SpendingKey::gen(rng).receiver(parameters, rng.gen(), asset),
 	)
@@ -109,14 +141,16 @@ where
 		proving_context,
 		rng,
 	)
-	.expect("Unable to build MINT proof.")
-	.into()
+	.expect("Unable to build MINT proof.");
+	assert_valid_proof(verifying_context, &mint);
+	mint.into()
 }
 
 /// Samples a [`PrivateTransfer`] transaction under two [`Mint`]s.
 #[inline]
 fn sample_private_transfer<R>(
 	proving_context: &MultiProvingContext,
+	verifying_context: &MultiVerifyingContext,
 	parameters: &Parameters,
 	utxo_set_model: &UtxoSetModel,
 	asset_0: Asset,
@@ -127,10 +161,8 @@ where
 	R: CryptoRng + RngCore + ?Sized,
 {
 	let mut utxo_set = UtxoSet::new(utxo_set_model.clone());
-
 	let spending_key_0 = SpendingKey::gen(rng);
 	let (receiver_0, pre_sender_0) = spending_key_0.internal_pair(parameters, rng.gen(), asset_0);
-
 	let mint_0 = Mint::build(asset_0, receiver_0)
 		.into_post(
 			FullParameters::new(parameters, utxo_set.model()),
@@ -138,13 +170,12 @@ where
 			rng,
 		)
 		.expect("Unable to build MINT proof.");
+	assert_valid_proof(&verifying_context.mint, &mint_0);
 	let sender_0 = pre_sender_0
 		.insert_and_upgrade(&mut utxo_set)
 		.expect("Just inserted so this should not fail.");
-
 	let spending_key_1 = SpendingKey::gen(rng);
 	let (receiver_1, pre_sender_1) = spending_key_1.internal_pair(parameters, rng.gen(), asset_1);
-
 	let mint_1 = Mint::build(asset_1, receiver_1)
 		.into_post(
 			FullParameters::new(parameters, utxo_set.model()),
@@ -152,10 +183,10 @@ where
 			rng,
 		)
 		.expect("Unable to build MINT proof.");
+	assert_valid_proof(&verifying_context.mint, &mint_1);
 	let sender_1 = pre_sender_1
 		.insert_and_upgrade(&mut utxo_set)
 		.expect("Just insterted so this should not fail.");
-
 	let private_transfer = PrivateTransfer::build(
 		[sender_0, sender_1],
 		[
@@ -169,7 +200,7 @@ where
 		rng,
 	)
 	.expect("Unable to build PRIVATE_TRANSFER proof.");
-
+	assert_valid_proof(&verifying_context.private_transfer, &private_transfer);
 	([mint_0.into(), mint_1.into()], private_transfer.into())
 }
 
@@ -177,6 +208,7 @@ where
 #[inline]
 fn sample_reclaim<R>(
 	proving_context: &MultiProvingContext,
+	verifying_context: &MultiVerifyingContext,
 	parameters: &Parameters,
 	utxo_set_model: &UtxoSetModel,
 	asset_0: Asset,
@@ -187,10 +219,8 @@ where
 	R: CryptoRng + RngCore + ?Sized,
 {
 	let mut utxo_set = UtxoSet::new(utxo_set_model.clone());
-
 	let spending_key_0 = SpendingKey::new(rng.gen(), rng.gen());
 	let (receiver_0, pre_sender_0) = spending_key_0.internal_pair(parameters, rng.gen(), asset_0);
-
 	let mint_0 = Mint::build(asset_0, receiver_0)
 		.into_post(
 			FullParameters::new(parameters, utxo_set.model()),
@@ -198,14 +228,13 @@ where
 			rng,
 		)
 		.expect("Unable to build MINT proof.");
+	assert_valid_proof(&verifying_context.mint, &mint_0);
 	pre_sender_0.insert_utxo(&mut utxo_set);
 	let sender_0 = pre_sender_0
 		.try_upgrade(&utxo_set)
 		.expect("Just inserted so this should not fail.");
-
 	let spending_key_1 = SpendingKey::new(rng.gen(), rng.gen());
 	let (receiver_1, pre_sender_1) = spending_key_1.internal_pair(parameters, rng.gen(), asset_1);
-
 	let mint_1 = Mint::build(asset_1, receiver_1)
 		.into_post(
 			FullParameters::new(parameters, utxo_set.model()),
@@ -213,11 +242,11 @@ where
 			rng,
 		)
 		.expect("Unable to build MINT proof.");
+	assert_valid_proof(&verifying_context.mint, &mint_1);
 	pre_sender_1.insert_utxo(&mut utxo_set);
 	let sender_1 = pre_sender_1
 		.try_upgrade(&utxo_set)
 		.expect("Just inserted so this should not fail.");
-
 	let reclaim = Reclaim::build(
 		[sender_0, sender_1],
 		[spending_key_0.receiver(parameters, rng.gen(), asset_1)],
@@ -225,11 +254,11 @@ where
 	)
 	.into_post(
 		FullParameters::new(parameters, utxo_set.model()),
-		&proving_context.private_transfer,
+		&proving_context.reclaim,
 		rng,
 	)
 	.expect("Unable to build RECLAIM proof.");
-
+	assert_valid_proof(&verifying_context.reclaim, &reclaim);
 	([mint_0.into(), mint_1.into()], reclaim.into())
 }
 
@@ -286,10 +315,12 @@ fn main() -> Result<()> {
 	println!("[INFO] Temporary Directory: {:?}", directory);
 
 	let mut rng = thread_rng();
-	let (proving_context, parameters, utxo_set_model) = load_parameters(directory.path())?;
+	let (proving_context, verifying_context, parameters, utxo_set_model) =
+		load_parameters(directory.path())?;
 
 	let mint = sample_mint(
 		&proving_context.mint,
+		&verifying_context.mint,
 		&parameters,
 		&utxo_set_model,
 		AssetId(0).value(100_000),
@@ -297,6 +328,7 @@ fn main() -> Result<()> {
 	);
 	let (private_transfer_input, private_transfer) = sample_private_transfer(
 		&proving_context,
+		&verifying_context,
 		&parameters,
 		&utxo_set_model,
 		AssetId(0).value(10_000),
@@ -305,6 +337,7 @@ fn main() -> Result<()> {
 	);
 	let (reclaim_input, reclaim) = sample_reclaim(
 		&proving_context,
+		&verifying_context,
 		&parameters,
 		&utxo_set_model,
 		AssetId(0).value(10_000),
