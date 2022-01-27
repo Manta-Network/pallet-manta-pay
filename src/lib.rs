@@ -894,48 +894,6 @@ where
         }
     }
 
-    /* TODO[remove]:
-    #[inline]
-    fn register(
-        &mut self,
-        utxo: Self::ValidUtxo,
-        note: config::EncryptedNote,
-        super_key: &Self::SuperPostingKey,
-    ) {
-        let _ = super_key;
-
-        let parameters = merkle_tree::Parameters::decode(
-            manta_sdk::pay::testnet::parameters::UTXO_SET_PARAMETERS,
-        )
-        .expect("Unable to decode the Merkle Tree Parameters.");
-
-        let shard_index = config::MerkleTreeConfiguration::tree_index(&utxo.0);
-
-        let mut tree = ShardTrees::<T>::get(shard_index);
-
-        let next_root = {
-            let mut current_path = core::mem::take(&mut tree.current_path).into();
-            let next_root = merkle_tree::single_path::raw::insert(
-                &parameters,
-                &mut tree.leaf_digest,
-                &mut current_path,
-                utxo.0,
-            )
-            .expect("If this errors, then we have run out of Merkle Tree capacity.");
-            tree.current_path = current_path.into();
-            next_root
-        };
-
-        let next_index = tree.current_path.leaf_index as u64;
-
-        ShardTrees::<T>::insert(shard_index, tree);
-
-        UtxoSet::<T>::insert(utxo.0, ());
-        UtxoSetOutputs::<T>::insert(next_root, ());
-        Shards::<T>::insert(shard_index, next_index, (utxo.0, EncryptedNote::from(note)));
-    }
-    */
-
     #[inline]
     fn register_all<I>(&mut self, iter: I, super_key: &Self::SuperPostingKey)
     where
