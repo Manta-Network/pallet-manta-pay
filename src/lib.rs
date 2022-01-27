@@ -860,17 +860,21 @@ where
     }
 
     #[inline]
-    fn spend(
-        &mut self,
-        utxo_set_output: Self::ValidUtxoSetOutput,
-        void_number: Self::ValidVoidNumber,
-        super_key: &Self::SuperPostingKey,
-    ) {
-        let _ = (utxo_set_output, super_key);
+    fn spend_all<I>(&mut self, iter: I, super_key: &Self::SuperPostingKey)
+    where
+        I: IntoIterator<Item = (Self::ValidUtxoSetOutput, Self::ValidVoidNumber)>,
+    {
+        let _ = super_key;
         let index = VoidNumberSetSize::<T>::get();
-        VoidNumberSet::<T>::insert(void_number.0, ());
-        VoidNumberSetInsertionOrder::<T>::insert(index, void_number.0);
-        VoidNumberSetSize::<T>::set(index + 1);
+        let mut i = 0;
+        for (_, void_number) in iter {
+            VoidNumberSet::<T>::insert(void_number.0, ());
+            VoidNumberSetInsertionOrder::<T>::insert(index + i, void_number.0);
+            i += 1;
+        }
+        if i != 0 {
+            VoidNumberSetSize::<T>::set(index + i);
+        }
     }
 }
 
@@ -890,6 +894,7 @@ where
         }
     }
 
+    /* TODO[remove]:
     #[inline]
     fn register(
         &mut self,
@@ -897,8 +902,6 @@ where
         note: config::EncryptedNote,
         super_key: &Self::SuperPostingKey,
     ) {
-        // TODO: Add `register_all` command to amortize cost of getting and setting `ShardTrees``.
-
         let _ = super_key;
 
         let parameters = merkle_tree::Parameters::decode(
@@ -930,6 +933,60 @@ where
         UtxoSet::<T>::insert(utxo.0, ());
         UtxoSetOutputs::<T>::insert(next_root, ());
         Shards::<T>::insert(shard_index, next_index, (utxo.0, EncryptedNote::from(note)));
+    }
+    */
+
+    #[inline]
+    fn register_all<I>(&mut self, iter: I, super_key: &Self::SuperPostingKey)
+    where
+        I: IntoIterator<Item = (Self::ValidUtxo, config::EncryptedNote)>,
+    {
+        let _ = super_key;
+        let parameters =
+            config::UtxoSetModel::decode(manta_sdk::pay::testnet::parameters::UTXO_SET_PARAMETERS)
+                .expect("Unable to decode the Merkle Tree Parameters.");
+        let mut shard_indices = iter
+            .into_iter()
+            .map(move |(utxo, note)| {
+                (
+                    config::MerkleTreeConfiguration::tree_index(&utxo.0),
+                    utxo.0,
+                    note,
+                )
+            })
+            .collect::<Vec<_>>();
+        shard_indices.sort_by_key(|(s, _, _)| *s);
+        let mut shard_insertions = Vec::<(_, Vec<_>)>::new();
+        for (shard_index, utxo, note) in shard_indices {
+            match shard_insertions.last_mut() {
+                Some((index, pairs)) if shard_index == *index => pairs.push((utxo, note)),
+                _ => shard_insertions.push((shard_index, vec![(utxo, note)])),
+            }
+        }
+        for (shard_index, insertions) in shard_insertions {
+            let mut tree = ShardTrees::<T>::get(shard_index);
+            let mut next_root = Option::<config::UtxoSetOutput>::None;
+            let mut current_path = core::mem::take(&mut tree.current_path).into();
+            for (utxo, note) in insertions {
+                next_root = Some(
+                    merkle_tree::single_path::raw::insert(
+                        &parameters,
+                        &mut tree.leaf_digest,
+                        &mut current_path,
+                        utxo,
+                    )
+                    .expect("If this errors, then we have run out of Merkle Tree capacity."),
+                );
+                let next_index = current_path.leaf_index().0 as u64;
+                UtxoSet::<T>::insert(utxo, ());
+                Shards::<T>::insert(shard_index, next_index, (utxo, EncryptedNote::from(note)));
+            }
+            tree.current_path = current_path.into();
+            if let Some(next_root) = next_root {
+                ShardTrees::<T>::insert(shard_index, tree);
+                UtxoSetOutputs::<T>::insert(next_root, ());
+            }
+        }
     }
 }
 
