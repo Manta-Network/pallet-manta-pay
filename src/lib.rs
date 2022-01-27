@@ -1028,18 +1028,18 @@ where
         )? {
             TransferShape::Mint => (
                 manta_sdk::pay::testnet::verifying::MINT,
-                PreprocessedEvent::Mint::<T> {
+                PreprocessedEvent::<T>::Mint {
                     asset: Asset::new(asset_id.unwrap().0, (sources[0].1).0),
                     source: sources[0].0.clone(),
                 },
             ),
             TransferShape::PrivateTransfer => (
                 manta_sdk::pay::testnet::verifying::PRIVATE_TRANSFER,
-                PreprocessedEvent::PrivateTransfer::<T>,
+                PreprocessedEvent::<T>::PrivateTransfer,
             ),
             TransferShape::Reclaim => (
                 manta_sdk::pay::testnet::verifying::RECLAIM,
-                PreprocessedEvent::Reclaim::<T> {
+                PreprocessedEvent::<T>::Reclaim {
                     asset: Asset::new(asset_id.unwrap().0, (sinks[0].1).0),
                     sink: sinks[0].0.clone(),
                 },

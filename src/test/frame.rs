@@ -21,19 +21,27 @@ use crate::{
 use frame_support::{assert_noop, assert_ok};
 use manta_accounting::{
     asset::{Asset, AssetId, AssetValue},
-    transfer::test::value_distribution,
+    transfer::{self, test::value_distribution, SpendingKey},
 };
-use manta_crypto::rand::{CryptoRng, Rand, RngCore, Sample};
+use manta_crypto::{
+    accumulator::Accumulator,
+    merkle_tree::{forest::TreeArrayMerkleForest, full::Full},
+    rand::{CryptoRng, Rand, RngCore, Sample},
+};
 use manta_pay::config::{
-    FullParameters, KeyAgreementScheme, Mint, MultiProvingContext, Parameters, ProvingContext,
-    TransferPost, UtxoCommitmentScheme, UtxoSetModel, VoidNumberHashFunction,
+    FullParameters, KeyAgreementScheme, MerkleTreeConfiguration, Mint, MultiProvingContext,
+    Parameters, PrivateTransfer, ProvingContext, Reclaim, TransferPost, UtxoCommitmentScheme,
+    UtxoSetModel, VoidNumberHashFunction,
 };
-use manta_util::codec::{Decode, Encode, IoReader};
-use rand::{seq::SliceRandom, thread_rng};
+use manta_util::codec::{Decode, IoReader};
+use rand::thread_rng;
 use std::fs::File;
 
+/// UTXO Set for Building Circuits
+type UtxoSet = TreeArrayMerkleForest<MerkleTreeConfiguration, Full<MerkleTreeConfiguration>, 256>;
+
 lazy_static::lazy_static! {
-    static ref MULTI_PROVING_CONTEXT: MultiProvingContext = load_proving_context();
+    static ref PROVING_CONTEXT: MultiProvingContext = load_proving_context();
     static ref PARAMETERS: Parameters = load_parameters();
     static ref UTXO_SET_MODEL: UtxoSetModel = load_utxo_set_model();
 }
@@ -104,7 +112,7 @@ where
     Mint::from_spending_key(&PARAMETERS, &rng.gen(), asset, rng)
         .into_post(
             FullParameters::new(&PARAMETERS, &UTXO_SET_MODEL),
-            &MULTI_PROVING_CONTEXT.mint,
+            &PROVING_CONTEXT.mint,
             rng,
         )
         .expect("Unable to build MINT proof.")
@@ -124,195 +132,134 @@ where
     }
 }
 
-/// Flips an random bit in `data` using `rng`.
+/// Builds `count`-many [`PrivateTransfer`] tests.
 #[inline]
-fn flip_random_bit<T, R>(data: &mut T, rng: &mut R)
-where
-    T: AsMut<[u8]> + ?Sized,
-    R: CryptoRng + RngCore + ?Sized,
-{
-    const MASKS: [u8; 8] = [
-        0b10000000, 0b01000000, 0b00100000, 0b00010000, 0b00001000, 0b00000100, 0b00000010,
-        0b00000001,
-    ];
-    if let Some(byte) = data.as_mut().choose_mut(rng) {
-        *byte ^= MASKS.choose(rng).unwrap();
-    }
-}
-
-///
-fn transfer_test<R>(count: usize, rng: &mut R)
+fn private_transfer_test<R>(count: usize, rng: &mut R) -> Vec<TransferPost>
 where
     R: CryptoRng + RngCore + ?Sized,
 {
-    /*
-    // generate asset_id and transfer balances
-    let asset_id = rng.gen();
-    let total_balance: AssetBalance = rng.gen();
-    let balances: Vec<AssetBalance> = value_distribution(transfer_count, total_balance, rng);
-    initialize_test(asset_id, total_balance);
-
-    let mut utxo_set = HashMap::new();
-    let mut current_pool_balance = 0;
-    let transfer_pk = transfer_pk();
-    for balance in balances {
-        let (senders, receivers) = sample_fixed_sender_and_receiver(
-            2,
-            2,
-            &LEAF_PARAMS,
-            &TWO_TO_ONE_PARAMS,
-            &COMMIT_PARAMS,
-            asset_id,
-            balance,
-            balance,
-            &mut utxo_set,
-            rng,
-        );
-
-        // mint private tokens
-        for sender in senders.clone() {
-            let mint_data = generate_mint_struct(&sender.asset);
-            assert_ok!(MantaPayPallet::mint_private_asset(
-                Origin::signed(1),
-                mint_data
-            ));
-        }
-        // transfer private tokens
-        let priv_trans_data = generate_private_transfer_struct(
-            COMMIT_PARAMS.clone(),
-            LEAF_PARAMS.clone(),
-            TWO_TO_ONE_PARAMS.clone(),
-            &transfer_pk,
-            into_array_unchecked(senders),
-            into_array_unchecked(receivers.clone()),
-            rng,
-        )
-        .unwrap();
-        assert_ok!(MantaPayPallet::private_transfer(
-            Origin::signed(1),
-            priv_trans_data
-        ));
-
-        // check the utxos and ciphertexts
-        let (shard_index_1, shard_index_2) = (
-            shard_index(receivers[0].utxo),
-            shard_index(receivers[1].utxo),
-        );
-        let (meta_data_1, meta_data_2) = (
-            LedgerShardMetaData::<Test>::get(shard_index_1),
-            LedgerShardMetaData::<Test>::get(shard_index_2),
-        );
-        let ledger_entries = if shard_index_1 == shard_index_2 {
-            [
-                LedgerShards::<Test>::get(shard_index_1, meta_data_2.current_index),
-                LedgerShards::<Test>::get(shard_index_1, meta_data_1.current_index - 1),
-            ]
-        } else {
-            [
-                LedgerShards::<Test>::get(shard_index_1, meta_data_2.current_index),
-                LedgerShards::<Test>::get(shard_index_2, meta_data_2.current_index),
-            ]
-        };
-
-        // Check ledger entry written
-        for (i, entry) in ledger_entries.iter().enumerate() {
-            assert_eq!(entry.0, receivers[i].utxo);
-            assert_eq!(entry.1, receivers[i].encrypted_note);
-        }
-
-        // TODO: check the wellformness of ciphertexts
-        // Check pool balance and utxo exists
-        current_pool_balance += balance;
-        assert_eq!(PoolBalance::<Test>::get(asset_id), current_pool_balance);
-        for receiver in receivers {
-            assert!(MantaPayPallet::utxo_exists(receiver.utxo));
-        }
-    }
-    */
-}
-
-///
-fn reclaim_test<R>(count: usize, rng: &mut R)
-where
-    R: CryptoRng + RngCore + ?Sized,
-{
-    /*
     let asset_id = rng.gen();
     let total_balance = rng.gen();
-    let balances: Vec<AssetBalance> = value_distribution(reclaim_count, total_balance, rng);
+    let balances = value_distribution(count, total_balance, rng);
     initialize_test(asset_id, total_balance);
-
-    let mut utxo_set = HashMap::new();
-    let mut current_pool_balance = 0;
-    let reclaim_pk = reclaim_pk();
+    let mut utxo_set = UtxoSet::new(UTXO_SET_MODEL.clone());
+    let mut posts = Vec::new();
     for balance in balances {
-        let reclaim_balances = value_distribution(2, balance, rng);
-        let (receiver_value, reclaim_value) = (reclaim_balances[0], reclaim_balances[1]);
-
-        let (senders, receivers) = sample_fixed_sender_and_receiver(
-            2,
-            1,
-            &LEAF_PARAMS,
-            &TWO_TO_ONE_PARAMS,
-            &COMMIT_PARAMS,
-            asset_id,
-            balance,
-            receiver_value,
-            &mut utxo_set,
-            rng,
-        );
-
-        // mint private tokens
-        for sender in senders.clone() {
-            let mint_data = generate_mint_struct(&sender.asset);
-            assert_ok!(MantaPayPallet::mint_private_asset(
-                Origin::signed(1),
-                mint_data
-            ));
-        }
-        current_pool_balance += balance;
-        assert_eq!(PoolBalance::<Test>::get(asset_id), current_pool_balance);
-
-        let receiver = receivers[0];
-
-        // make reclaim
-        let reclaim_data = generate_reclaim_struct(
-            COMMIT_PARAMS.clone(),
-            LEAF_PARAMS.clone(),
-            TWO_TO_ONE_PARAMS.clone(),
-            &reclaim_pk,
-            into_array_unchecked(senders),
-            receiver,
-            reclaim_value,
+        let spending_key = SpendingKey::gen(rng);
+        let (mint_0, pre_sender_0) = transfer::test::sample_mint(
+            &PROVING_CONTEXT.mint,
+            FullParameters::new(&PARAMETERS, utxo_set.model()),
+            &spending_key,
+            asset_id.with(balance),
             rng,
         )
         .unwrap();
-
-        assert_ok!(MantaPayPallet::reclaim(Origin::signed(1), reclaim_data));
-        current_pool_balance -= reclaim_value;
-        assert_eq!(PoolBalance::<Test>::get(asset_id), current_pool_balance);
-
-        // Check ledger state has been correctly updated
-        let shard_index = shard_index(receiver.utxo);
-        let meta_data = LedgerShardMetaData::<Test>::get(shard_index);
-        let ledger_entry = LedgerShards::<Test>::get(shard_index, meta_data.current_index);
-        assert_eq!(ledger_entry.0, receiver.utxo);
-        assert_eq!(ledger_entry.1, receiver.encrypted_note);
-        assert!(MantaPayPallet::utxo_exists(receiver.utxo));
+        assert_ok!(MantaPayPallet::mint(Origin::signed(1), mint_0.into()));
+        let sender_0 = pre_sender_0
+            .insert_and_upgrade(&mut utxo_set)
+            .expect("Just inserted so this should not fail.");
+        let (mint_1, pre_sender_1) = transfer::test::sample_mint(
+            &PROVING_CONTEXT.mint,
+            FullParameters::new(&PARAMETERS, utxo_set.model()),
+            &spending_key,
+            asset_id.value(0),
+            rng,
+        )
+        .unwrap();
+        assert_ok!(MantaPayPallet::mint(Origin::signed(1), mint_1.into()));
+        let sender_1 = pre_sender_1
+            .insert_and_upgrade(&mut utxo_set)
+            .expect("Just inserted so this should not fail.");
+        let (receiver_0, pre_sender_0) =
+            spending_key.internal_pair(&PARAMETERS, rng.gen(), asset_id.value(0));
+        let (receiver_1, pre_sender_1) =
+            spending_key.internal_pair(&PARAMETERS, rng.gen(), asset_id.with(balance));
+        let private_transfer =
+            PrivateTransfer::build([sender_0, sender_1], [receiver_0, receiver_1])
+                .into_post(
+                    FullParameters::new(&PARAMETERS, utxo_set.model()),
+                    &PROVING_CONTEXT.private_transfer,
+                    rng,
+                )
+                .unwrap();
+        assert_ok!(MantaPayPallet::private_transfer(
+            Origin::signed(1),
+            private_transfer.clone().into(),
+        ));
+        pre_sender_0.insert_utxo(&mut utxo_set);
+        pre_sender_1.insert_utxo(&mut utxo_set);
+        posts.push(private_transfer)
     }
-    */
+    posts
 }
 
-///
+/// Builds `count`-many [`Reclaim`] tests.
+#[inline]
+fn reclaim_test<R>(count: usize, rng: &mut R) -> Vec<TransferPost>
+where
+    R: CryptoRng + RngCore + ?Sized,
+{
+    let asset_id = rng.gen();
+    let total_balance = rng.gen();
+    let balances = value_distribution(count, total_balance, rng);
+    initialize_test(asset_id, total_balance);
+    let mut utxo_set = UtxoSet::new(UTXO_SET_MODEL.clone());
+    let mut posts = Vec::new();
+    for balance in balances {
+        let spending_key = SpendingKey::gen(rng);
+        let (mint_0, pre_sender_0) = transfer::test::sample_mint(
+            &PROVING_CONTEXT.mint,
+            FullParameters::new(&PARAMETERS, utxo_set.model()),
+            &spending_key,
+            asset_id.with(balance),
+            rng,
+        )
+        .unwrap();
+        assert_ok!(MantaPayPallet::mint(Origin::signed(1), mint_0.into()));
+        let sender_0 = pre_sender_0
+            .insert_and_upgrade(&mut utxo_set)
+            .expect("Just inserted so this should not fail.");
+        let (mint_1, pre_sender_1) = transfer::test::sample_mint(
+            &PROVING_CONTEXT.mint,
+            FullParameters::new(&PARAMETERS, utxo_set.model()),
+            &spending_key,
+            asset_id.value(0),
+            rng,
+        )
+        .unwrap();
+        assert_ok!(MantaPayPallet::mint(Origin::signed(1), mint_1.into()));
+        let sender_1 = pre_sender_1
+            .insert_and_upgrade(&mut utxo_set)
+            .expect("Just inserted so this should not fail.");
+        let (receiver, pre_sender) =
+            spending_key.internal_pair(&PARAMETERS, rng.gen(), asset_id.value(0));
+        let reclaim = Reclaim::build([sender_0, sender_1], [receiver], asset_id.with(balance))
+            .into_post(
+                FullParameters::new(&PARAMETERS, utxo_set.model()),
+                &PROVING_CONTEXT.reclaim,
+                rng,
+            )
+            .unwrap();
+        assert_ok!(MantaPayPallet::reclaim(
+            Origin::signed(1),
+            reclaim.clone().into()
+        ));
+        pre_sender.insert_utxo(&mut utxo_set);
+        posts.push(reclaim);
+    }
+    posts
+}
+
+/// Initializes a test by allocating `value`-many assets of the given `id` to the default account.
 #[inline]
 fn initialize_test(id: AssetId, value: AssetValue) {
     MantaPayPallet::init_asset(&1, id.0, value.0);
     assert_eq!(MantaPayPallet::balance(1, id.0), value.0);
 }
 
-///
+/// Tests multiple mints from some total supply.
 #[test]
-fn test_mint_should_work() {
+fn mint_should_work() {
     let mut rng = thread_rng();
     new_test_ext().execute_with(|| {
         let asset_id = rng.gen();
@@ -326,9 +273,9 @@ fn test_mint_should_work() {
     });
 }
 
-///
+/// Tests a mint that would overdraw the total supply.
 #[test]
-fn over_mint_should_not_work() {
+fn overdrawn_mint_should_not_work() {
     let mut rng = thread_rng();
     new_test_ext().execute_with(|| {
         let asset_id = rng.gen();
@@ -346,7 +293,7 @@ fn over_mint_should_not_work() {
     });
 }
 
-///
+/// Tests a mint that would overdraw from a non-existent supply.
 #[test]
 fn mint_without_init_should_not_work() {
     let mut rng = thread_rng();
@@ -358,7 +305,7 @@ fn mint_without_init_should_not_work() {
     });
 }
 
-///
+/// Tests that a double-spent [`Mint`] will fail.
 #[test]
 fn mint_existing_coin_should_not_work() {
     let mut rng = thread_rng();
@@ -377,276 +324,52 @@ fn mint_existing_coin_should_not_work() {
     });
 }
 
-///
+/// Tests a [`PrivateTransfer`] transaction.
 #[test]
-fn mint_with_invalid_commitment_should_not_work() {
-    let mut rng = thread_rng();
+fn private_transfer_should_work() {
+    new_test_ext().execute_with(|| private_transfer_test(1, &mut thread_rng()));
+}
+
+/// Tests multiple [`PrivateTransfer`] transactions.
+#[test]
+fn private_transfer_10_times_should_work() {
+    new_test_ext().execute_with(|| private_transfer_test(10, &mut thread_rng()));
+}
+
+/// Tests that a double-spent [`PrivateTransfer`] will fail.
+#[test]
+fn double_spend_in_private_transfer_should_not_work() {
     new_test_ext().execute_with(|| {
-        let asset_id = rng.gen();
-        initialize_test(asset_id, AssetValue(100));
-        let mut mint_post = sample_mint(asset_id.value(50), &mut rng);
-        let mut utxo = mint_post.receiver_posts[0].utxo.to_vec();
-        flip_random_bit(&mut utxo, &mut rng);
-        mint_post.receiver_posts[0].utxo = Decode::from_vec(utxo).unwrap();
-        assert_noop!(
-            MantaPayPallet::mint(Origin::signed(1), mint_post.into()),
-            Error::<Test>::InvalidProof
-        );
-    });
-}
-
-///
-#[test]
-fn test_transfer_should_work() {
-    new_test_ext().execute_with(|| transfer_test(1, &mut thread_rng()));
-}
-
-///
-#[test]
-fn test_transfer_5_times_should_work() {
-    new_test_ext().execute_with(|| transfer_test(5, &mut thread_rng()));
-}
-
-///
-#[test]
-fn double_spend_in_transfer_shoud_not_work() {
-    let mut rng = thread_rng();
-    new_test_ext().execute_with(|| {
-        let asset_id = rng.gen();
-        initialize_test(asset_id, AssetValue(800000));
-
-        /*
-        let transfer_pk = transfer_pk();
-        let mut utxo_set = HashMap::new();
-        let (senders, receivers) = sample_fixed_sender_and_receiver(
-            2,
-            2,
-            &LEAF_PARAMS,
-            &TWO_TO_ONE_PARAMS,
-            &COMMIT_PARAMS,
-            asset_id,
-            5000,
-            5000,
-            &mut utxo_set,
-            &mut rng,
-        );
-
-        // mint private tokens
-        for sender in senders.clone() {
-            let mint_data = generate_mint_struct(&sender.asset);
-            assert_ok!(MantaPayPallet::mint_private_asset(
-                Origin::signed(1),
-                mint_data
-            ));
-        }
-        // transfer private tokens
-        let priv_trans_data = generate_private_transfer_struct(
-            COMMIT_PARAMS.clone(),
-            LEAF_PARAMS.clone(),
-            TWO_TO_ONE_PARAMS.clone(),
-            &transfer_pk,
-            into_array_unchecked(senders),
-            into_array_unchecked(receivers),
-            &mut rng,
-        )
-        .unwrap();
-        assert_ok!(MantaPayPallet::private_transfer(
-            Origin::signed(1),
-            priv_trans_data
-        ));
-
-        // try to spend again, this time should fail
-        assert_noop!(
-            MantaPayPallet::private_transfer(Origin::signed(1), priv_trans_data),
-            Error::<Test>::MantaCoinSpent
-        );
-        */
-    });
-}
-
-///
-#[test]
-fn transfer_with_invalid_zkp_should_not_work() {
-    let mut rng = thread_rng();
-    new_test_ext().execute_with(|| {
-        /*
-            let asset_id = rng.gen();
-            initialize_test(asset_id, 800000);
-
-            let transfer_pk = transfer_pk();
-            let mut utxo_set = HashMap::new();
-            let (senders, receivers) = sample_fixed_sender_and_receiver(
-                2,
-                2,
-                &LEAF_PARAMS,
-                &TWO_TO_ONE_PARAMS,
-                &COMMIT_PARAMS,
-                asset_id,
-                5000,
-                5000,
-                &mut utxo_set,
-                &mut rng,
-            );
-
-            // mint private tokens
-            for sender in senders.clone() {
-                let mint_data = generate_mint_struct(&sender.asset);
-                assert_ok!(MantaPayPallet::mint_private_asset(
-                    Origin::signed(1),
-                    mint_data
-                ));
-            }
-            // transfer private tokens
-            let mut priv_trans_data = generate_private_transfer_struct(
-                COMMIT_PARAMS.clone(),
-                LEAF_PARAMS.clone(),
-                TWO_TO_ONE_PARAMS.clone(),
-                &transfer_pk,
-                into_array_unchecked(senders),
-                into_array_unchecked(receivers),
-                &mut rng,
-            )
-            .unwrap();
-            // flip a random bit in zkp
-            random_bit_flip_in_zkp(&mut priv_trans_data.proof, &mut rng);
+        for private_transfer in private_transfer_test(1, &mut thread_rng()) {
             assert_noop!(
-                MantaPayPallet::private_transfer(Origin::signed(1), priv_trans_data),
-                Error::<Test>::ZkpVerificationFail
+                MantaPayPallet::private_transfer(Origin::signed(1), private_transfer.into()),
+                Error::<Test>::AssetSpent,
             );
-        */
+        }
     });
 }
 
-///
+/// Tests a [`Reclaim`] transaction.
 #[test]
-fn test_reclaim_should_work() {
+fn reclaim_should_work() {
     new_test_ext().execute_with(|| reclaim_test(1, &mut thread_rng()));
 }
 
-///
+/// Tests multiple [`Reclaim`] transactions.
 #[test]
-fn test_reclaim_5_times_should_work() {
-    new_test_ext().execute_with(|| reclaim_test(5, &mut thread_rng()));
+fn reclaim_10_times_should_work() {
+    new_test_ext().execute_with(|| reclaim_test(10, &mut thread_rng()));
 }
 
-///
+/// Tests that a double-spent [`Reclaim`] will fail.
 #[test]
 fn double_spend_in_reclaim_should_not_work() {
-    let mut rng = thread_rng();
     new_test_ext().execute_with(|| {
-        /*
-        let asset_id = rng.gen();
-        let total_balance = 3289172;
-        let receiver_value = 12590;
-        let reclaim_value = total_balance - receiver_value;
-        initialize_test(asset_id, total_balance);
-
-        let mut utxo_set = HashMap::new();
-        let reclaim_pk = reclaim_pk();
-        let (senders, receivers) = sample_fixed_sender_and_receiver(
-            2,
-            1,
-            &LEAF_PARAMS,
-            &TWO_TO_ONE_PARAMS,
-            &COMMIT_PARAMS,
-            asset_id,
-            total_balance,
-            receiver_value,
-            &mut utxo_set,
-            &mut rng,
-        );
-
-        // mint private tokens
-        for sender in senders.clone() {
-            let mint_data = generate_mint_struct(&sender.asset);
-            assert_ok!(MantaPayPallet::mint_private_asset(
-                Origin::signed(1),
-                mint_data
-            ));
-        }
-
-        let receiver = receivers[0];
-
-        // make reclaim
-        let reclaim_data = generate_reclaim_struct(
-            COMMIT_PARAMS.clone(),
-            LEAF_PARAMS.clone(),
-            TWO_TO_ONE_PARAMS.clone(),
-            &reclaim_pk,
-            into_array_unchecked(senders),
-            receiver,
-            reclaim_value,
-            &mut rng,
-        )
-        .unwrap();
-
-        assert_ok!(MantaPayPallet::reclaim(Origin::signed(1), reclaim_data));
-        // double spend should fail
-        assert_noop!(
-            MantaPayPallet::reclaim(Origin::signed(1), reclaim_data),
-            Error::<Test>::MantaCoinSpent,
-        );
-        */
-    });
-}
-
-///
-#[test]
-fn reclaim_with_invalid_zkp_should_not_work() {
-    let mut rng = thread_rng();
-    new_test_ext().execute_with(|| {
-        /*
-            let asset_id = rng.gen();
-            let total_balance = 3289172;
-            let receiver_value = 12590;
-            let reclaim_value = total_balance - receiver_value;
-            initialize_test(asset_id, total_balance);
-
-            let mut utxo_set = HashMap::new();
-            let reclaim_pk = reclaim_pk();
-            let (senders, receivers) = sample_fixed_sender_and_receiver(
-                2,
-                1,
-                &LEAF_PARAMS,
-                &TWO_TO_ONE_PARAMS,
-                &COMMIT_PARAMS,
-                asset_id,
-                total_balance,
-                receiver_value,
-                &mut utxo_set,
-                &mut rng,
-            );
-
-            // mint private tokens
-            for sender in senders.clone() {
-                let mint_data = generate_mint_struct(&sender.asset);
-                assert_ok!(MantaPayPallet::mint_private_asset(
-                    Origin::signed(1),
-                    mint_data
-                ));
-            }
-
-            let receiver = receivers[0];
-
-            // make reclaim
-            let mut reclaim_data = generate_reclaim_struct(
-                COMMIT_PARAMS.clone(),
-                LEAF_PARAMS.clone(),
-                TWO_TO_ONE_PARAMS.clone(),
-                &reclaim_pk,
-                into_array_unchecked(senders),
-                receiver,
-                reclaim_value,
-                &mut rng,
-            )
-            .unwrap();
-
-            // flip a random bit in zkp
-            random_bit_flip_in_zkp(&mut reclaim_data.proof, &mut rng);
+        for reclaim in reclaim_test(1, &mut thread_rng()) {
             assert_noop!(
-                MantaPayPallet::reclaim(Origin::signed(1), reclaim_data),
-                Error::<Test>::ZkpVerificationFail,
+                MantaPayPallet::reclaim(Origin::signed(1), reclaim.into()),
+                Error::<Test>::AssetSpent,
             );
-        */
+        }
     });
 }
