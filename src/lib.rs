@@ -900,9 +900,11 @@ where
         I: IntoIterator<Item = (Self::ValidUtxo, config::EncryptedNote)>,
     {
         let _ = super_key;
-        let parameters =
-            config::UtxoSetModel::decode(manta_sdk::pay::testnet::parameters::UTXO_SET_PARAMETERS)
-                .expect("Unable to decode the Merkle Tree Parameters.");
+        let parameters = config::UtxoSetModel::decode(
+            manta_sdk::pay::testnet::parameters::UtxoSetParameters::get()
+                .expect("Checksum did not match."),
+        )
+        .expect("Unable to decode the Merkle Tree Parameters.");
         let mut shard_indices = iter
             .into_iter()
             .map(move |(utxo, note)| {
@@ -1027,18 +1029,20 @@ where
             sinks.len(),
         )? {
             TransferShape::Mint => (
-                manta_sdk::pay::testnet::verifying::MINT,
+                manta_sdk::pay::testnet::verifying::Mint::get().expect("Checksum did not match."),
                 PreprocessedEvent::<T>::Mint {
                     asset: Asset::new(asset_id.unwrap().0, (sources[0].1).0),
                     source: sources[0].0.clone(),
                 },
             ),
             TransferShape::PrivateTransfer => (
-                manta_sdk::pay::testnet::verifying::PRIVATE_TRANSFER,
+                manta_sdk::pay::testnet::verifying::PrivateTransfer::get()
+                    .expect("Checksum did not match."),
                 PreprocessedEvent::<T>::PrivateTransfer,
             ),
             TransferShape::Reclaim => (
-                manta_sdk::pay::testnet::verifying::RECLAIM,
+                manta_sdk::pay::testnet::verifying::Reclaim::get()
+                    .expect("Checksum did not match."),
                 PreprocessedEvent::<T>::Reclaim {
                     asset: Asset::new(asset_id.unwrap().0, (sinks[0].1).0),
                     sink: sinks[0].0.clone(),
