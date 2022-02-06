@@ -120,9 +120,9 @@ fn load_parameters(
 fn assert_valid_proof(verifying_context: &VerifyingContext, post: &config::TransferPost) {
     assert!(
         ProofSystem::verify(
+            verifying_context,
             &post.generate_proof_input(),
             &post.validity_proof,
-            verifying_context
         )
         .expect("Unable to verify proof."),
         "Invalid proof: {:?}.",

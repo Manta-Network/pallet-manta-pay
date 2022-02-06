@@ -58,7 +58,7 @@ frame-system = { git = 'https://github.com/paritytech/substrate', default-featur
 indoc = { version = "1.0.3", default-features = false, optional = true}
 manta-accounting = { git = "https://github.com/manta-network/manta-rs", branch = "setup-manta-rs", default-features = false }
 manta-crypto = { git = "https://github.com/manta-network/manta-rs", branch = "setup-manta-rs", default-features = false }
-manta-pay = { git = "https://github.com/manta-network/manta-rs", branch = "setup-manta-rs", default-features = false, features = ["arkworks", "groth16"] }
+manta-pay = { git = "https://github.com/manta-network/manta-rs", branch = "setup-manta-rs", default-features = false, features = ["groth16"] }
 manta-sdk = { git = "https://github.com/manta-network/sdk", branch = "add-sdk-library", default-features = false }
 manta-util = { git = "https://github.com/manta-network/manta-rs", branch = "setup-manta-rs", default-features = false }
 rand = { version = "0.8.4", default-features = false, optional = true }

@@ -1050,12 +1050,12 @@ where
             ),
         };
         config::ProofSystem::verify(
+            &config::VerifyingContext::decode(&mut verifying_context)
+                .expect("Unable to decode the verifying context."),
             &manta_accounting::transfer::TransferPostingKey::generate_proof_input(
                 asset_id, sources, senders, receivers, sinks,
             ),
             &proof,
-            &config::VerifyingContext::decode(&mut verifying_context)
-                .expect("Unable to decode the verifying context."),
         )
         .ok()?
         .then(move || (Wrap(()), event))
