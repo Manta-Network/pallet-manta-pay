@@ -169,7 +169,7 @@ pub mod types {
     #[derive(Clone, Debug, Decode, Encode, Eq, Hash, PartialEq)]
     pub struct EncryptedNote {
         /// Ciphertext
-        pub ciphertext: config::Ciphertext,
+        pub ciphertext: [u8; 36],
 
         /// Ephemeral Public Key
         pub ephemeral_public_key: config::PublicKey,
@@ -189,7 +189,7 @@ pub mod types {
         #[inline]
         fn from(note: config::EncryptedNote) -> Self {
             Self {
-                ciphertext: note.ciphertext,
+                ciphertext: note.ciphertext.into(),
                 ephemeral_public_key: note.ephemeral_public_key,
             }
         }
@@ -199,7 +199,7 @@ pub mod types {
         #[inline]
         fn from(note: EncryptedNote) -> Self {
             Self {
-                ciphertext: note.ciphertext,
+                ciphertext: note.ciphertext.into(),
                 ephemeral_public_key: note.ephemeral_public_key,
             }
         }
