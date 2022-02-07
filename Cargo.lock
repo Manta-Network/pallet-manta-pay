@@ -1633,7 +1633,7 @@ dependencies = [
 [[package]]
 name = "manta-accounting"
 version = "0.4.0"
-source = "git+https://github.com/manta-network/manta-rs?branch=setup-manta-rs#88be0ed1c09de572da466bed3ce2ee67f0683500"
+source = "git+https://github.com/manta-network/manta-rs?branch=setup-manta-rs#7ad7ce57ac0529c0c3b29569005a347e3ba3206c"
 dependencies = [
  "derivative",
  "derive_more",
@@ -1648,7 +1648,7 @@ dependencies = [
 [[package]]
 name = "manta-crypto"
 version = "0.4.0"
-source = "git+https://github.com/manta-network/manta-rs?branch=setup-manta-rs#88be0ed1c09de572da466bed3ce2ee67f0683500"
+source = "git+https://github.com/manta-network/manta-rs?branch=setup-manta-rs#7ad7ce57ac0529c0c3b29569005a347e3ba3206c"
 dependencies = [
  "derivative",
  "manta-util",
@@ -1658,7 +1658,7 @@ dependencies = [
 [[package]]
 name = "manta-pay"
 version = "0.4.0"
-source = "git+https://github.com/manta-network/manta-rs?branch=setup-manta-rs#88be0ed1c09de572da466bed3ce2ee67f0683500"
+source = "git+https://github.com/manta-network/manta-rs?branch=setup-manta-rs#7ad7ce57ac0529c0c3b29569005a347e3ba3206c"
 dependencies = [
  "aes-gcm",
  "ark-bls12-381",
@@ -1696,7 +1696,7 @@ dependencies = [
 [[package]]
 name = "manta-util"
 version = "0.4.0"
-source = "git+https://github.com/manta-network/manta-rs?branch=setup-manta-rs#88be0ed1c09de572da466bed3ce2ee67f0683500"
+source = "git+https://github.com/manta-network/manta-rs?branch=setup-manta-rs#7ad7ce57ac0529c0c3b29569005a347e3ba3206c"
 
 [[package]]
 name = "matchers"
