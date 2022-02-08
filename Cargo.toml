@@ -59,10 +59,10 @@ indoc = { version = "1.0.3", default-features = false, optional = true}
 manta-accounting = { git = "https://github.com/manta-network/manta-rs", branch = "setup-manta-rs", default-features = false }
 manta-crypto = { git = "https://github.com/manta-network/manta-rs", branch = "setup-manta-rs", default-features = false }
 manta-pay = { git = "https://github.com/manta-network/manta-rs", branch = "setup-manta-rs", default-features = false, features = ["groth16"] }
-manta-sdk = { git = "https://github.com/manta-network/sdk", branch = "add-sdk-library", default-features = false }
+manta-sdk = { git = "https://github.com/manta-network/sdk", default-features = false }
 manta-util = { git = "https://github.com/manta-network/manta-rs", branch = "setup-manta-rs", default-features = false }
 rand = { version = "0.8.4", default-features = false, optional = true }
-scale-codec = { package = "parity-scale-codec", version = "2.0.0", default-features = false, features = ["derive"] }
+scale-codec = { package = "parity-scale-codec", version = "2.3.1", default-features = false, features = ["derive"] }
 sp-runtime = { git = 'https://github.com/paritytech/substrate', default-features = false, branch = "polkadot-v0.9.10" }
 sp-std = { git = 'https://github.com/paritytech/substrate', default-features = false, branch = "polkadot-v0.9.10" }
 tempfile = { version = "3.3.0", optional = true }
