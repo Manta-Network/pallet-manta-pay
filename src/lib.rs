@@ -104,7 +104,7 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
 use core::marker::PhantomData;
-use frame_support::ensure;
+use frame_support::{ensure, require_transactional};
 use manta_accounting::{
     asset,
     transfer::{
@@ -489,6 +489,7 @@ pub mod pallet {
     impl<T: Config> Pallet<T> {
         /// Transfers public `asset` from `origin` to `target`.
         #[pallet::weight(T::WeightInfo::transfer())]
+        #[require_transactional]
         pub fn transfer(
             origin: OriginFor<T>,
             target: <T::Lookup as StaticLookup>::Source,
@@ -515,14 +516,14 @@ pub mod pallet {
 
         /// Mints some assets encoded in `post` to the `origin` account.
         #[pallet::weight(T::WeightInfo::mint())]
+        #[require_transactional]
         pub fn mint(origin: OriginFor<T>, post: TransferPost) -> DispatchResultWithPostInfo {
             let origin = ensure_signed(origin)?;
             let mut ledger = Self::ledger();
             Self::deposit_event(
                 config::TransferPost::from(post)
-                    .validate(vec![origin], vec![], &ledger)
+                    .post(vec![origin], vec![], &(), &mut ledger)
                     .map_err(Error::<T>::from)?
-                    .post(&(), &mut ledger)
                     .convert(None),
             );
             Ok(().into())
@@ -535,6 +536,7 @@ pub mod pallet {
         /// In this transaction, `origin` is just signing the `post` and is not necessarily related
         /// to any of the participants in the transaction itself.
         #[pallet::weight(T::WeightInfo::private_transfer())]
+        #[require_transactional]
         pub fn private_transfer(
             origin: OriginFor<T>,
             post: TransferPost,
@@ -543,9 +545,8 @@ pub mod pallet {
             let mut ledger = Self::ledger();
             Self::deposit_event(
                 config::TransferPost::from(post)
-                    .validate(vec![], vec![], &ledger)
+                    .post(vec![], vec![], &(), &mut ledger)
                     .map_err(Error::<T>::from)?
-                    .post(&(), &mut ledger)
                     .convert(Some(origin)),
             );
             Ok(().into())
@@ -554,14 +555,14 @@ pub mod pallet {
         /// Transforms some private assets into public ones using `post`, sending the public assets
         /// to the `origin` account.
         #[pallet::weight(T::WeightInfo::reclaim())]
+        #[require_transactional]
         pub fn reclaim(origin: OriginFor<T>, post: TransferPost) -> DispatchResultWithPostInfo {
             let origin = ensure_signed(origin)?;
             let mut ledger = Self::ledger();
             Self::deposit_event(
                 config::TransferPost::from(post)
-                    .validate(vec![], vec![origin], &ledger)
+                    .post(vec![], vec![origin], &(), &mut ledger)
                     .map_err(Error::<T>::from)?
-                    .post(&(), &mut ledger)
                     .convert(None),
             );
             Ok(().into())
