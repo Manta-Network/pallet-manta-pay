@@ -103,6 +103,8 @@
 
 #![cfg_attr(not(feature = "std"), no_std)]
 
+extern crate alloc;
+
 use core::marker::PhantomData;
 use frame_support::{ensure, require_transactional};
 use manta_accounting::{
@@ -121,7 +123,7 @@ use manta_crypto::{
 use manta_pay::config;
 use manta_util::codec::Decode as _;
 use scale_codec::{Decode, Encode};
-use sp_std::prelude::*;
+use scale_info::TypeInfo;
 use types::*;
 
 #[cfg(test)]
@@ -148,7 +150,9 @@ pub mod types {
     pub type AssetValue = asset::AssetValueType;
 
     /// Asset
-    #[derive(Clone, Copy, Debug, Decode, Default, Encode, Eq, Hash, Ord, PartialEq, PartialOrd)]
+    #[derive(
+        Clone, Copy, Debug, Decode, Default, Encode, Eq, Hash, Ord, PartialEq, PartialOrd, TypeInfo,
+    )]
     pub struct Asset {
         /// Asset Id
         pub id: AssetId,
@@ -166,7 +170,7 @@ pub mod types {
     }
 
     /// Encrypted Note
-    #[derive(Clone, Debug, Decode, Encode, Eq, Hash, PartialEq)]
+    #[derive(Clone, Debug, Decode, Encode, Eq, Hash, PartialEq, TypeInfo)]
     pub struct EncryptedNote {
         /// Ciphertext
         pub ciphertext: [u8; 36],
@@ -206,7 +210,7 @@ pub mod types {
     }
 
     /// Sender Post
-    #[derive(Clone, Debug, Decode, Encode, Eq, Hash, PartialEq)]
+    #[derive(Clone, Debug, Decode, Encode, Eq, Hash, PartialEq, TypeInfo)]
     pub struct SenderPost {
         /// UTXO Set Output
         pub utxo_set_output: config::UtxoSetOutput,
@@ -236,7 +240,7 @@ pub mod types {
     }
 
     /// Receiver Post
-    #[derive(Clone, Debug, Decode, Encode, Eq, Hash, PartialEq)]
+    #[derive(Clone, Debug, Decode, Encode, Eq, Hash, PartialEq, TypeInfo)]
     pub struct ReceiverPost {
         /// Unspent Transaction Output
         pub utxo: config::Utxo,
@@ -266,7 +270,7 @@ pub mod types {
     }
 
     /// Transfer Post
-    #[derive(Clone, Debug, Decode, Encode, Eq, PartialEq)]
+    #[derive(Clone, Debug, Decode, Encode, Eq, PartialEq, TypeInfo)]
     pub struct TransferPost {
         /// Asset Id
         pub asset_id: Option<AssetId>,
@@ -322,7 +326,7 @@ pub mod types {
     pub type InnerDigest = merkle_tree::InnerDigest<config::MerkleTreeConfiguration>;
 
     /// Merkle Tree Current Path
-    #[derive(Clone, Debug, Decode, Default, Encode, Eq, PartialEq)]
+    #[derive(Clone, Debug, Decode, Default, Encode, Eq, PartialEq, TypeInfo)]
     pub struct CurrentPath {
         /// Sibling Digest
         pub sibling_digest: LeafDigest,
@@ -357,7 +361,7 @@ pub mod types {
     }
 
     /// UTXO Merkle Tree
-    #[derive(Clone, Debug, Decode, Default, Encode, Eq, PartialEq)]
+    #[derive(Clone, Debug, Decode, Default, Encode, Eq, PartialEq, TypeInfo)]
     pub struct UtxoMerkleTree {
         /// Current Leaf Digest
         pub leaf_digest: Option<LeafDigest>,
@@ -461,7 +465,7 @@ pub mod pallet {
     #[pallet::genesis_config]
     pub struct GenesisConfig<T: Config> {
         pub owner: T::AccountId,
-        pub assets: sp_std::collections::btree_set::BTreeSet<(AssetId, AssetValue)>,
+        pub assets: alloc::collections::btree_set::BTreeSet<(AssetId, AssetValue)>,
     }
 
     #[cfg(feature = "std")]
@@ -572,7 +576,6 @@ pub mod pallet {
     /// Event
     #[pallet::event]
     #[pallet::generate_deposit(fn deposit_event)]
-    #[pallet::metadata(T::AccountId = "AccountId")]
     pub enum Event<T: Config> {
         /// Transfer Event
         Transfer {
