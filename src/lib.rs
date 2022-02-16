@@ -122,7 +122,7 @@ use manta_crypto::{
 };
 use manta_pay::config;
 use manta_util::codec::Decode as _;
-use scale_codec::{Decode, Encode};
+use scale_codec::{Decode, Encode, MaxEncodedLen};
 use scale_info::TypeInfo;
 use types::*;
 
@@ -151,7 +151,19 @@ pub mod types {
 
     /// Asset
     #[derive(
-        Clone, Copy, Debug, Decode, Default, Encode, Eq, Hash, Ord, PartialEq, PartialOrd, TypeInfo,
+        Clone,
+        Copy,
+        Debug,
+        Decode,
+        Default,
+        Encode,
+        Eq,
+        Hash,
+        MaxEncodedLen,
+        Ord,
+        PartialEq,
+        PartialOrd,
+        TypeInfo,
     )]
     pub struct Asset {
         /// Asset Id
@@ -170,7 +182,7 @@ pub mod types {
     }
 
     /// Encrypted Note
-    #[derive(Clone, Debug, Decode, Encode, Eq, Hash, PartialEq, TypeInfo)]
+    #[derive(Clone, Debug, Decode, Encode, Eq, Hash, MaxEncodedLen, PartialEq, TypeInfo)]
     pub struct EncryptedNote {
         /// Ciphertext
         pub ciphertext: [u8; 36],
@@ -210,7 +222,7 @@ pub mod types {
     }
 
     /// Sender Post
-    #[derive(Clone, Debug, Decode, Encode, Eq, Hash, PartialEq, TypeInfo)]
+    #[derive(Clone, Debug, Decode, Encode, Eq, Hash, MaxEncodedLen, PartialEq, TypeInfo)]
     pub struct SenderPost {
         /// UTXO Set Output
         pub utxo_set_output: config::UtxoSetOutput,
@@ -240,7 +252,7 @@ pub mod types {
     }
 
     /// Receiver Post
-    #[derive(Clone, Debug, Decode, Encode, Eq, Hash, PartialEq, TypeInfo)]
+    #[derive(Clone, Debug, Decode, Encode, Eq, Hash, MaxEncodedLen, PartialEq, TypeInfo)]
     pub struct ReceiverPost {
         /// Unspent Transaction Output
         pub utxo: config::Utxo,
@@ -338,6 +350,21 @@ pub mod types {
         pub inner_path: Vec<InnerDigest>,
     }
 
+    impl MaxEncodedLen for CurrentPath {
+        #[inline]
+        fn max_encoded_len() -> usize {
+            0_usize
+                .saturating_add(LeafDigest::max_encoded_len())
+                .saturating_add(u32::max_encoded_len())
+                .saturating_add(
+                    // NOTE: We know that these paths don't exceed the path length.
+                    InnerDigest::max_encoded_len().saturating_mul(
+                        manta_crypto::merkle_tree::path_length::<config::MerkleTreeConfiguration>(),
+                    ),
+                )
+        }
+    }
+
     impl From<merkle_tree::CurrentPath<config::MerkleTreeConfiguration>> for CurrentPath {
         #[inline]
         fn from(path: merkle_tree::CurrentPath<config::MerkleTreeConfiguration>) -> Self {
@@ -361,7 +388,7 @@ pub mod types {
     }
 
     /// UTXO Merkle Tree
-    #[derive(Clone, Debug, Decode, Default, Encode, Eq, PartialEq, TypeInfo)]
+    #[derive(Clone, Debug, Decode, Default, Encode, Eq, MaxEncodedLen, PartialEq, TypeInfo)]
     pub struct UtxoMerkleTree {
         /// Current Leaf Digest
         pub leaf_digest: Option<LeafDigest>,
@@ -472,10 +499,13 @@ pub mod pallet {
     impl<T: Config> Default for GenesisConfig<T> {
         #[inline]
         fn default() -> Self {
+            /* FIXME: `AccountId` does not implement default!
             GenesisConfig {
                 owner: Default::default(),
                 assets: Default::default(),
             }
+            */
+            todo!()
         }
     }
 
