@@ -433,9 +433,9 @@ dependencies = [
 
 [[package]]
 name = "blake2"
-version = "0.10.2"
+version = "0.10.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b94ba84325db59637ffc528bbe8c7f86c02c57cff5c0e2b9b00f9a851f42f309"
+checksum = "f08f9f6871a8eacbb960d18db3d077ae6db1f0bc0df3272a78ca09eef8c5a931"
 dependencies = [
  "digest 0.10.3",
 ]
@@ -1582,7 +1582,7 @@ dependencies = [
 [[package]]
 name = "manta-accounting"
 version = "0.4.0"
-source = "git+https://github.com/manta-network/manta-rs?branch=setup-manta-rs#993ac2191adb01a075421d21e1cf79d038546f2e"
+source = "git+https://github.com/manta-network/manta-rs?branch=setup-manta-rs#02012b4e21c3f4d02f68a3113ec397bd99c22270"
 dependencies = [
  "derivative",
  "derive_more",
@@ -1597,7 +1597,7 @@ dependencies = [
 [[package]]
 name = "manta-crypto"
 version = "0.4.0"
-source = "git+https://github.com/manta-network/manta-rs?branch=setup-manta-rs#993ac2191adb01a075421d21e1cf79d038546f2e"
+source = "git+https://github.com/manta-network/manta-rs?branch=setup-manta-rs#02012b4e21c3f4d02f68a3113ec397bd99c22270"
 dependencies = [
  "derivative",
  "manta-util",
@@ -1607,7 +1607,7 @@ dependencies = [
 [[package]]
 name = "manta-pay"
 version = "0.4.0"
-source = "git+https://github.com/manta-network/manta-rs?branch=setup-manta-rs#993ac2191adb01a075421d21e1cf79d038546f2e"
+source = "git+https://github.com/manta-network/manta-rs?branch=setup-manta-rs#02012b4e21c3f4d02f68a3113ec397bd99c22270"
 dependencies = [
  "aes-gcm",
  "ark-bls12-381",
@@ -1620,7 +1620,7 @@ dependencies = [
  "ark-serialize",
  "ark-snark",
  "ark-std",
- "blake2 0.10.2",
+ "blake2 0.10.3",
  "derivative",
  "manta-accounting",
  "manta-crypto",
@@ -1645,7 +1645,7 @@ dependencies = [
 [[package]]
 name = "manta-util"
 version = "0.4.0"
-source = "git+https://github.com/manta-network/manta-rs?branch=setup-manta-rs#993ac2191adb01a075421d21e1cf79d038546f2e"
+source = "git+https://github.com/manta-network/manta-rs?branch=setup-manta-rs#02012b4e21c3f4d02f68a3113ec397bd99c22270"
 
 [[package]]
 name = "matchers"
@@ -2631,9 +2631,9 @@ dependencies = [
 
 [[package]]
 name = "sha2"
-version = "0.10.1"
+version = "0.10.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "99c3bd8169c58782adad9290a9af5939994036b76187f7b4f0e6de91dbbfc0ec"
+checksum = "55deaec60f81eefe3cce0dc50bda92d6d8e88f2a27df7c5033b42afeb1ed2676"
 dependencies = [
  "cfg-if",
  "cpufeatures",
@@ -2767,7 +2767,7 @@ dependencies = [
  "schnorrkel",
  "secrecy",
  "serde",
- "sha2 0.10.1",
+ "sha2 0.10.2",
  "sp-core-hashing",
  "sp-debug-derive",
  "sp-externalities",
@@ -2791,7 +2791,7 @@ source = "git+https://github.com/paritytech/substrate?branch=polkadot-v0.9.16#19
 dependencies = [
  "blake2-rfc",
  "byteorder",
- "sha2 0.10.1",
+ "sha2 0.10.2",
  "sp-std",
  "tiny-keccak",
  "twox-hash",
