@@ -51,7 +51,7 @@ precompute-coins = [
 ]
 
 [dependencies]
-anyhow = { version = "1.0.53", optional = true }
+anyhow = { version = "1.0.55", optional = true }
 frame-benchmarking = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.16", optional = true, default-features = false }
 frame-support = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.16", default-features = false }
 frame-system = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.16", default-features = false }
