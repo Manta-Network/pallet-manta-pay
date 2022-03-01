@@ -31,7 +31,7 @@ use manta_crypto::{
 use manta_pay::config::{
     self, FullParameters, KeyAgreementScheme, MerkleTreeConfiguration, Mint, MultiProvingContext,
     MultiVerifyingContext, Parameters, PrivateTransfer, ProofSystem, ProvingContext, Reclaim,
-    UtxoCommitmentScheme, UtxoSetModel, VerifyingContext, VoidNumberHashFunction,
+    UtxoAccumulatorModel, UtxoCommitmentScheme, VerifyingContext, VoidNumberHashFunction,
 };
 use manta_util::codec::{Decode, IoReader};
 use pallet_manta_pay::types::TransferPost;
@@ -44,8 +44,9 @@ use std::{
     path::{Path, PathBuf},
 };
 
-/// UTXO Set for Building Circuits
-type UtxoSet = TreeArrayMerkleForest<MerkleTreeConfiguration, Full<MerkleTreeConfiguration>, 256>;
+/// UTXO Accumulator for Building Circuits
+type UtxoAccumulator =
+    TreeArrayMerkleForest<MerkleTreeConfiguration, Full<MerkleTreeConfiguration>, 256>;
 
 /// Loads parameters from the SDK, using `directory` as a temporary directory to store files.
 #[inline]
@@ -55,7 +56,7 @@ fn load_parameters(
     MultiProvingContext,
     MultiVerifyingContext,
     Parameters,
-    UtxoSetModel,
+    UtxoAccumulatorModel,
 )> {
     let mint_path = directory.join("mint.dat");
     manta_sdk::pay::testnet::proving::Mint::download(&mint_path)?;
@@ -107,11 +108,11 @@ fn load_parameters(
         proving_context,
         verifying_context,
         parameters,
-        UtxoSetModel::decode(
-            manta_sdk::pay::testnet::parameters::UtxoSetParameters::get()
+        UtxoAccumulatorModel::decode(
+            manta_sdk::pay::testnet::parameters::UtxoAccumulatorModel::get()
                 .expect("Checksum did not match."),
         )
-        .expect("Unable to decode UTXO_SET_PARAMETERS."),
+        .expect("Unable to decode UTXO_ACCUMULATOR_MODEL."),
     ))
 }
 
@@ -136,7 +137,7 @@ fn sample_mint<R>(
     proving_context: &ProvingContext,
     verifying_context: &VerifyingContext,
     parameters: &Parameters,
-    utxo_set_model: &UtxoSetModel,
+    utxo_accumulator_model: &UtxoAccumulatorModel,
     asset: Asset,
     rng: &mut R,
 ) -> TransferPost
@@ -145,7 +146,7 @@ where
 {
     let mint = Mint::from_spending_key(parameters, &SpendingKey::gen(rng), asset, rng)
         .into_post(
-            FullParameters::new(parameters, utxo_set_model),
+            FullParameters::new(parameters, utxo_accumulator_model),
             proving_context,
             rng,
         )
@@ -160,7 +161,7 @@ fn sample_private_transfer<R>(
     proving_context: &MultiProvingContext,
     verifying_context: &MultiVerifyingContext,
     parameters: &Parameters,
-    utxo_set_model: &UtxoSetModel,
+    utxo_accumulator_model: &UtxoAccumulatorModel,
     asset_0: Asset,
     asset_1: Asset,
     rng: &mut R,
@@ -168,11 +169,11 @@ fn sample_private_transfer<R>(
 where
     R: CryptoRng + RngCore + ?Sized,
 {
-    let mut utxo_set = UtxoSet::new(utxo_set_model.clone());
+    let mut utxo_accumulator = UtxoAccumulator::new(utxo_accumulator_model.clone());
     let spending_key_0 = SpendingKey::new(rng.gen(), rng.gen());
     let (mint_0, pre_sender_0) = transfer::test::sample_mint(
         &proving_context.mint,
-        FullParameters::new(parameters, utxo_set.model()),
+        FullParameters::new(parameters, utxo_accumulator.model()),
         &spending_key_0,
         asset_0,
         rng,
@@ -180,12 +181,12 @@ where
     .expect("Unable to build MINT proof.");
     assert_valid_proof(&verifying_context.mint, &mint_0);
     let sender_0 = pre_sender_0
-        .insert_and_upgrade(&mut utxo_set)
+        .insert_and_upgrade(&mut utxo_accumulator)
         .expect("Just inserted so this should not fail.");
     let spending_key_1 = SpendingKey::new(rng.gen(), rng.gen());
     let (mint_1, pre_sender_1) = transfer::test::sample_mint(
         &proving_context.mint,
-        FullParameters::new(parameters, utxo_set.model()),
+        FullParameters::new(parameters, utxo_accumulator.model()),
         &spending_key_1,
         asset_1,
         rng,
@@ -193,7 +194,7 @@ where
     .expect("Unable to build MINT proof.");
     assert_valid_proof(&verifying_context.mint, &mint_1);
     let sender_1 = pre_sender_1
-        .insert_and_upgrade(&mut utxo_set)
+        .insert_and_upgrade(&mut utxo_accumulator)
         .expect("Just inserted so this should not fail.");
     let private_transfer = PrivateTransfer::build(
         [sender_0, sender_1],
@@ -203,7 +204,7 @@ where
         ],
     )
     .into_post(
-        FullParameters::new(parameters, utxo_set.model()),
+        FullParameters::new(parameters, utxo_accumulator.model()),
         &proving_context.private_transfer,
         rng,
     )
@@ -218,7 +219,7 @@ fn sample_reclaim<R>(
     proving_context: &MultiProvingContext,
     verifying_context: &MultiVerifyingContext,
     parameters: &Parameters,
-    utxo_set_model: &UtxoSetModel,
+    utxo_accumulator_model: &UtxoAccumulatorModel,
     asset_0: Asset,
     asset_1: Asset,
     rng: &mut R,
@@ -226,11 +227,11 @@ fn sample_reclaim<R>(
 where
     R: CryptoRng + RngCore + ?Sized,
 {
-    let mut utxo_set = UtxoSet::new(utxo_set_model.clone());
+    let mut utxo_accumulator = UtxoAccumulator::new(utxo_accumulator_model.clone());
     let spending_key_0 = SpendingKey::new(rng.gen(), rng.gen());
     let (mint_0, pre_sender_0) = transfer::test::sample_mint(
         &proving_context.mint,
-        FullParameters::new(parameters, utxo_set.model()),
+        FullParameters::new(parameters, utxo_accumulator.model()),
         &spending_key_0,
         asset_0,
         rng,
@@ -238,12 +239,12 @@ where
     .expect("Unable to build MINT proof.");
     assert_valid_proof(&verifying_context.mint, &mint_0);
     let sender_0 = pre_sender_0
-        .insert_and_upgrade(&mut utxo_set)
+        .insert_and_upgrade(&mut utxo_accumulator)
         .expect("Just inserted so this should not fail.");
     let spending_key_1 = SpendingKey::new(rng.gen(), rng.gen());
     let (mint_1, pre_sender_1) = transfer::test::sample_mint(
         &proving_context.mint,
-        FullParameters::new(parameters, utxo_set.model()),
+        FullParameters::new(parameters, utxo_accumulator.model()),
         &spending_key_1,
         asset_1,
         rng,
@@ -251,7 +252,7 @@ where
     .expect("Unable to build MINT proof.");
     assert_valid_proof(&verifying_context.mint, &mint_1);
     let sender_1 = pre_sender_1
-        .insert_and_upgrade(&mut utxo_set)
+        .insert_and_upgrade(&mut utxo_accumulator)
         .expect("Just inserted so this should not fail.");
     let reclaim = Reclaim::build(
         [sender_0, sender_1],
@@ -259,7 +260,7 @@ where
         asset_0,
     )
     .into_post(
-        FullParameters::new(parameters, utxo_set.model()),
+        FullParameters::new(parameters, utxo_accumulator.model()),
         &proving_context.reclaim,
         rng,
     )
@@ -321,14 +322,14 @@ fn main() -> Result<()> {
     println!("[INFO] Temporary Directory: {:?}", directory);
 
     let mut rng = thread_rng();
-    let (proving_context, verifying_context, parameters, utxo_set_model) =
+    let (proving_context, verifying_context, parameters, utxo_accumulator_model) =
         load_parameters(directory.path())?;
 
     let mint = sample_mint(
         &proving_context.mint,
         &verifying_context.mint,
         &parameters,
-        &utxo_set_model,
+        &utxo_accumulator_model,
         AssetId(0).value(100_000),
         &mut rng,
     );
@@ -336,7 +337,7 @@ fn main() -> Result<()> {
         &proving_context,
         &verifying_context,
         &parameters,
-        &utxo_set_model,
+        &utxo_accumulator_model,
         AssetId(0).value(10_000),
         AssetId(0).value(20_000),
         &mut rng,
@@ -345,7 +346,7 @@ fn main() -> Result<()> {
         &proving_context,
         &verifying_context,
         &parameters,
-        &utxo_set_model,
+        &utxo_accumulator_model,
         AssetId(0).value(10_000),
         AssetId(0).value(20_000),
         &mut rng,

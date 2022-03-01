@@ -224,8 +224,8 @@ pub mod types {
     /// Sender Post
     #[derive(Clone, Debug, Decode, Encode, Eq, Hash, MaxEncodedLen, PartialEq, TypeInfo)]
     pub struct SenderPost {
-        /// UTXO Set Output
-        pub utxo_set_output: config::UtxoSetOutput,
+        /// UTXO Accumulator Output
+        pub utxo_accumulator_output: config::UtxoAccumulatorOutput,
 
         /// Void Number
         pub void_number: config::VoidNumber,
@@ -235,7 +235,7 @@ pub mod types {
         #[inline]
         fn from(post: config::SenderPost) -> Self {
             Self {
-                utxo_set_output: post.utxo_set_output,
+                utxo_accumulator_output: post.utxo_accumulator_output,
                 void_number: post.void_number,
             }
         }
@@ -245,7 +245,7 @@ pub mod types {
         #[inline]
         fn from(post: SenderPost) -> Self {
             Self {
-                utxo_set_output: post.utxo_set_output,
+                utxo_accumulator_output: post.utxo_accumulator_output,
                 void_number: post.void_number,
             }
         }
@@ -387,9 +387,9 @@ pub mod types {
         }
     }
 
-    /// UTXO Merkle Tree
+    /// UTXO Merkle Tree Path
     #[derive(Clone, Debug, Decode, Default, Encode, Eq, MaxEncodedLen, PartialEq, TypeInfo)]
-    pub struct UtxoMerkleTree {
+    pub struct UtxoMerkleTreePath {
         /// Current Leaf Digest
         pub leaf_digest: Option<LeafDigest>,
 
@@ -463,12 +463,13 @@ pub mod pallet {
 
     ///
     #[pallet::storage]
-    pub(super) type ShardTrees<T: Config> = StorageMap<_, Identity, u8, UtxoMerkleTree, ValueQuery>;
+    pub(super) type ShardTrees<T: Config> =
+        StorageMap<_, Identity, u8, UtxoMerkleTreePath, ValueQuery>;
 
     ///
     #[pallet::storage]
-    pub(super) type UtxoSetOutputs<T: Config> =
-        StorageMap<_, Identity, config::UtxoSetOutput, (), ValueQuery>;
+    pub(super) type UtxoAccumulatorOutputs<T: Config> =
+        StorageMap<_, Identity, config::UtxoAccumulatorOutput, (), ValueQuery>;
 
     ///
     #[pallet::storage]
@@ -672,10 +673,10 @@ pub mod pallet {
         /// An asset present in this transfer has already been spent.
         AssetSpent,
 
-        /// Invalid UTXO Set Output
+        /// Invalid UTXO Accumulator Output
         ///
         /// The sender was constructed on an invalid version of the ledger state.
-        InvalidUtxoSetOutput,
+        InvalidUtxoAccumulatorOutput,
 
         /// Asset Registered
         ///
@@ -729,7 +730,7 @@ pub mod pallet {
         fn from(err: SenderPostError) -> Self {
             match err {
                 SenderPostError::AssetSpent => Self::AssetSpent,
-                SenderPostError::InvalidUtxoSetOutput => Self::InvalidUtxoSetOutput,
+                SenderPostError::InvalidUtxoAccumulatorOutput => Self::InvalidUtxoAccumulatorOutput,
             }
         }
     }
@@ -870,7 +871,7 @@ where
     T: Config,
 {
     type ValidVoidNumber = Wrap<config::VoidNumber>;
-    type ValidUtxoSetOutput = Wrap<config::UtxoSetOutput>;
+    type ValidUtxoAccumulatorOutput = Wrap<config::UtxoAccumulatorOutput>;
     type SuperPostingKey = (Wrap<()>, ());
 
     #[inline]
@@ -883,11 +884,11 @@ where
     }
 
     #[inline]
-    fn has_matching_utxo_set_output(
+    fn has_matching_utxo_accumulator_output(
         &self,
-        output: config::UtxoSetOutput,
-    ) -> Option<Self::ValidUtxoSetOutput> {
-        if UtxoSetOutputs::<T>::contains_key(output) {
+        output: config::UtxoAccumulatorOutput,
+    ) -> Option<Self::ValidUtxoAccumulatorOutput> {
+        if UtxoAccumulatorOutputs::<T>::contains_key(output) {
             return Some(Wrap(output));
         }
         None
@@ -896,7 +897,7 @@ where
     #[inline]
     fn spend_all<I>(&mut self, iter: I, super_key: &Self::SuperPostingKey)
     where
-        I: IntoIterator<Item = (Self::ValidUtxoSetOutput, Self::ValidVoidNumber)>,
+        I: IntoIterator<Item = (Self::ValidUtxoAccumulatorOutput, Self::ValidVoidNumber)>,
     {
         let _ = super_key;
         let index = VoidNumberSetSize::<T>::get();
@@ -934,8 +935,8 @@ where
         I: IntoIterator<Item = (Self::ValidUtxo, config::EncryptedNote)>,
     {
         let _ = super_key;
-        let parameters = config::UtxoSetModel::decode(
-            manta_sdk::pay::testnet::parameters::UtxoSetParameters::get()
+        let parameters = config::UtxoAccumulatorModel::decode(
+            manta_sdk::pay::testnet::parameters::UtxoAccumulatorModel::get()
                 .expect("Checksum did not match."),
         )
         .expect("Unable to decode the Merkle Tree Parameters.");
@@ -959,7 +960,7 @@ where
         }
         for (shard_index, insertions) in shard_insertions {
             let mut tree = ShardTrees::<T>::get(shard_index);
-            let mut next_root = Option::<config::UtxoSetOutput>::None;
+            let mut next_root = Option::<config::UtxoAccumulatorOutput>::None;
             let mut current_path = core::mem::take(&mut tree.current_path).into();
             for (utxo, note) in insertions {
                 next_root = Some(
@@ -978,7 +979,7 @@ where
             tree.current_path = current_path.into();
             if let Some(next_root) = next_root {
                 ShardTrees::<T>::insert(shard_index, tree);
-                UtxoSetOutputs::<T>::insert(next_root, ());
+                UtxoAccumulatorOutputs::<T>::insert(next_root, ());
             }
         }
     }

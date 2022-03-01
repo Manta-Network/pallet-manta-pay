@@ -30,20 +30,21 @@ use manta_crypto::{
 };
 use manta_pay::config::{
     FullParameters, KeyAgreementScheme, MerkleTreeConfiguration, Mint, MultiProvingContext,
-    Parameters, PrivateTransfer, ProvingContext, Reclaim, TransferPost, UtxoCommitmentScheme,
-    UtxoSetModel, VoidNumberHashFunction,
+    Parameters, PrivateTransfer, ProvingContext, Reclaim, TransferPost, UtxoAccumulatorModel,
+    UtxoCommitmentScheme, VoidNumberHashFunction,
 };
 use manta_util::codec::{Decode, IoReader};
 use rand::thread_rng;
 use std::fs::File;
 
-/// UTXO Set for Building Circuits
-type UtxoSet = TreeArrayMerkleForest<MerkleTreeConfiguration, Full<MerkleTreeConfiguration>, 256>;
+/// UTXO Accumulator for Building Circuits
+type UtxoAccumulator =
+    TreeArrayMerkleForest<MerkleTreeConfiguration, Full<MerkleTreeConfiguration>, 256>;
 
 lazy_static::lazy_static! {
     static ref PROVING_CONTEXT: MultiProvingContext = load_proving_context();
     static ref PARAMETERS: Parameters = load_parameters();
-    static ref UTXO_SET_MODEL: UtxoSetModel = load_utxo_set_model();
+    static ref UTXO_ACCUMULATOR_MODEL: UtxoAccumulatorModel = load_utxo_accumulator_model();
 }
 
 /// Loads the [`MultiProvingContext`] from the SDK.
@@ -99,14 +100,14 @@ fn load_parameters() -> Parameters {
     }
 }
 
-/// Loads the [`UtxoSetModel`] from the SDK.
+/// Loads the [`UtxoAccumulatorModel`] from the SDK.
 #[inline]
-fn load_utxo_set_model() -> UtxoSetModel {
-    UtxoSetModel::decode(
-        manta_sdk::pay::testnet::parameters::UtxoSetParameters::get()
+fn load_utxo_accumulator_model() -> UtxoAccumulatorModel {
+    UtxoAccumulatorModel::decode(
+        manta_sdk::pay::testnet::parameters::UtxoAccumulatorModel::get()
             .expect("Checksum did not match."),
     )
-    .expect("Unable to decode UTXO_SET_PARAMETERS.")
+    .expect("Unable to decode UTXO_ACCUMULATOR_MODEL.")
 }
 
 /// Samples a [`Mint`] transaction of `asset` with a random secret.
@@ -117,7 +118,7 @@ where
 {
     Mint::from_spending_key(&PARAMETERS, &rng.gen(), asset, rng)
         .into_post(
-            FullParameters::new(&PARAMETERS, &UTXO_SET_MODEL),
+            FullParameters::new(&PARAMETERS, &UTXO_ACCUMULATOR_MODEL),
             &PROVING_CONTEXT.mint,
             rng,
         )
@@ -148,13 +149,13 @@ where
     let total_balance = rng.gen();
     let balances = value_distribution(count, total_balance, rng);
     initialize_test(asset_id, total_balance);
-    let mut utxo_set = UtxoSet::new(UTXO_SET_MODEL.clone());
+    let mut utxo_accumulator = UtxoAccumulator::new(UTXO_ACCUMULATOR_MODEL.clone());
     let mut posts = Vec::new();
     for balance in balances {
         let spending_key = SpendingKey::gen(rng);
         let (mint_0, pre_sender_0) = transfer::test::sample_mint(
             &PROVING_CONTEXT.mint,
-            FullParameters::new(&PARAMETERS, utxo_set.model()),
+            FullParameters::new(&PARAMETERS, utxo_accumulator.model()),
             &spending_key,
             asset_id.with(balance),
             rng,
@@ -162,11 +163,11 @@ where
         .unwrap();
         assert_ok!(MantaPayPallet::mint(Origin::signed(1), mint_0.into()));
         let sender_0 = pre_sender_0
-            .insert_and_upgrade(&mut utxo_set)
+            .insert_and_upgrade(&mut utxo_accumulator)
             .expect("Just inserted so this should not fail.");
         let (mint_1, pre_sender_1) = transfer::test::sample_mint(
             &PROVING_CONTEXT.mint,
-            FullParameters::new(&PARAMETERS, utxo_set.model()),
+            FullParameters::new(&PARAMETERS, utxo_accumulator.model()),
             &spending_key,
             asset_id.value(0),
             rng,
@@ -174,7 +175,7 @@ where
         .unwrap();
         assert_ok!(MantaPayPallet::mint(Origin::signed(1), mint_1.into()));
         let sender_1 = pre_sender_1
-            .insert_and_upgrade(&mut utxo_set)
+            .insert_and_upgrade(&mut utxo_accumulator)
             .expect("Just inserted so this should not fail.");
         let (receiver_0, pre_sender_0) =
             spending_key.internal_pair(&PARAMETERS, rng.gen(), asset_id.value(0));
@@ -183,7 +184,7 @@ where
         let private_transfer =
             PrivateTransfer::build([sender_0, sender_1], [receiver_0, receiver_1])
                 .into_post(
-                    FullParameters::new(&PARAMETERS, utxo_set.model()),
+                    FullParameters::new(&PARAMETERS, utxo_accumulator.model()),
                     &PROVING_CONTEXT.private_transfer,
                     rng,
                 )
@@ -192,8 +193,8 @@ where
             Origin::signed(1),
             private_transfer.clone().into(),
         ));
-        pre_sender_0.insert_utxo(&mut utxo_set);
-        pre_sender_1.insert_utxo(&mut utxo_set);
+        pre_sender_0.insert_utxo(&mut utxo_accumulator);
+        pre_sender_1.insert_utxo(&mut utxo_accumulator);
         posts.push(private_transfer)
     }
     posts
@@ -209,13 +210,13 @@ where
     let total_balance = rng.gen();
     let balances = value_distribution(count, total_balance, rng);
     initialize_test(asset_id, total_balance);
-    let mut utxo_set = UtxoSet::new(UTXO_SET_MODEL.clone());
+    let mut utxo_accumulator = UtxoAccumulator::new(UTXO_ACCUMULATOR_MODEL.clone());
     let mut posts = Vec::new();
     for balance in balances {
         let spending_key = SpendingKey::gen(rng);
         let (mint_0, pre_sender_0) = transfer::test::sample_mint(
             &PROVING_CONTEXT.mint,
-            FullParameters::new(&PARAMETERS, utxo_set.model()),
+            FullParameters::new(&PARAMETERS, utxo_accumulator.model()),
             &spending_key,
             asset_id.with(balance),
             rng,
@@ -223,11 +224,11 @@ where
         .unwrap();
         assert_ok!(MantaPayPallet::mint(Origin::signed(1), mint_0.into()));
         let sender_0 = pre_sender_0
-            .insert_and_upgrade(&mut utxo_set)
+            .insert_and_upgrade(&mut utxo_accumulator)
             .expect("Just inserted so this should not fail.");
         let (mint_1, pre_sender_1) = transfer::test::sample_mint(
             &PROVING_CONTEXT.mint,
-            FullParameters::new(&PARAMETERS, utxo_set.model()),
+            FullParameters::new(&PARAMETERS, utxo_accumulator.model()),
             &spending_key,
             asset_id.value(0),
             rng,
@@ -235,13 +236,13 @@ where
         .unwrap();
         assert_ok!(MantaPayPallet::mint(Origin::signed(1), mint_1.into()));
         let sender_1 = pre_sender_1
-            .insert_and_upgrade(&mut utxo_set)
+            .insert_and_upgrade(&mut utxo_accumulator)
             .expect("Just inserted so this should not fail.");
         let (receiver, pre_sender) =
             spending_key.internal_pair(&PARAMETERS, rng.gen(), asset_id.value(0));
         let reclaim = Reclaim::build([sender_0, sender_1], [receiver], asset_id.with(balance))
             .into_post(
-                FullParameters::new(&PARAMETERS, utxo_set.model()),
+                FullParameters::new(&PARAMETERS, utxo_accumulator.model()),
                 &PROVING_CONTEXT.reclaim,
                 rng,
             )
@@ -250,7 +251,7 @@ where
             Origin::signed(1),
             reclaim.clone().into()
         ));
-        pre_sender.insert_utxo(&mut utxo_set);
+        pre_sender.insert_utxo(&mut utxo_accumulator);
         posts.push(reclaim);
     }
     posts
