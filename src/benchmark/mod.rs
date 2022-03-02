@@ -1,4 +1,4 @@
-// Copyright 2019-2021 Manta Network.
+// Copyright 2019-2022 Manta Network.
 // This file is part of pallet-manta-pay.
 //
 // pallet-manta-pay is free software: you can redistribute it and/or modify
@@ -14,123 +14,90 @@
 // You should have received a copy of the GNU General Public License
 // along with pallet-manta-pay.  If not, see <http://www.gnu.org/licenses/>.
 
-#![cfg(feature = "runtime-benchmarks")]
+use crate::{
+    benchmark::precomputed_coins::{
+        MINT, PRIVATE_TRANSFER, PRIVATE_TRANSFER_INPUT, RECLAIM, RECLAIM_INPUT,
+    },
+    Asset, Balances, Call, Config, Event, Pallet, TransferPost,
+};
+use frame_benchmarking::{account, benchmarks, impl_benchmark_test_suite, whitelisted_caller};
+use frame_system::RawOrigin;
+use scale_codec::Decode;
+use sp_runtime::traits::StaticLookup;
 
 mod precomputed_coins;
 
-use super::*;
-
-use crate::benchmark::precomputed_coins::{COIN_1, COIN_2, RECLAIM_DATA, TRANSFER_DATA};
-#[allow(unused)]
-use crate::Pallet as PalletMantaPay;
-use frame_benchmarking::{account, benchmarks, impl_benchmark_test_suite, whitelisted_caller};
-use frame_system::{EventRecord, RawOrigin};
-use manta_asset::TEST_ASSET;
-use manta_crypto::MantaSerDes;
-use sp_runtime::traits::StaticLookup;
-
-const SEED: u32 = 0;
-
-pub fn assert_last_event<T: Config>(generic_event: <T as Config>::Event) {
-	let events = frame_system::Pallet::<T>::events();
-	let system_event: <T as frame_system::Config>::Event = generic_event.into();
-	let EventRecord { event, .. } = &events[events.len() - 1];
-	assert_eq!(event, &system_event);
+/// Asserts that the last event that has occured is the same as `event`.
+#[inline]
+pub fn assert_last_event<T, E>(event: E)
+where
+    T: Config,
+    E: Into<<T as Config>::Event>,
+{
+    let events = frame_system::Pallet::<T>::events();
+    assert_eq!(events[events.len() - 1].event, event.into().into());
 }
 
 benchmarks! {
+    transfer {
+        let caller: T::AccountId = whitelisted_caller();
+        let origin = T::Origin::from(RawOrigin::Signed(caller.clone()));
+        Pallet::<T>::init_asset(&caller, 0, 1_000);
+        let recipient: T::AccountId = account("recipient", 0, 0);
+        let recipient_lookup = T::Lookup::unlookup(recipient.clone());
+        let asset = Asset::new(0, 10);
+    }: transfer (
+        RawOrigin::Signed(caller.clone()),
+        recipient_lookup,
+        asset
+    ) verify {
+        assert_last_event::<T, _>(Event::Transfer { asset, source: caller, sink: recipient.clone() });
+        assert_eq!(Balances::<T>::get(recipient, asset.id), asset.value);
+    }
 
-	transfer_asset {
-		let caller: T::AccountId = whitelisted_caller();
-		let origin: T::Origin = T::Origin::from(RawOrigin::Signed(caller.clone()));
-		Balances::<T>::insert(&caller, TEST_ASSET, 1_000);
-		Pallet::<T>::init_asset(&caller, TEST_ASSET, 1_000);
-		let recipient: T::AccountId = account("recipient", 0, SEED);
-		let recipient_lookup: <T::Lookup as StaticLookup>::Source = T::Lookup::unlookup(recipient.clone());
-		let transfer_amount = 10;
-	}: transfer_asset(
-		RawOrigin::Signed(caller.clone()),
-		recipient_lookup,
-		TEST_ASSET,
-		transfer_amount)
-	verify {
-		assert_last_event::<T>(
-			Event::Transferred(TEST_ASSET, caller, recipient.clone(), transfer_amount).into()
-		);
-		assert_eq!(Balances::<T>::get(&recipient, TEST_ASSET), transfer_amount);
-	}
+    mint {
+        let caller: T::AccountId = whitelisted_caller();
+        let origin = T::Origin::from(RawOrigin::Signed(caller.clone()));
+        Pallet::<T>::init_asset(&caller, 0, 1_000_000);
+        let mint_post = TransferPost::decode(&mut &*MINT).unwrap();
+        let asset = Asset::new(mint_post.asset_id.unwrap(), mint_post.sources[0]);
+    }: mint (
+        RawOrigin::Signed(caller.clone()),
+        mint_post
+    ) verify {
+        assert_last_event::<T, _>(Event::Mint { asset, source: caller.clone() });
+        assert_eq!(Balances::<T>::get(caller, asset.id), 1_000_000 - asset.value);
+    }
 
-	mint_private_asset {
-		let caller: T::AccountId = whitelisted_caller();
-		let origin: T::Origin = T::Origin::from(RawOrigin::Signed(caller.clone()));
-		<Balances<T>>::insert(&caller, TEST_ASSET, 1_000_000);
-		Pallet::<T>::init_asset(&caller, TEST_ASSET, 1_000_000);
-		let mut mint_bytes: Vec<u8> = Vec::new();
-		mint_bytes.extend_from_slice(COIN_1);
-		let mint_data = MintData::deserialize(&mut mint_bytes.as_ref()).unwrap();
-	}: mint_private_asset (
-		RawOrigin::Signed(caller),
-		mint_data)
-	verify {
-		assert_eq!(TotalSupply::<T>::get(TEST_ASSET), 1_000_000);
-		assert_eq!(PoolBalance::<T>::get(TEST_ASSET), 89_757);
-	}
+    private_transfer {
+        let caller: T::AccountId = whitelisted_caller();
+        let origin = T::Origin::from(RawOrigin::Signed(caller.clone()));
+        Pallet::<T>::init_asset(&caller, 0, 1_000_000);
+        for coin in PRIVATE_TRANSFER_INPUT {
+            Pallet::<T>::mint(origin.clone(), TransferPost::decode(&mut &**coin).unwrap()).unwrap();
+        }
+        let private_transfer_post = TransferPost::decode(&mut &*PRIVATE_TRANSFER).unwrap();
+    }: private_transfer (
+        RawOrigin::Signed(caller.clone()),
+        private_transfer_post
+    ) verify {
+        assert_last_event::<T, _>(Event::PrivateTransfer { origin: caller });
+    }
 
-	private_transfer {
-		let caller: T::AccountId = whitelisted_caller();
-		let origin: T::Origin = T::Origin::from(RawOrigin::Signed(caller.clone()));
-		<Balances<T>>::insert(&caller, TEST_ASSET, 1_000_000);
-		Pallet::<T>::init_asset(&caller, TEST_ASSET, 1_000_000);
-
-		for coin in [COIN_1, COIN_2] {
-			let mut coin_bytes: Vec<u8> = Vec::new();
-			coin_bytes.extend_from_slice(coin);
-			let mint_data = MintData::deserialize(&mut coin_bytes.as_ref()).unwrap();
-			Pallet::<T>::mint_private_asset(origin.clone(), mint_data).unwrap();
-		}
-
-		let mut test_transfer_bytes: Vec<u8> = Vec::new();
-		test_transfer_bytes.extend_from_slice(TRANSFER_DATA);
-		let transfer_data = PrivateTransferData::deserialize(&mut test_transfer_bytes.as_ref()).unwrap();
-
-	}: private_transfer (
-		RawOrigin::Signed(caller.clone()),
-		transfer_data)
-	verify {
-		assert_last_event::<T>(Event::PrivateTransferred(caller).into());
-		assert_eq!(TotalSupply::<T>::get(TEST_ASSET), 1_000_000);
-		assert_eq!(PoolBalance::<T>::get(TEST_ASSET), 179_515);
-	}
-
-	reclaim {
-		let caller: T::AccountId = whitelisted_caller();
-		let origin: T::Origin = T::Origin::from(RawOrigin::Signed(caller.clone()));
-		<Balances<T>>::insert(&caller, TEST_ASSET, 1_000_000);
-		Pallet::<T>::init_asset(&caller, TEST_ASSET, 1_000_000);
-
-		for coin in [COIN_1, COIN_2] {
-			let mut coin_bytes: Vec<u8> = Vec::new();
-			coin_bytes.extend_from_slice(coin);
-			let mint_data = MintData::deserialize(&mut coin_bytes.as_ref()).unwrap();
-			Pallet::<T>::mint_private_asset(origin.clone(), mint_data).unwrap();
-		}
-
-		let mut reclaim_bytes: Vec<u8> = Vec::new();
-		reclaim_bytes.extend_from_slice(RECLAIM_DATA);
-		let reclaim_data = ReclaimData::deserialize(&mut reclaim_bytes.as_ref()).unwrap();
-	}: reclaim (
-		RawOrigin::Signed(caller.clone()),
-		reclaim_data
-	)
-	verify {
-		assert_last_event::<T>(Event::Reclaimed(TEST_ASSET, caller, 79_515).into());
-		assert_eq!(TotalSupply::<T>::get(TEST_ASSET), 1_000_000);
-		assert_eq!(PoolBalance::<T>::get(TEST_ASSET), 100_000);
-	}
+    reclaim {
+        let caller: T::AccountId = whitelisted_caller();
+        let origin = T::Origin::from(RawOrigin::Signed(caller.clone()));
+        Pallet::<T>::init_asset(&caller, 0, 1_000_000);
+        for coin in RECLAIM_INPUT {
+            Pallet::<T>::mint(origin.clone(), TransferPost::decode(&mut &**coin).unwrap()).unwrap();
+        }
+        let reclaim_post = TransferPost::decode(&mut &*RECLAIM).unwrap();
+    }: reclaim (
+        RawOrigin::Signed(caller.clone()),
+        reclaim_post
+    ) verify {
+        assert_last_event::<T, _>(Event::Reclaim { asset: Asset::new(0, 10_000), sink: caller });
+    }
 }
 
-impl_benchmark_test_suite!(
-	PalletMantaPay,
-	crate::mock::new_test_ext(),
-	crate::mock::Test,
-);
+impl_benchmark_test_suite!(Pallet, crate::mock::new_test_ext(), crate::mock::Test);

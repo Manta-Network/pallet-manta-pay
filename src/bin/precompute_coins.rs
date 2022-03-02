@@ -1,4 +1,4 @@
-// Copyright 2019-2021 Manta Network.
+// Copyright 2019-2022 Manta Network.
 // This file is part of pallet-manta-pay.
 //
 // pallet-manta-pay is free software: you can redistribute it and/or modify
@@ -14,153 +14,383 @@
 // You should have received a copy of the GNU General Public License
 // along with pallet-manta-pay.  If not, see <http://www.gnu.org/licenses/>.
 
-use indoc::indoc;
-use manta_api::{
-	generate_mint_struct, generate_private_transfer_struct, generate_reclaim_struct,
-	util::into_array_unchecked,
-	zkp::{
-		keys::{reclaim, transfer},
-		sample::*,
-	},
-};
-use manta_asset::{shard_index, TEST_ASSET, UTXO};
-use manta_crypto::{commitment_parameters, leaf_parameters, two_to_one_parameters, MantaSerDes};
-use manta_data::{BuildMetadata, MintPayload, PrivateTransferPayload, ReclaimPayload};
-use rand_chacha::{rand_core::SeedableRng, ChaCha20Rng};
-use std::collections::HashMap;
+//! Precomputed Transactions
 
-/// Insert utxo to the commitment set
-fn insert_utxo(utxo: &UTXO, commitment_set: &mut HashMap<u8, Vec<[u8; 32]>>) {
-	let shard_index = shard_index(*utxo);
-	let shard = commitment_set.entry(shard_index).or_default();
-	shard.push(*utxo);
+use anyhow::Result;
+use indoc::indoc;
+use manta_accounting::{
+    asset::{Asset, AssetId},
+    transfer::{self, SpendingKey},
+};
+use manta_crypto::{
+    accumulator::Accumulator,
+    constraint::ProofSystem as _,
+    merkle_tree::{forest::TreeArrayMerkleForest, full::Full},
+    rand::{CryptoRng, Rand, RngCore, Sample},
+};
+use manta_pay::config::{
+    self, FullParameters, KeyAgreementScheme, MerkleTreeConfiguration, Mint, MultiProvingContext,
+    MultiVerifyingContext, Parameters, PrivateTransfer, ProofSystem, ProvingContext, Reclaim,
+    UtxoAccumulatorModel, UtxoCommitmentScheme, VerifyingContext, VoidNumberHashFunction,
+};
+use manta_util::codec::{Decode, IoReader};
+use pallet_manta_pay::types::TransferPost;
+use rand::thread_rng;
+use scale_codec::Encode;
+use std::{
+    env,
+    fs::{self, File, OpenOptions},
+    io::Write,
+    path::{Path, PathBuf},
+};
+
+/// UTXO Accumulator for Building Circuits
+type UtxoAccumulator =
+    TreeArrayMerkleForest<MerkleTreeConfiguration, Full<MerkleTreeConfiguration>, 256>;
+
+/// Loads parameters from the SDK, using `directory` as a temporary directory to store files.
+#[inline]
+fn load_parameters(
+    directory: &Path,
+) -> Result<(
+    MultiProvingContext,
+    MultiVerifyingContext,
+    Parameters,
+    UtxoAccumulatorModel,
+)> {
+    let mint_path = directory.join("mint.dat");
+    manta_sdk::pay::testnet::proving::Mint::download(&mint_path)?;
+    let private_transfer_path = directory.join("private-transfer.dat");
+    manta_sdk::pay::testnet::proving::PrivateTransfer::download(&private_transfer_path)?;
+    let reclaim_path = directory.join("reclaim.dat");
+    manta_sdk::pay::testnet::proving::Reclaim::download(&reclaim_path)?;
+    let proving_context = MultiProvingContext {
+        mint: ProvingContext::decode(IoReader(File::open(mint_path)?))
+            .expect("Unable to decode MINT proving context."),
+        private_transfer: ProvingContext::decode(IoReader(File::open(private_transfer_path)?))
+            .expect("Unable to decode PRIVATE_TRANSFER proving context."),
+        reclaim: ProvingContext::decode(IoReader(File::open(reclaim_path)?))
+            .expect("Unable to decode RECLAIM proving context."),
+    };
+    let verifying_context = MultiVerifyingContext {
+        mint: VerifyingContext::decode(
+            manta_sdk::pay::testnet::verifying::Mint::get().expect("Checksum did not match."),
+        )
+        .expect("Unable to decode MINT verifying context."),
+        private_transfer: VerifyingContext::decode(
+            manta_sdk::pay::testnet::verifying::PrivateTransfer::get()
+                .expect("Checksum did not match."),
+        )
+        .expect("Unable to decode PRIVATE_TRANSFER verifying context."),
+        reclaim: VerifyingContext::decode(
+            manta_sdk::pay::testnet::verifying::Reclaim::get().expect("Checksum did not match."),
+        )
+        .expect("Unable to decode RECLAIM verifying context."),
+    };
+    let parameters = Parameters {
+        key_agreement: KeyAgreementScheme::decode(
+            manta_sdk::pay::testnet::parameters::KeyAgreement::get()
+                .expect("Checksum did not match."),
+        )
+        .expect("Unable to decode KEY_AGREEMENT parameters."),
+        utxo_commitment: UtxoCommitmentScheme::decode(
+            manta_sdk::pay::testnet::parameters::UtxoCommitmentScheme::get()
+                .expect("Checksum did not match."),
+        )
+        .expect("Unable to decode UTXO_COMMITMENT_SCHEME parameters."),
+        void_number_hash: VoidNumberHashFunction::decode(
+            manta_sdk::pay::testnet::parameters::VoidNumberHashFunction::get()
+                .expect("Checksum did not match."),
+        )
+        .expect("Unable to decode VOID_NUMBER_HASH_FUNCTION parameters."),
+    };
+    Ok((
+        proving_context,
+        verifying_context,
+        parameters,
+        UtxoAccumulatorModel::decode(
+            manta_sdk::pay::testnet::parameters::UtxoAccumulatorModel::get()
+                .expect("Checksum did not match."),
+        )
+        .expect("Unable to decode UTXO_ACCUMULATOR_MODEL."),
+    ))
 }
 
-/// Generate a precomputed coins
-/// * coin_1: a private coin with TEST_ASSET and value 89757
-/// * coin_2: a private coin with TEST_ASSET and value 89758
-/// * transfer_data: [coin_1, coin_2] -> [coin_3: (TEST_ASSET, 100000), coin_4, (TEST_ASSET, 79515)]
-/// * reclaim_data: [coin_1, coin_2] -> [coin_3: (TEST_ASSET, 100000), coin_4_public, (TEST_ASSET, 79515)]
-fn precompute_coins() -> (
-	MintPayload,
-	MintPayload,
-	PrivateTransferPayload,
-	ReclaimPayload,
-) {
-	// setup parameters
-	let (commit_params, leaf_params, two_to_one_params) = (
-		commitment_parameters(),
-		leaf_parameters(),
-		two_to_one_parameters(),
-	);
+/// Asserts that `post` represents a valid `Transfer` verifying against `verifying_context`.
+#[inline]
+fn assert_valid_proof(verifying_context: &VerifyingContext, post: &config::TransferPost) {
+    assert!(
+        ProofSystem::verify(
+            verifying_context,
+            &post.generate_proof_input(),
+            &post.validity_proof,
+        )
+        .expect("Unable to verify proof."),
+        "Invalid proof: {:?}.",
+        post
+    );
+}
 
-	let mut rng = ChaCha20Rng::from_seed([55u8; 32]);
-	let mut ledger = HashMap::new();
+/// Samples a [`Mint`] transaction.
+#[inline]
+fn sample_mint<R>(
+    proving_context: &ProvingContext,
+    verifying_context: &VerifyingContext,
+    parameters: &Parameters,
+    utxo_accumulator_model: &UtxoAccumulatorModel,
+    asset: Asset,
+    rng: &mut R,
+) -> TransferPost
+where
+    R: CryptoRng + RngCore + ?Sized,
+{
+    let mint = Mint::from_spending_key(parameters, &SpendingKey::gen(rng), asset, rng)
+        .into_post(
+            FullParameters::new(parameters, utxo_accumulator_model),
+            proving_context,
+            rng,
+        )
+        .expect("Unable to build MINT proof.");
+    assert_valid_proof(verifying_context, &mint);
+    mint.into()
+}
 
-	// generate a coin with id TEST_ASSET and value 89757
-	let sender_1 = fixed_asset(&commit_params, TEST_ASSET, 89_757, &mut rng);
-	let coin_1 = generate_mint_struct(&sender_1);
-	let mut coin_1_bytes = Vec::new();
-	coin_1.serialize(&mut coin_1_bytes).unwrap();
+/// Samples a [`PrivateTransfer`] transaction under two [`Mint`]s.
+#[inline]
+fn sample_private_transfer<R>(
+    proving_context: &MultiProvingContext,
+    verifying_context: &MultiVerifyingContext,
+    parameters: &Parameters,
+    utxo_accumulator_model: &UtxoAccumulatorModel,
+    asset_0: Asset,
+    asset_1: Asset,
+    rng: &mut R,
+) -> ([TransferPost; 2], TransferPost)
+where
+    R: CryptoRng + RngCore + ?Sized,
+{
+    let mut utxo_accumulator = UtxoAccumulator::new(utxo_accumulator_model.clone());
+    let spending_key_0 = SpendingKey::new(rng.gen(), rng.gen());
+    let (mint_0, pre_sender_0) = transfer::test::sample_mint(
+        &proving_context.mint,
+        FullParameters::new(parameters, utxo_accumulator.model()),
+        &spending_key_0,
+        asset_0,
+        rng,
+    )
+    .expect("Unable to build MINT proof.");
+    assert_valid_proof(&verifying_context.mint, &mint_0);
+    let sender_0 = pre_sender_0
+        .insert_and_upgrade(&mut utxo_accumulator)
+        .expect("Just inserted so this should not fail.");
+    let spending_key_1 = SpendingKey::new(rng.gen(), rng.gen());
+    let (mint_1, pre_sender_1) = transfer::test::sample_mint(
+        &proving_context.mint,
+        FullParameters::new(parameters, utxo_accumulator.model()),
+        &spending_key_1,
+        asset_1,
+        rng,
+    )
+    .expect("Unable to build MINT proof.");
+    assert_valid_proof(&verifying_context.mint, &mint_1);
+    let sender_1 = pre_sender_1
+        .insert_and_upgrade(&mut utxo_accumulator)
+        .expect("Just inserted so this should not fail.");
+    let private_transfer = PrivateTransfer::build(
+        [sender_0, sender_1],
+        [
+            spending_key_0.receiver(parameters, rng.gen(), asset_1),
+            spending_key_1.receiver(parameters, rng.gen(), asset_0),
+        ],
+    )
+    .into_post(
+        FullParameters::new(parameters, utxo_accumulator.model()),
+        &proving_context.private_transfer,
+        rng,
+    )
+    .expect("Unable to build PRIVATE_TRANSFER proof.");
+    assert_valid_proof(&verifying_context.private_transfer, &private_transfer);
+    ([mint_0.into(), mint_1.into()], private_transfer.into())
+}
 
-	// generate a coin with id TEST_ASSET and value 89758
-	let sender_2 = fixed_asset(&commit_params, TEST_ASSET, 89_758, &mut rng);
-	let coin_2 = generate_mint_struct(&sender_2);
-	let mut coin_2_bytes = Vec::new();
-	coin_2.serialize(&mut coin_2_bytes).unwrap();
-
-	// transfer sender_1 and sender_2 to two receivers
-	insert_utxo(&sender_1.utxo, &mut ledger);
-	insert_utxo(&sender_2.utxo, &mut ledger);
-	let sender_1_meta = sender_1
-		.build(
-			&leaf_params,
-			&two_to_one_params,
-			ledger.get(&shard_index(sender_1.utxo)).unwrap(),
-		)
-		.unwrap();
-	let sender_2_meta = sender_2
-		.build(
-			&leaf_params,
-			&two_to_one_params,
-			ledger.get(&shard_index(sender_2.utxo)).unwrap(),
-		)
-		.unwrap();
-
-	let receiver_1 = fixed_receiver(&commit_params, TEST_ASSET, 100_000, &mut rng);
-	let receiver_2 = fixed_receiver(&commit_params, TEST_ASSET, 79_515, &mut rng);
-	let mut transfer_bytes = Vec::new();
-	let transfer_data = generate_private_transfer_struct(
-		commit_params.clone(),
-		leaf_params.clone(),
-		two_to_one_params.clone(),
-		&transfer().unwrap().0,
-		[sender_1_meta.clone(), sender_2_meta.clone()],
-		[receiver_1, receiver_2],
-		&mut rng,
-	)
-	.unwrap();
-	transfer_data.serialize(&mut transfer_bytes).unwrap();
-
-	// reclaim 79515 TEST_ASSET, 10000 transferred to a coin
-	let receiver = fixed_receiver(&commit_params, TEST_ASSET, 100_000, &mut rng);
-	let reclaim_data = generate_reclaim_struct(
-		commit_params,
-		leaf_params,
-		two_to_one_params,
-		&reclaim().unwrap().0,
-		[sender_1_meta, sender_2_meta],
-		receiver,
-		79_515,
-		&mut rng,
-	)
-	.unwrap();
-	let mut reclaim_bytes = Vec::new();
-	reclaim_data.serialize(&mut reclaim_bytes).unwrap();
-	(
-		into_array_unchecked(coin_1_bytes),
-		into_array_unchecked(coin_2_bytes),
-		into_array_unchecked(transfer_bytes),
-		into_array_unchecked(reclaim_bytes),
-	)
+/// Samples a [`Reclaim`] transaction under two [`Mint`]s.
+#[inline]
+fn sample_reclaim<R>(
+    proving_context: &MultiProvingContext,
+    verifying_context: &MultiVerifyingContext,
+    parameters: &Parameters,
+    utxo_accumulator_model: &UtxoAccumulatorModel,
+    asset_0: Asset,
+    asset_1: Asset,
+    rng: &mut R,
+) -> ([TransferPost; 2], TransferPost)
+where
+    R: CryptoRng + RngCore + ?Sized,
+{
+    let mut utxo_accumulator = UtxoAccumulator::new(utxo_accumulator_model.clone());
+    let spending_key_0 = SpendingKey::new(rng.gen(), rng.gen());
+    let (mint_0, pre_sender_0) = transfer::test::sample_mint(
+        &proving_context.mint,
+        FullParameters::new(parameters, utxo_accumulator.model()),
+        &spending_key_0,
+        asset_0,
+        rng,
+    )
+    .expect("Unable to build MINT proof.");
+    assert_valid_proof(&verifying_context.mint, &mint_0);
+    let sender_0 = pre_sender_0
+        .insert_and_upgrade(&mut utxo_accumulator)
+        .expect("Just inserted so this should not fail.");
+    let spending_key_1 = SpendingKey::new(rng.gen(), rng.gen());
+    let (mint_1, pre_sender_1) = transfer::test::sample_mint(
+        &proving_context.mint,
+        FullParameters::new(parameters, utxo_accumulator.model()),
+        &spending_key_1,
+        asset_1,
+        rng,
+    )
+    .expect("Unable to build MINT proof.");
+    assert_valid_proof(&verifying_context.mint, &mint_1);
+    let sender_1 = pre_sender_1
+        .insert_and_upgrade(&mut utxo_accumulator)
+        .expect("Just inserted so this should not fail.");
+    let reclaim = Reclaim::build(
+        [sender_0, sender_1],
+        [spending_key_0.receiver(parameters, rng.gen(), asset_1)],
+        asset_0,
+    )
+    .into_post(
+        FullParameters::new(parameters, utxo_accumulator.model()),
+        &proving_context.reclaim,
+        rng,
+    )
+    .expect("Unable to build RECLAIM proof.");
+    assert_valid_proof(&verifying_context.reclaim, &reclaim);
+    ([mint_0.into(), mint_1.into()], reclaim.into())
 }
 
 /// Writes a new `const` definition to `$writer`.
-macro_rules! print_const {
-	($var:ident) => {
-		println!(
-			"pub(crate) const {}: &[u8] = &{:?};\n",
-			stringify!($var),
-			$var
-		)
-	};
+macro_rules! write_const_array {
+    ($writer:ident, $name:ident, $value:expr) => {
+        writeln!(
+            $writer,
+            "pub(crate) const {}: &[u8] = &{:?};\n",
+            stringify!($name),
+            $value.encode().as_slice()
+        )
+    };
 }
 
-#[allow(non_snake_case)]
-fn main() {
-	let (COIN_1, COIN_2, TRANSFER_DATA, RECLAIM_DATA) = precompute_coins();
-	let license_doc_string = indoc! {"// Copyright 2019-2021 Manta Network.
-	// This file is part of pallet-manta-pay.
-	//
-	// pallet-manta-pay is free software: you can redistribute it and/or modify
-	// it under the terms of the GNU General Public License as published by
-	// the Free Software Foundation, either version 3 of the License, or
-	// (at your option) any later version.
-	//
-	// pallet-manta-pay is distributed in the hope that it will be useful,
-	// but WITHOUT ANY WARRANTY; without even the implied warranty of
-	// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-	// GNU General Public License for more details.
-	//
-	// You should have received a copy of the GNU General Public License
-	// along with pallet-manta-pay.  If not, see <http://www.gnu.org/licenses/>.
+/// Writes a new `const` definition to `$writer`.
+macro_rules! write_const_nested_array {
+    ($writer:ident, $name:ident, $value:expr) => {
+        writeln!(
+            $writer,
+            "pub(crate) const {}: &[&[u8]] = &[{}];\n",
+            stringify!($name),
+            $value
+                .iter()
+                .flat_map(|v| {
+                    format!("&{:?},", v.encode().as_slice())
+                        .chars()
+                        .collect::<Vec<_>>()
+                })
+                .collect::<String>(),
+        )
+    };
+}
 
-	//! Precomputed Coins
-	//!
-	//! THIS FILE IS AUTOMATICALLY GENERATED by `src/bin/precompute_coins.rs`. DO NOT EDIT."};
-	println!("{}\n", license_doc_string);
-	print_const!(COIN_1);
-	print_const!(COIN_2);
-	print_const!(TRANSFER_DATA);
-	print_const!(RECLAIM_DATA);
+/// Builds sample transactions for testing.
+#[inline]
+fn main() -> Result<()> {
+    let target_file = env::args()
+        .nth(1)
+        .map(PathBuf::from)
+        .unwrap_or(env::current_dir()?.join("precomputed_coins.rs"));
+    assert!(
+        !target_file.exists(),
+        "Specify a file to place the generated files: {:?}.",
+        target_file,
+    );
+    fs::create_dir_all(
+        &target_file
+            .parent()
+            .expect("This file should have a parent."),
+    )?;
+
+    let directory = tempfile::tempdir().expect("Unable to generate temporary test directory.");
+    println!("[INFO] Temporary Directory: {:?}", directory);
+
+    let mut rng = thread_rng();
+    let (proving_context, verifying_context, parameters, utxo_accumulator_model) =
+        load_parameters(directory.path())?;
+
+    let mint = sample_mint(
+        &proving_context.mint,
+        &verifying_context.mint,
+        &parameters,
+        &utxo_accumulator_model,
+        AssetId(0).value(100_000),
+        &mut rng,
+    );
+    let (private_transfer_input, private_transfer) = sample_private_transfer(
+        &proving_context,
+        &verifying_context,
+        &parameters,
+        &utxo_accumulator_model,
+        AssetId(0).value(10_000),
+        AssetId(0).value(20_000),
+        &mut rng,
+    );
+    let (reclaim_input, reclaim) = sample_reclaim(
+        &proving_context,
+        &verifying_context,
+        &parameters,
+        &utxo_accumulator_model,
+        AssetId(0).value(10_000),
+        AssetId(0).value(20_000),
+        &mut rng,
+    );
+
+    let mut target_file = OpenOptions::new()
+        .create_new(true)
+        .write(true)
+        .open(target_file)?;
+
+    writeln!(
+        target_file,
+        indoc! {r"
+		    // Copyright 2019-2022 Manta Network.
+		    // This file is part of pallet-manta-pay.
+		    //
+		    // pallet-manta-pay is free software: you can redistribute it and/or modify
+		    // it under the terms of the GNU General Public License as published by
+		    // the Free Software Foundation, either version 3 of the License, or
+		    // (at your option) any later version.
+		    //
+		    // pallet-manta-pay is distributed in the hope that it will be useful,
+		    // but WITHOUT ANY WARRANTY; without even the implied warranty of
+		    // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+		    // GNU General Public License for more details.
+		    //
+		    // You should have received a copy of the GNU General Public License
+		    // along with pallet-manta-pay.  If not, see <http://www.gnu.org/licenses/>.
+
+		    //! Precomputed Coins
+		    //!
+		    //! THIS FILE IS AUTOMATICALLY GENERATED by `src/bin/precompute_coins.rs`. DO NOT EDIT.
+	    "}
+    )?;
+
+    write_const_array!(target_file, MINT, mint)?;
+    write_const_nested_array!(target_file, PRIVATE_TRANSFER_INPUT, private_transfer_input)?;
+    write_const_array!(target_file, PRIVATE_TRANSFER, private_transfer)?;
+    write_const_nested_array!(target_file, RECLAIM_INPUT, reclaim_input)?;
+    write_const_array!(target_file, RECLAIM, reclaim)?;
+
+    directory
+        .close()
+        .expect("Unable to delete temporary test directory.");
+
+    Ok(())
 }
